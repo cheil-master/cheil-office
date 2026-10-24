@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, ReactElement } from 'react'
 import logoLockup from './assets/genoffice-logo.svg'
 import { KbAskPanel } from './KbAskPanel'
+import { AgencyTemplates } from './cheil/AgencyTemplates'
+import { localEngineView } from './cheil/local-engine'
+import { useAiSettings } from './FreeAiCards'
 import iconDocx from './assets/file-docx.svg'
 import iconXlsx from './assets/file-xlsx.svg'
 import iconPptx from './assets/file-pptx.svg'
@@ -881,19 +884,24 @@ function AccountEntry({
     refresh()
   }
 
+  const aiSettings = useAiSettings()
   const summary = subscriptionSummary(connection.statuses)
   const names = summary.connected.map(aiSubscriptionProviderName).join(' · ')
   // one connection shows its own state line (plan, or charged by usage); two just read "Connected"
   const only = summary.connected.length === 1 ? summary.connected[0] : undefined
   const onlyView = only ? aiSubscriptionCardView(connection.statuses[only]) : null
-  const stateText =
-    summary.state === 'connected'
+  // Cheil fork: a chosen Ollama is the engine in use, whatever the subscriptions say
+  const local = localEngineView(aiSettings, lang)
+  const stateText = local
+    ? local.model
+    : summary.state === 'connected'
       ? onlyView
         ? aiSubscriptionText(lang, onlyView.statusKey, { plan: onlyView.planName ?? '' })
         : aiSubscriptionText(lang, 'cardReady')
       : null
-  const label =
-    summary.state === 'connected'
+  const label = local
+    ? local.name
+    : summary.state === 'connected'
       ? names
       : summary.state === 'checking'
         ? aiSubscriptionText(lang, 'cardChecking')
@@ -917,15 +925,19 @@ function AccountEntry({
         aria-expanded={settingsOpen}
         data-subscription={summary.state}
         data-tip={
-          summary.state === 'connected'
-            ? `${names} · ${stateText}`
-            : summary.state === 'checking'
-              ? t('settings')
-              : aiSubscriptionText(lang, 'connectTitle')
+          local
+            ? `${local.name} · ${local.model}`
+            : summary.state === 'connected'
+              ? `${names} · ${stateText}`
+              : summary.state === 'checking'
+                ? t('settings')
+                : aiSubscriptionText(lang, 'connectTitle')
         }
         aria-label={t('settings')}
       >
-        <span className={`account-avatar${summary.state === 'connected' ? ' logged-in' : ''}`}>
+        <span
+          className={`account-avatar${local || summary.state === 'connected' ? ' logged-in' : ''}`}
+        >
           <AiMark size={16} />
           {skillUpdate && (
             <span className="account-badge" role="img" aria-label={t('intgUpdateDue')} />
@@ -2927,6 +2939,8 @@ export function Home({
           </div>
           {renderQuickCards()}
         </section>
+        {/* Cheil fork: the agency templates under the quick start */}
+        <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
 
         <section className="recents" aria-label={t('folders')}>
           <div className="recents-toolbar">
@@ -3052,6 +3066,8 @@ export function Home({
           </div>
           {renderQuickCards()}
         </section>
+        {/* Cheil fork: the agency templates under the quick start */}
+        <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
 
         <section
           className="recents"

@@ -23,6 +23,7 @@ import {
 import { AiSubscriptionUsageLine } from '../src/AiSubscriptionUsageLine'
 import { AI_SIGNING_IN_STALLED_MS, formatAiResetTime } from '../src/ai-subscription'
 import { AI_SUBSCRIPTION_STRINGS } from '../src/strings-ai-subscription'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 let host: HTMLDivElement
 let root: ReturnType<typeof createRoot>
@@ -500,7 +501,7 @@ describe('AiConnectPrompt', () => {
     ])
 
   it('renders nothing once a provider can run', () => {
-    render(defaultAiSettings(), {
+    render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'ready'),
     })
@@ -519,7 +520,7 @@ describe('AiConnectPrompt', () => {
     )
 
   it('asks which AI the user has before showing any card', () => {
-    render(defaultAiSettings(), {
+    render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'not-installed'),
     })
@@ -537,7 +538,7 @@ describe('AiConnectPrompt', () => {
   })
 
   it('lays open the path picked: its need, its steps and its one card', () => {
-    const actions = render(defaultAiSettings(), {
+    const actions = render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'not-installed'),
     })
@@ -557,7 +558,7 @@ describe('AiConnectPrompt', () => {
   })
 
   it('a sign-in under way opens its own path, and "another way" still asks again', () => {
-    render(defaultAiSettings(), {
+    render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'not-installed'),
       codex: status('codex', 'signed-out', { signingIn: 'browser' }),
     })
@@ -571,7 +572,7 @@ describe('AiConnectPrompt', () => {
   it('the free path points to the free connections in Settings', () => {
     const onOpenSettings = vi.fn()
     render(
-      defaultAiSettings(),
+      upstreamAiSettings(),
       {
         'claude-code': status('claude-code', 'not-installed'),
         codex: status('codex', 'signed-out'),
@@ -588,7 +589,7 @@ describe('AiConnectPrompt', () => {
   it('copies what a helper needs, and nothing personal', async () => {
     const writeText = vi.fn(async (_text: string) => undefined)
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    render(defaultAiSettings(), {
+    render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'error', {
         version: '2.1.10',
         error: 'needs-update: C:\\Users\\me\\claude.exe is too old',
@@ -611,17 +612,17 @@ describe('AiConnectPrompt', () => {
 
   it('offers no free way in for a selected provider that cannot run, or without a settings page', () => {
     render(
-      { ...defaultAiSettings(), provider: 'codex' },
+      { ...upstreamAiSettings(), provider: 'codex' },
       { codex: status('codex', 'signed-out') },
       { onOpenSettings: vi.fn() },
     )
     expect(host.querySelector('[data-action="connect-free"]')).toBeNull()
-    render(defaultAiSettings(), { codex: status('codex', 'signed-out') })
+    render(upstreamAiSettings(), { codex: status('codex', 'signed-out') })
     expect(host.querySelector('[data-action="connect-free"]')).toBeNull()
   })
 
   it('shows a provider that has not reported yet as checking', () => {
-    render(defaultAiSettings(), {})
+    render(upstreamAiSettings(), {})
     expect(paths()).toEqual([
       ['claude-code', null],
       ['codex', null],
@@ -635,7 +636,7 @@ describe('AiConnectPrompt', () => {
 
   it('shows only the selected subscription when that one cannot run', () => {
     render(
-      { ...defaultAiSettings(), provider: 'codex' },
+      { ...upstreamAiSettings(), provider: 'codex' },
       { 'claude-code': status('claude-code', 'ready'), codex: status('codex', 'metered') },
     )
     expect(host.querySelector('.ai-sub-prompt-title')!.textContent).toBe(
@@ -652,7 +653,7 @@ describe('AiConnectPrompt', () => {
     act(() =>
       root.render(
         createElement(AiConnectPrompt, {
-          choice: selectAiProvider({ ...defaultAiSettings(), provider: 'codex' }, statuses),
+          choice: selectAiProvider({ ...upstreamAiSettings(), provider: 'codex' }, statuses),
           statuses,
           lang: 'en',
           ...cardActions(),
@@ -668,7 +669,7 @@ describe('AiConnectPrompt', () => {
 
   it('sends an unfinished key provider to the settings page', () => {
     const onOpenSettings = vi.fn()
-    render({ ...defaultAiSettings(), provider: 'gemini' }, {}, { onOpenSettings })
+    render({ ...upstreamAiSettings(), provider: 'gemini' }, {}, { onOpenSettings })
     expect(host.querySelector('.ai-sub-prompt-body')!.textContent).toBe(
       'The Gemini setup is not finished. Complete it in Settings, or choose another AI.',
     )
@@ -682,7 +683,7 @@ describe('AiConnectPrompt attention', () => {
   const notConnected = { 'claude-code': status('claude-code', 'signed-out') }
   const prompt = (statuses: AiSubscriptionStatuses, attention?: number) =>
     createElement(AiConnectPrompt, {
-      choice: selectAiProvider(defaultAiSettings(), statuses),
+      choice: selectAiProvider(upstreamAiSettings(), statuses),
       statuses,
       lang: 'en',
       attention,
@@ -744,7 +745,7 @@ describe('AiBlockedNotice', () => {
       root.render(
         createElement(AiBlockedNotice, {
           kind: 'rate-limit',
-          settings: defaultAiSettings(),
+          settings: upstreamAiSettings(),
           statuses: {},
           lang: 'en',
           onContinueWith,
@@ -770,7 +771,7 @@ describe('AiBlockedNotice', () => {
   })
 
   it('adds a cost note when the only other connection is an accepted metered login', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.meteredAccepted = { codex: true }
     const onContinueWith = render({
       kind: 'signed-out',
@@ -791,7 +792,7 @@ describe('AiBlockedNotice', () => {
   })
 
   it('offers no button when only key providers could take over', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers.anthropic = { apiKey: 'k', model: 'claude-next' }
     settings.providers.openai = { apiKey: 'k', model: 'gpt-x' }
     render({
@@ -991,7 +992,7 @@ describe('AiModelPicker under the subscription contract', () => {
   const open = () => click('.ai-model-chip')
 
   it('shows what the automatic selection resolves to and lists subscriptions first', async () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers.anthropic = { apiKey: 'k', model: 'claude-next' }
     settings.providers['claude-code'] = { apiKey: '', model: 'sonnet' }
     await mount(settings, ready)
@@ -1015,7 +1016,7 @@ describe('AiModelPicker under the subscription contract', () => {
   })
 
   it('picking a model yields the provider selection and the model', async () => {
-    const setSettings = await mount(defaultAiSettings(), ready)
+    const setSettings = await mount(upstreamAiSettings(), ready)
     open()
     const rows = [...host.querySelectorAll<HTMLButtonElement>('.ai-model-item')]
     expect(rows.map((el) => el.textContent)).toEqual([
@@ -1035,9 +1036,9 @@ describe('AiModelPicker under the subscription contract', () => {
   })
 
   it('writes a pick onto the settings stored now, not onto the copy it last read', async () => {
-    const read = defaultAiSettings()
+    const read = upstreamAiSettings()
     // the settings page stored a key and the acknowledged notice after the picker read its copy
-    const stored = defaultAiSettings()
+    const stored = upstreamAiSettings()
     stored.providers.openai = { apiKey: 'stored-later', model: 'gpt-later' }
     stored.subscriptionNoticeSeen = true
     let current = read
@@ -1066,7 +1067,7 @@ describe('AiModelPicker under the subscription contract', () => {
     const bridge: AiModelPickerBridge = {
       getSettings: async () => {
         if (fail) throw new Error('no handler')
-        return defaultAiSettings()
+        return upstreamAiSettings()
       },
       setSettings,
     }
@@ -1083,7 +1084,7 @@ describe('AiModelPicker under the subscription contract', () => {
   })
 
   it('marks an accepted metered login as paid, in the list and on the chip', async () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.provider = 'claude-code'
     settings.meteredAccepted = { 'claude-code': true }
     await mount(settings, {
@@ -1097,7 +1098,7 @@ describe('AiModelPicker under the subscription contract', () => {
   })
 
   it('says to connect while the selection cannot run', async () => {
-    await mount(defaultAiSettings(), { 'claude-code': status('claude-code', 'signed-out') })
+    await mount(upstreamAiSettings(), { 'claude-code': status('claude-code', 'signed-out') })
     expect(chip()).toBe('Connect AI')
     open()
     expect(host.querySelectorAll('.ai-model-item:not(.ai-model-manage)')).toHaveLength(0)
@@ -1128,7 +1129,7 @@ describe('AiModelPicker under the subscription contract', () => {
       return setSettings
     }
     const picked = (provider: 'claude-code' | 'codex', model: string): AiSettings => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.provider = provider
       settings.providers[provider] = { ...settings.providers[provider], model }
       return settings
@@ -1148,7 +1149,7 @@ describe('AiModelPicker under the subscription contract', () => {
     const tip = () => host.querySelector('.ai-model-chip')!.getAttribute('data-tip')
 
     it('lists each model by its display name with the concrete id beside it', async () => {
-      await mountIn('en', defaultAiSettings())
+      await mountIn('en', upstreamAiSettings())
       open()
       expect(rows()).toEqual([
         ['Automatic · Claude · Opus 5.5'],
@@ -1166,12 +1167,12 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('shows the concrete model on the chip under the automatic selection', async () => {
-      await mountIn('en', defaultAiSettings())
+      await mountIn('en', upstreamAiSettings())
       // the footer is narrow: the chip names the model, the tooltip adds the provider and the id
       expect(chip()).toBe('Automatic · Opus 5.5')
       expect(tip()).toContain('Automatic · Claude · Opus 5.5')
       expect(tip()).toContain('claude-opus-5-5')
-      await mountIn('ko', defaultAiSettings())
+      await mountIn('ko', upstreamAiSettings())
       expect(chip()).toBe('자동 · Opus 5.5')
       expect(tip()).toContain('자동 · Claude · Opus 5.5')
       // the model the provider under "automatic" has stored is the one named
@@ -1215,7 +1216,7 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('stores the value the CLI takes, never the display name', async () => {
-      const setSettings = await mountIn('en', defaultAiSettings())
+      const setSettings = await mountIn('en', upstreamAiSettings())
       open()
       const fable = [...host.querySelectorAll<HTMLButtonElement>('.ai-model-item')].find((row) =>
         row.textContent!.startsWith('Fable 5.1'),
@@ -1243,7 +1244,7 @@ describe('AiModelPicker under the subscription contract', () => {
     const codexLine = () => [...host.querySelectorAll('.ai-sub-codex')].map((el) => el.textContent)
 
     it('is shown with the Codex subscription group, in that group', async () => {
-      await mount(defaultAiSettings(), ready)
+      await mount(upstreamAiSettings(), ready)
       // nothing is said before the list is open
       expect(codexLine()).toEqual([])
       open()
@@ -1259,7 +1260,7 @@ describe('AiModelPicker under the subscription contract', () => {
 
     it('follows the UI language', async () => {
       const bridge: AiModelPickerBridge = {
-        getSettings: async () => defaultAiSettings(),
+        getSettings: async () => upstreamAiSettings(),
         setSettings: async () => {},
       }
       await act(async () => {
@@ -1272,7 +1273,7 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('is shown for an accepted metered Codex login too', async () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.meteredAccepted = { codex: true }
       await mount(settings, { codex: status('codex', 'metered', { meteredAccepted: true }) })
       open()
@@ -1281,7 +1282,7 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('is absent while Codex is not listed', async () => {
-      await mount(defaultAiSettings(), {
+      await mount(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'ready'),
         codex: status('codex', 'signed-out'),
       })
@@ -1291,7 +1292,7 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('is not shown for a key provider that merely carries the name', async () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.provider = 'custom'
       settings.customEndpoints = [
         { id: 'ep1', name: 'Codex', baseUrl: 'http://localhost:1234/v1', apiKey: '', model: 'm1' },
@@ -1304,7 +1305,7 @@ describe('AiModelPicker under the subscription contract', () => {
     })
 
     it('is absent without subscription statuses, which list no subscription group', async () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.provider = 'codex'
       settings.providers.codex = { apiKey: '', model: 'gpt-next' }
       await mount(settings)
@@ -1315,7 +1316,7 @@ describe('AiModelPicker under the subscription contract', () => {
   })
 
   it('lists only the key providers without subscription statuses', async () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.provider = 'anthropic'
     settings.providers.anthropic = { apiKey: 'k', model: 'claude-next' }
     const setSettings = await mount(settings)

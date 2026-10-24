@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { defaultAiSettings } from '@genoffice/ai-provider'
 import type {
   AiSettings,
   AiSubscriptionProviderId,
@@ -12,6 +11,7 @@ import {
   subscriptionSummary,
   usableSubscriptionProviders,
 } from '../src/renderer/src/subscription-status'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 function status(
   provider: AiSubscriptionProviderId,
@@ -29,7 +29,7 @@ function statusMap(
 }
 
 const settings = (patch: Partial<AiSettings> = {}): AiSettings => ({
-  ...defaultAiSettings(),
+  ...upstreamAiSettings(),
   ...patch,
 })
 

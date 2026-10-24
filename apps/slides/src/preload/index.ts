@@ -11,6 +11,7 @@ import type { RenderSlide } from '@genoffice/pptx-render'
 import type { ProjectApi } from '@genoffice/project-store'
 import { installDropOpenBridge } from '@genoffice/electron-utils/drop-open'
 import type { TemplateSelectionInput } from '../shared/template-selection'
+import type { AiChatRequest } from '@genoffice/ai-provider'
 import type {
   AddChartOp,
   AddElementOp,
@@ -445,6 +446,8 @@ const api: SlidesApi = {
     return () => ipcRenderer.removeListener('slides:renamed', listener)
   },
   getAiSettings: () => ipcRenderer.invoke('ai:get-settings'),
+  // Cheil fork: one-shot model call for the template fill (the docs main process answers it)
+  aiChat: (request: AiChatRequest) => ipcRenderer.invoke('ai:chat', request),
   setAiSettings: (settings: AiSettings) => ipcRenderer.invoke('ai:set-settings', settings),
   onAiSettingsChanged: (handler: () => void) => {
     const listener = () => handler()

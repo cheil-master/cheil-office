@@ -255,6 +255,8 @@ export interface SkillChipView extends SkillChipRef {
   templateMissing?: boolean | undefined
   /** the skill is gone or off: shown as unavailable and never sent */
   missing?: boolean | undefined
+  /** Cheil fork: this document is the template's copy, so the skill runs here, not in a new tab */
+  inPlace?: boolean | undefined
 }
 
 /** Most chips one message keeps */
@@ -322,7 +324,8 @@ export function chipsAfterListChange(
   const out: SkillChipView[] = []
   for (const chip of chips) {
     const item = byId.get(chip.id)
-    if (item) out.push({ ...skillChipOf(item), missing: false })
+    if (item)
+      out.push({ ...skillChipOf(item), missing: false, ...(chip.inPlace ? { inPlace: true } : {}) })
   }
   return out
 }

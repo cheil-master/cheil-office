@@ -392,7 +392,20 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'API Key',
     needsBaseUrl: true,
   },
+  // Cheil fork: the default engine. No key; the base URL is this PC's Ollama.
+  {
+    id: 'ollama',
+    label: 'Ollama',
+    models: ['gemma4:e4b', 'qwen3:4b'],
+    defaultModel: 'gemma4:e4b',
+    keyPlaceholder: '',
+    needsBaseUrl: true,
+  },
 ]
+
+/** Cheil fork: the provider fresh settings start on, and where it is served */
+export const CHEIL_DEFAULT_PROVIDER = 'ollama' as const
+export const CHEIL_OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
 
 /**
  * Fresh settings with every provider's default model and an empty key,
@@ -408,12 +421,12 @@ export function defaultAiSettings(
     providers[meta.id] = {
       apiKey: defaultApiKeys?.[meta.id] ?? '',
       model: meta.defaultModel,
-      baseUrl: meta.needsBaseUrl ? '' : undefined,
+      baseUrl: meta.needsBaseUrl ? (meta.id === 'ollama' ? CHEIL_OLLAMA_BASE_URL : '') : undefined,
       cliPath: meta.needsCliPath ? '' : undefined,
     }
   }
   return {
-    provider: 'auto',
+    provider: CHEIL_DEFAULT_PROVIDER,
     providers,
     media: defaultAiMediaSettings(),
     search: defaultAiSearchSettings(),

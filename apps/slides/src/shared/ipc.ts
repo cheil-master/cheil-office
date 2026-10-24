@@ -12,7 +12,13 @@ import type { RenderSlide } from '@genoffice/pptx-render'
 import type { CustGeomPathCmd, SlideComment, SectionInfo } from '@genoffice/pptx-engine'
 import type { FontSizeStep } from '@genoffice/pptx-ops/font-size'
 import type { LayoutSkeleton } from '../renderer/ai/layout-skeleton'
-import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
+import type {
+  AiChatRequest,
+  AiChatResponse,
+  AiSettings,
+  AiStreamChunk,
+  AiStreamRequest,
+} from '@genoffice/ai-provider'
 import type { AiToolCapabilities } from '@genoffice/ai-search'
 import type { TemplateSelection, TemplateSelectionInput } from './template-selection'
 import type { SubscriptionApi } from './subscription-api'
@@ -1719,6 +1725,8 @@ export interface SlidesApi {
   /** The file was renamed externally (shell Home list rename) — pushes the new path, the renderer updates the title bar */
   onRenamed: (handler: (newPath: string) => void) => () => void
   getAiSettings: () => Promise<AiSettings>
+  /** Cheil fork: one-shot model call (the shared ai:chat channel), for the template fill */
+  aiChat: (request: AiChatRequest) => Promise<AiChatResponse>
   setAiSettings: (settings: AiSettings) => Promise<void>
   /** ai-settings.json was rewritten by any renderer; re-read it */
   onAiSettingsChanged: (handler: () => void) => () => void

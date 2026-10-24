@@ -310,6 +310,7 @@ export function AiChatPanel({
   renderSkillCard,
   skillNotes,
   onTemplateSkill,
+  prefillChipsRef,
   attachments,
   attachNotice,
   onPickAttachments,
@@ -348,6 +349,9 @@ export function AiChatPanel({
   readonly skillNotes?: React.ReactNode
   /** a chip whose skill has a template runs in a new tab (spec 5.7) */
   readonly onTemplateSkill?: OnTemplateSkill | undefined
+  /** Cheil fork: the panel puts its chip filler here, for a home template card's hand-off */
+  readonly prefillChipsRef?:
+    { current: ((chips: readonly SkillChipRef[]) => void) | null } | undefined
   /// Chat attachments (chips + 📎 button + drag onto the panel), same structure
   /// as the docs/slides AI panels.
   readonly attachments: readonly AttachmentMeta[]
@@ -434,6 +438,7 @@ export function AiChatPanel({
   const skills = useComposerSkills({ lang, dollarAtStartOnly: true, onTemplateSkill })
   const skillsRef = useRef(skills)
   skillsRef.current = skills
+  if (prefillChipsRef) prefillChipsRef.current = skills.prefill
   // the next request re-reads the current text of the skills the reopened conversation used
   useEffect(() => {
     skillsRef.current.restoreHistory(

@@ -1,11 +1,12 @@
 import { ANTHROPIC_BASE_URL } from './protocols/anthropic'
 import { GEMINI_BASE_URL } from './protocols/gemini'
+import { OLLAMA_BASE_URL } from './protocols/ollama'
 import { AI_PROVIDERS, DEEPSEEK_V41_FLASH } from './providers'
 import type { AiProviderConfig, AiProviderId, AiProviderMeta, AiProviderSelection } from './types'
 
 /** Wire protocols every provider maps onto, including the Codex app-server and Claude Code CLI bridges. */
 export type AiProtocol =
-  'anthropic' | 'gemini' | 'openai-compatible' | 'codex-app-server' | 'claude-code-cli'
+  'anthropic' | 'gemini' | 'openai-compatible' | 'codex-app-server' | 'claude-code-cli' | 'ollama'
 
 export interface ProviderCapabilities {
   /** How the provider authenticates: user key, or the Codex / Claude Code CLI's existing login. */
@@ -376,6 +377,18 @@ export const AI_PROVIDER_ADAPTERS: Record<AiProviderId, ProviderAdapter> = {
         protocol: 'openai-compatible',
         baseUrl: normalizeBaseUrl(config.baseUrl, ''),
         ...(modelHasFixedSampling(config.model) ? { omitTemperature: true } : {}),
+      }
+    },
+  },
+  // Cheil fork: native /api/chat, so the request can set the context size.
+  // A pasted OpenAI-style `/v1` base is tolerated.
+  ollama: {
+    meta: metaOf('ollama'),
+    capabilities: { auth: 'api-key', vision: true },
+    resolveEndpoint(config) {
+      return {
+        protocol: 'ollama',
+        baseUrl: stripTrailingV1(normalizeBaseUrl(config.baseUrl || undefined, OLLAMA_BASE_URL)),
       }
     },
   },

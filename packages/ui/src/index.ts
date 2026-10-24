@@ -421,3 +421,25 @@ export {
 export { ProviderLogo } from './provider-logos'
 export { useRedactLabelField } from './use-redact-label'
 export type { RedactLabelField } from './use-redact-label'
+// Cheil fork: one-call template fill
+export {
+  CHEIL_FILL_SKILLS,
+  buildCheilFillPrompt,
+  cheilFillPlan,
+  cheilFillSkillOf,
+  cheilFillSummary,
+  findCheilSlots,
+  parseCheilFillAnswer,
+} from './cheil-fill'
+export type { CheilFillPlan, CheilSlot } from './cheil-fill'
+// Cheil fork: one-call workbook template fill
+export {
+  SHEET_SCAN_COLUMNS,
+  SHEET_SCAN_ROWS,
+  buildCheilSheetFillPrompt,
+  cheilCellValue,
+  cheilSheetWrites,
+  findCheilSheetBlanks,
+  sheetScanAddresses,
+} from './cheil-sheet-fill'
+export type { CheilSheetPlan, CheilSheetTable, SheetSnapshot } from './cheil-sheet-fill'

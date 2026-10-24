@@ -2,20 +2,20 @@
  * the few shell tokens the shared Drive list uses are defined here, with light,
  * dark and system-dark values. */
 :root {
-  --accent: #0f7fff;
+  --accent: #1d4fb8;
   --checkbox-bg: #ececec;
   --shadow-pill: 0 1px 2px rgb(0 0 0 / 8%);
 }
 
 [data-theme='dark'] {
-  --accent: #3f99ff;
+  --accent: #6f9bf5;
   --checkbox-bg: #333;
   --shadow-pill: 0 1px 2px rgb(0 0 0 / 40%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --accent: #3f99ff;
+    --accent: #6f9bf5;
     --checkbox-bg: #333;
     --shadow-pill: 0 1px 2px rgb(0 0 0 / 40%);
   }

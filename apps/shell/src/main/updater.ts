@@ -1,6 +1,7 @@
 import { app, dialog, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { autoUpdater, CancellationToken } from 'electron-updater'
+import { cheilUpdateFeedOff } from './cheil-update-policy'
 import { installResumeDownload } from './update-resume'
 import type { UpdateInfo } from 'electron-updater'
 import { createI18n, getUiLang, htmlLang } from '@genoffice/i18n'
@@ -647,11 +648,13 @@ export async function checkForUpdatesNow(): Promise<void> {
       return
     }
     if (!updaterActive) {
+      // Cheil fork: no download page of its own, and the upstream's releases
+      // are another product, so there is nothing to open
       const { response } = await dialog.showMessageBox({
         type: 'info',
         title: tUpd(lang, 'updTitle'),
         message: tUpd(lang, 'updManual'),
-        buttons: ['OK', tUpd(lang, 'updOpenDownload')],
+        buttons: cheilUpdateFeedOff() ? ['OK'] : ['OK', tUpd(lang, 'updOpenDownload')],
         defaultId: 0,
         cancelId: 0,
       })
@@ -714,6 +717,7 @@ export function initAutoUpdater(
   // (electron-updater's AppImageUpdater needs the APPIMAGE env var the
   // AppImage runtime sets); deb installs update manually via apt.
   if (!app.isPackaged) return
+  if (cheilUpdateFeedOff()) return
   const isLinuxAppImage = process.platform === 'linux' && Boolean(process.env.APPIMAGE)
   if (process.platform !== 'win32' && process.platform !== 'darwin' && !isLinuxAppImage) return
 

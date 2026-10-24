@@ -100,6 +100,8 @@ export interface ComposerSkills {
   restoreHistory: (chipLists: ReadonlyArray<readonly SkillChipRef[] | undefined>) => void
   /** a new conversation: forget the restored skills */
   resetConversation: () => void
+  /** Cheil fork: chips of a template this document is a copy of; they run here when sent */
+  prefill: (refs: readonly SkillChipRef[]) => void
 }
 
 function sameIds(a: readonly SkillChipView[], b: readonly SkillChipView[]): boolean {
@@ -217,7 +219,9 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
         try {
           // a chip naming a template whose file is gone still goes to the hook,
           // which says so and sends nothing (spec 5.7)
-          const template = composerChips.find((c) => c.template || c.templateMissing)
+          const template = composerChips.find(
+            (c) => !c.inPlace && (c.template || c.templateMissing),
+          )
           const onTemplate = templateRef.current
           if (template && onTemplate) {
             const taken = await onTemplate({
@@ -258,6 +262,15 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
     },
     [maxChars],
   )
+
+  const prefill = useCallback((refs: readonly SkillChipRef[]) => {
+    setNotice(null)
+    setChips((prev) => {
+      let next = prev
+      for (const ref of refs) next = withSkillChip(next, { ...skillChipRef(ref), inPlace: true })
+      return next
+    })
+  }, [])
 
   const consume = useCallback((use: SkillUse) => {
     historyRef.current = []
@@ -304,6 +317,7 @@ export function useComposerSkills(options: ComposerSkillsOptions): ComposerSkill
     consume,
     restoreHistory,
     resetConversation,
+    prefill,
   }
 }
 

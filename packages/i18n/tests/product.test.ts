@@ -17,44 +17,44 @@ import {
 
 describe('productName', () => {
   it('is the Korean name in the Korean UI and the Latin name everywhere else', () => {
-    expect(productName('ko')).toBe('이음오피스')
+    expect(productName('ko')).toBe('Cheil 기획 오피스')
     for (const lang of LANGS) {
-      if (lang !== 'ko') expect(productName(lang), lang).toBe('IeumOffice')
+      if (lang !== 'ko') expect(productName(lang), lang).toBe('CheilOffice')
     }
   })
 
   it('accepts raw locale tags and falls back to the Latin name', () => {
-    expect(productName('ko-KR')).toBe('이음오피스')
-    expect(productName('KO_kr')).toBe('이음오피스')
-    expect(productName('en-US')).toBe('IeumOffice')
-    expect(productName('')).toBe('IeumOffice')
-    expect(productName(undefined)).toBe('IeumOffice')
-    expect(productName(null)).toBe('IeumOffice')
+    expect(productName('ko-KR')).toBe('Cheil 기획 오피스')
+    expect(productName('KO_kr')).toBe('Cheil 기획 오피스')
+    expect(productName('en-US')).toBe('CheilOffice')
+    expect(productName('')).toBe('CheilOffice')
+    expect(productName(undefined)).toBe('CheilOffice')
+    expect(productName(null)).toBe('CheilOffice')
   })
 
   it('keeps the Latin name as the one PRODUCT_NAME definition', () => {
-    expect(PRODUCT_NAME).toBe('IeumOffice')
+    expect(PRODUCT_NAME).toBe('CheilOffice')
     expect(productName('en')).toBe(PRODUCT_NAME)
   })
 })
 
 describe('brandText', () => {
   it('swaps the upstream name for the product name of the language', () => {
-    expect(brandText('Welcome to GenOffice', 'en')).toBe('Welcome to IeumOffice')
+    expect(brandText('Welcome to GenOffice', 'en')).toBe('Welcome to CheilOffice')
     expect(brandText('GenOffice에 오신 것을 환영합니다', 'ko')).toBe(
-      '이음오피스에 오신 것을 환영합니다',
+      'Cheil 기획 오피스에 오신 것을 환영합니다',
     )
-    expect(brandText('GenOffice のインストール', 'ja')).toBe('IeumOffice のインストール')
-    expect(brandText('关于 GenOffice', 'zh')).toBe('关于 IeumOffice')
+    expect(brandText('GenOffice のインストール', 'ja')).toBe('CheilOffice のインストール')
+    expect(brandText('关于 GenOffice', 'zh')).toBe('关于 CheilOffice')
   })
 
   it('replaces every occurrence, including sub-app names and compounds', () => {
     expect(brandText('GenOffice Docs and GenOffice Sheets', 'en')).toBe(
-      'IeumOffice Docs and IeumOffice Sheets',
+      'CheilOffice Docs and CheilOffice Sheets',
     )
-    expect(brandText('GenOffice Markdown', 'ko')).toBe('이음오피스 Markdown')
-    expect(brandText('das GenOffice-Fenster', 'de')).toBe('das IeumOffice-Fenster')
-    expect(brandText("GenOffice's window", 'en')).toBe("IeumOffice's window")
+    expect(brandText('GenOffice Markdown', 'ko')).toBe('Cheil 기획 오피스 Markdown')
+    expect(brandText('das GenOffice-Fenster', 'de')).toBe('das CheilOffice-Fenster')
+    expect(brandText("GenOffice's window", 'en')).toBe("CheilOffice's window")
   })
 
   it('returns strings without the name untouched', () => {
@@ -75,23 +75,23 @@ describe('brandText', () => {
       'GenOffice를 바탕으로 만들었습니다',
     )
     expect(brandText('GenOffice is based on {{GenOffice}}.', 'en')).toBe(
-      'IeumOffice is based on GenOffice.',
+      'CheilOffice is based on GenOffice.',
     )
     expect(brandText('GenOffice는 {{GenOffice}}를 바탕으로 합니다.', 'ko')).toBe(
-      '이음오피스는 GenOffice를 바탕으로 합니다.',
+      'Cheil 기획 오피스는 GenOffice를 바탕으로 합니다.',
     )
   })
 
   it('uses the Latin name inside file and folder names in every language', () => {
     expect(brandText('chmod +x GenOffice-<version>.AppImage', 'ko')).toBe(
-      'chmod +x IeumOffice-<version>.AppImage',
+      'chmod +x CheilOffice-<version>.AppImage',
     )
-    expect(brandText('문서/GenOffice 폴더', 'ko')).toBe('문서/IeumOffice 폴더')
-    expect(brandText('%APPDATA%\\GenOffice', 'ko')).toBe('%APPDATA%\\IeumOffice')
-    expect(brandText('GenOffice.exe를 실행합니다', 'ko')).toBe('IeumOffice.exe를 실행합니다')
+    expect(brandText('문서/GenOffice 폴더', 'ko')).toBe('문서/CheilOffice 폴더')
+    expect(brandText('%APPDATA%\\GenOffice', 'ko')).toBe('%APPDATA%\\CheilOffice')
+    expect(brandText('GenOffice.exe를 실행합니다', 'ko')).toBe('CheilOffice.exe를 실행합니다')
     // a sentence-ending period is not a file extension
-    expect(brandText('이것은 GenOffice. 다음 문장', 'ko')).toBe('이것은 이음오피스. 다음 문장')
-    expect(brandText('GenOffice.', 'ko')).toBe('이음오피스.')
+    expect(brandText('이것은 GenOffice. 다음 문장', 'ko')).toBe('이것은 Cheil 기획 오피스. 다음 문장')
+    expect(brandText('GenOffice.', 'ko')).toBe('Cheil 기획 오피스.')
   })
 
   it('leaves identifiers that merely contain the name alone', () => {
@@ -118,9 +118,9 @@ describe('createI18n product name', () => {
   const t = createI18n(dicts)
 
   it('renders the product name of the requested language', () => {
-    expect(t('en', 'about')).toBe('About IeumOffice')
-    expect(t('zh', 'about')).toBe('关于 IeumOffice')
-    expect(t('ko', 'about')).toBe('이음오피스 정보')
+    expect(t('en', 'about')).toBe('About CheilOffice')
+    expect(t('zh', 'about')).toBe('关于 CheilOffice')
+    expect(t('ko', 'about')).toBe('Cheil 기획 오피스 정보')
   })
 
   it('keeps the upstream name in the acknowledgement', () => {
@@ -131,20 +131,20 @@ describe('createI18n product name', () => {
 
   it('never rewrites interpolated values (a file may be called GenOffice)', () => {
     expect(t('en', 'open', { name: 'GenOffice notes.docx' })).toBe(
-      'Open GenOffice notes.docx in IeumOffice',
+      'Open GenOffice notes.docx in CheilOffice',
     )
-    expect(t('ko', 'open', { name: 'GenOffice.docx' })).toBe('이음오피스에서 GenOffice.docx 열기')
+    expect(t('ko', 'open', { name: 'GenOffice.docx' })).toBe('Cheil 기획 오피스에서 GenOffice.docx 열기')
   })
 
   it('brands the fallback text of a language without its own entry', () => {
-    expect(t('fr', 'about')).toBe('About IeumOffice')
+    expect(t('fr', 'about')).toBe('About CheilOffice')
   })
 })
 
 describe('registered names derived from the product name', () => {
   it('names the userData folders after the Latin product name', () => {
-    expect(USER_DATA_DIR_NAME).toBe('IeumOffice')
-    expect(DEV_USER_DATA_DIR_NAME).toBe('IeumOffice-Dev')
+    expect(USER_DATA_DIR_NAME).toBe('CheilOffice')
+    expect(DEV_USER_DATA_DIR_NAME).toBe('CheilOffice-Dev')
     expect(USER_DATA_DIR_NAME).not.toBe(UPSTREAM_PRODUCT_NAME)
   })
 

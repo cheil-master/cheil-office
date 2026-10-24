@@ -1,5 +1,6 @@
 /** Browser-safe settings surface. Keep Node-backed transports out of renderer bundles. */
 export type {
+  AiChatResponse,
   AiCustomEndpoint,
   AiProviderConfig,
   AiProviderId,

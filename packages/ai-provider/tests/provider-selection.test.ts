@@ -57,8 +57,8 @@ function settingsWith(provider: AiProviderSelection, patch: Partial<AiSettings> 
 const accepted = { meteredAccepted: true }
 
 describe('selectAiProvider with auto', () => {
-  it('is the default selection', () => {
-    expect(defaultAiSettings().provider).toBe('auto')
+  it('is not the default selection in the Cheil fork', () => {
+    expect(defaultAiSettings().provider).toBe('ollama')
   })
 
   it('picks Claude when Claude is ready', () => {

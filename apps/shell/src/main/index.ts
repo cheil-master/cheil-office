@@ -7669,7 +7669,7 @@ app.whenReady().then(async () => {
         await userSkills.enabledForAgent(projectRoot),
         // not under userData: that folder is protected from sessions, and the
         // copied skills' scripts must be readable to run
-        join(process.env.LOCALAPPDATA ?? tmpdir(), 'IeumOffice', 'agent-skills'),
+        join(process.env.LOCALAPPDATA ?? tmpdir(), 'CheilOffice', 'agent-skills'),
       ),
   })
   void startMcpFromSettings(currentMcpSettings()).catch((error) => {

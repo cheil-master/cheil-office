@@ -11,6 +11,7 @@ import {
   type AiSubscriptionStatuses,
 } from '@genoffice/ai-provider'
 import { useAiSendGate, type AiSendGateController } from '../src/use-ai-send-gate'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 let host: HTMLDivElement
 let root: ReturnType<typeof createRoot>
@@ -46,7 +47,7 @@ const READY = statuses('ready', 'signed-out')
 const SIGNED_OUT = statuses('signed-out', 'signed-out')
 
 const fresh = (patch: Partial<AiSettings> = {}): AiSettings => ({
-  ...defaultAiSettings(),
+  ...upstreamAiSettings(),
   ...patch,
 })
 const seen = (patch: Partial<AiSettings> = {}) => fresh({ subscriptionNoticeSeen: true, ...patch })

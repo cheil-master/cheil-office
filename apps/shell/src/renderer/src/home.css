@@ -1,14 +1,14 @@
 /* Shared chrome/AI-panel tokens come from @genoffice/ui/tokens.css (imported
  * before this file in main.tsx); only shell-specific tokens live here. */
 :root {
-  /* guide/onboarding accent is the brand blue */
-  --accent: #0f7fff;
-  --accent-hover: #0e72e5;
+  /* guide/onboarding accent is the brand blue (Cheil fork: navy) */
+  --accent: #1d4fb8;
+  --accent-hover: #173f94;
   /* selected-option tint for the shared dropdown (gs-dd) */
-  --accent-soft: #eaf0fd;
+  --accent-soft: #e8eefa;
   --modal-width-sm: 480px;
   --avatar-bg: #e8ebef;
-  --badge-bg: #eaf0fd;
+  --badge-bg: #e8eefa;
   --checkbox-bg: #ececec;
   --timeline-user-bg: #eef1f5;
   --timeline-user-text: #5a6170;
@@ -26,9 +26,9 @@
 
 /* Explicit dark: [data-theme="dark"] on <html> */
 [data-theme='dark'] {
-  --accent: #3f99ff;
-  --accent-hover: #5ba5ff;
-  --accent-soft: #24354d;
+  --accent: #6f9bf5;
+  --accent-hover: #8aaef7;
+  --accent-soft: #22314f;
   --avatar-bg: #333;
   --badge-bg: #2a3a4a;
   --checkbox-bg: #333;
@@ -43,9 +43,9 @@
 /* System dark: no data-theme or data-theme="system" — follow OS preference */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --accent: #3f99ff;
-    --accent-hover: #5ba5ff;
-    --accent-soft: #24354d;
+    --accent: #6f9bf5;
+    --accent-hover: #8aaef7;
+    --accent-soft: #22314f;
     --avatar-bg: #333;
     --badge-bg: #2a3a4a;
     --checkbox-bg: #333;
@@ -2288,4 +2288,15 @@ html[dir='rtl'] .quick-title-row {
 }
 .kb-ask-assistant a:hover {
   text-decoration: underline;
+}
+
+/* Cheil fork: the agency templates row under the quick start */
+.cheil-templates {
+  margin-top: 22px;
+}
+
+.cheil-templates-failed {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }

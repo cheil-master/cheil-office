@@ -166,6 +166,22 @@ IeumOffice is not affiliated with, sponsored by or endorsed by Mainfunc, Inc.
 The names GenOffice and Genspark and their logos belong to their owners and
 are used here only to identify the original work.
 
+Cheil Planning Office modifications
+
+Cheil Planning Office ("Cheil 기획 오피스", installed as CheilOffice) is a
+modified version of IeumOffice (https://github.com/pblsketch/openoffice), made
+from its commit 5fda829 for advertising-agency planning documents. Files have
+been changed and added; changed code is marked with "Cheil fork" comments and
+CHEIL.md lists every change. The modifications are licensed under the Apache
+License, Version 2.0, like the works they modify. The app icon and logo lockup
+in apps/shell/build/brand were redrawn for this version from plain shapes; the
+AI button mark is IeumOffice's, as described above. The advertising-agency
+skills under apps/shell/resources/builtin-skills/cheil-* and their template
+documents are original to this version.
+
+Cheil Planning Office is not affiliated with, sponsored by or endorsed by the
+IeumOffice contributors or Mainfunc, Inc.
+
 Hangul (HWP) document format
 
 The HWP/HWPX editor is built on rhwp (https://github.com/edwardkim/rhwp,

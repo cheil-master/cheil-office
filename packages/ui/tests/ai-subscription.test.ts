@@ -29,6 +29,7 @@ import {
   formatAiResetTime,
   isAiBlockedRunKind,
 } from '../src/ai-subscription'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 const status = (
   provider: AiSubscriptionProviderId,
@@ -40,7 +41,7 @@ function acceptedMetered(provider: AiSubscriptionProviderId): {
   settings: AiSettings
   status: AiSubscriptionStatus
 } {
-  const settings = defaultAiSettings()
+  const settings = upstreamAiSettings()
   settings.meteredAccepted = { [provider]: true }
   return { settings, status: status(provider, 'metered', { meteredAccepted: true }) }
 }
@@ -419,7 +420,7 @@ describe('aiSubscriptionCardView', () => {
 
 describe('aiConnectPromptView', () => {
   it('is absent while a provider can run', () => {
-    const choice = selectAiProvider(defaultAiSettings(), {
+    const choice = selectAiProvider(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'ready'),
     })
@@ -427,7 +428,7 @@ describe('aiConnectPromptView', () => {
   })
 
   it('offers both subscriptions under the automatic selection', () => {
-    expect(aiConnectPromptView(selectAiProvider(defaultAiSettings(), {}))).toEqual({
+    expect(aiConnectPromptView(selectAiProvider(upstreamAiSettings(), {}))).toEqual({
       titleKey: 'connectTitle',
       bodyKey: 'connectBody',
       providers: ['claude-code', 'codex'],
@@ -438,7 +439,7 @@ describe('aiConnectPromptView', () => {
   })
 
   it('offers only the selected subscription: a selection is never replaced', () => {
-    const settings = { ...defaultAiSettings(), provider: 'codex' as const }
+    const settings = { ...upstreamAiSettings(), provider: 'codex' as const }
     const choice = selectAiProvider(settings, {
       'claude-code': status('claude-code', 'ready'),
       codex: status('codex', 'signed-out'),
@@ -453,7 +454,7 @@ describe('aiConnectPromptView', () => {
   })
 
   it('sends an unfinished key provider to the settings page', () => {
-    const settings = { ...defaultAiSettings(), provider: 'gemini' as const }
+    const settings = { ...upstreamAiSettings(), provider: 'gemini' as const }
     expect(aiConnectPromptView(selectAiProvider(settings, {}))).toEqual({
       titleKey: 'connectProviderTitle',
       bodyKey: 'connectKeyBody',
@@ -471,11 +472,11 @@ describe('aiContinueOption', () => {
       'claude-code': status('claude-code', 'ready'),
       codex: status('codex', 'ready'),
     }
-    expect(aiContinueOption(defaultAiSettings(), statuses, 'claude-code')).toEqual({
+    expect(aiContinueOption(upstreamAiSettings(), statuses, 'claude-code')).toEqual({
       provider: 'codex',
       metered: false,
     })
-    expect(aiContinueOption(defaultAiSettings(), statuses, 'codex')).toEqual({
+    expect(aiContinueOption(upstreamAiSettings(), statuses, 'codex')).toEqual({
       provider: 'claude-code',
       metered: false,
     })
@@ -485,7 +486,7 @@ describe('aiContinueOption', () => {
     // a rate-limited subscription still reports `ready`
     expect(
       aiContinueOption(
-        defaultAiSettings(),
+        upstreamAiSettings(),
         { 'claude-code': status('claude-code', 'ready') },
         'claude-code',
       ),
@@ -513,7 +514,7 @@ describe('aiContinueOption', () => {
   it('does not offer a metered login the user has not accepted', () => {
     expect(
       aiContinueOption(
-        defaultAiSettings(),
+        upstreamAiSettings(),
         { 'claude-code': status('claude-code', 'ready'), codex: status('codex', 'metered') },
         'claude-code',
       ),
@@ -521,7 +522,7 @@ describe('aiContinueOption', () => {
   })
 
   it('never offers a key provider', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers.anthropic = { apiKey: 'k', model: 'claude-next' }
     settings.providers.openai = { apiKey: 'k', model: 'gpt-x' }
     expect(

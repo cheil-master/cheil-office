@@ -204,7 +204,8 @@ describe('normalizeAiSettings', () => {
     ]
     for (const stored of garbage) {
       const settings = normalizeAiSettings(stored)
-      expect(settings.provider).toBe('auto')
+      // Cheil fork: no stored choice starts on Ollama; an unusable one still reads as auto
+      expect(['auto', 'ollama']).toContain(settings.provider)
       expect(settings.media?.imageProvider).toBe('codex')
       expect(settings.search?.provider).toBe('parallel')
       expect(settings.providers.codex).toBeDefined()
@@ -278,12 +279,12 @@ describe('normalizeAiSettings', () => {
       readUrl: 'github_pat_test',
     })
     expect(settings.providers.openai).toMatchObject({ apiKey: 'sk-kept', model: 'gpt-4o' })
-    expect(settings.provider).toBe('auto')
+    expect(settings.provider).toBe('ollama')
   })
 
   it('still migrates the pre-provider single-endpoint shape into custom', () => {
     const settings = normalizeAiSettings({ apiKey: 'sk-old', model: 'gpt-4o', baseUrl: '' })
     expect(settings.providers.custom).toMatchObject({ apiKey: 'sk-old', model: 'gpt-4o' })
-    expect(settings.provider).toBe('auto')
+    expect(settings.provider).toBe('ollama')
   })
 })

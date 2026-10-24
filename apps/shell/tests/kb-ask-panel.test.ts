@@ -5,7 +5,6 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultAiSettings } from '@genoffice/ai-provider'
 import type {
   AiSettings,
   AiStreamChunk,
@@ -20,6 +19,7 @@ import { KbAskPanel } from '../src/renderer/src/KbAskPanel'
 import { LocaleProvider } from '../src/renderer/src/locale'
 import { strings } from '../src/renderer/src/strings'
 import type { SubscriptionConnection } from '../src/renderer/src/subscription-client'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 /**
  * The home screen's ask panel under the subscription contract: nothing is sent
@@ -46,7 +46,7 @@ beforeEach(() => {
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
-  stored = defaultAiSettings()
+  stored = upstreamAiSettings()
   streamListeners = []
   aiStream = vi.fn(async () => undefined)
   setAiSettings = vi.fn(async (next: AiSettings) => {
@@ -192,7 +192,7 @@ describe('ask panel without a connection', () => {
 
   it('leads to Settings → AI when the selected key provider is not filled in', async () => {
     const onOpenAiSettings = vi.fn()
-    stored = { ...defaultAiSettings(), provider: 'openai' }
+    stored = { ...upstreamAiSettings(), provider: 'openai' }
     await renderPanel({
       connection: connectionOf(statuses('ready', 'ready')),
       onOpenAiSettings,

@@ -170,6 +170,8 @@ export interface SkillHandoff {
   text: string
   chips: HandoffSkillChip[]
   preview?: SkillHandoffPreview | undefined
+  /** Cheil fork: fill the composer with the request and chips, and send nothing */
+  prefill?: boolean | undefined
   /** ms since epoch */
   createdAt: number
 }

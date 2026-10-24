@@ -32,6 +32,8 @@ export type AiProviderId =
   | 'opencode-zen'
   | 'opencode-go'
   | 'custom'
+  /** Cheil fork: a model served by Ollama on this PC (native /api/chat) */
+  | 'ollama'
 
 /** Providers reached through the locally installed, already signed-in vendor CLI (a subscription, not a key) */
 export type AiSubscriptionProviderId = 'claude-code' | 'codex'
@@ -297,6 +299,8 @@ export interface AiChatRequest {
   settings: AiSettings
   system: string
   user: string
+  /** Cheil fork: ask for one JSON object (Ollama constrains its output to JSON) */
+  json?: boolean | undefined
 }
 
 export interface AiChatResponse {

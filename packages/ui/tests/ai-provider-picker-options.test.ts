@@ -16,6 +16,7 @@ import {
   aiSubscriptionModelName,
   withAiProviderSelection,
 } from '../src/ai-model-picker-options'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 /** as Claude Code lists them: the default first, by the name of what it resolves to */
 const CLAUDE_LIST: AiSubscriptionModel[] = [
@@ -45,7 +46,7 @@ const ready: AiSubscriptionStatuses = {
 const anthropicModels = AI_PROVIDERS.find((m) => m.id === 'anthropic')!.models
 const claudeModels = AI_PROVIDERS.find((m) => m.id === 'claude-code')!.models
 
-function withAnthropicKey(settings: AiSettings = defaultAiSettings()): AiSettings {
+function withAnthropicKey(settings: AiSettings = upstreamAiSettings()): AiSettings {
   settings.providers.anthropic = { apiKey: 'k', model: anthropicModels[0]! }
   return settings
 }
@@ -55,14 +56,14 @@ function acceptedMetered(provider: AiSubscriptionProviderId): {
   settings: AiSettings
   status: AiSubscriptionStatus
 } {
-  const settings = defaultAiSettings()
+  const settings = upstreamAiSettings()
   settings.meteredAccepted = { [provider]: true }
   return { settings, status: status(provider, 'metered', { meteredAccepted: true }) }
 }
 
 describe('aiProviderPickerGroups', () => {
   it('lists only free models for an OpenRouter free connection', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers.openrouter = {
       apiKey: 'sk-or-v1-x',
       model: 'nvidia/nemotron-3-super-120b-a12b:free',
@@ -73,9 +74,9 @@ describe('aiProviderPickerGroups', () => {
   })
 
   it('lists nothing while no subscription is connected and no key is filled in', () => {
-    expect(aiProviderPickerGroups(defaultAiSettings(), {})).toEqual([])
+    expect(aiProviderPickerGroups(upstreamAiSettings(), {})).toEqual([])
     expect(
-      aiProviderPickerGroups(defaultAiSettings(), {
+      aiProviderPickerGroups(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'signed-out'),
         codex: status('codex', 'not-installed'),
       }),
@@ -93,7 +94,7 @@ describe('aiProviderPickerGroups', () => {
   })
 
   it('names subscriptions in plain text and offers the CLI default before the catalog', () => {
-    const groups = aiProviderPickerGroups(defaultAiSettings(), ready)
+    const groups = aiProviderPickerGroups(upstreamAiSettings(), ready)
     expect(groups.find((g) => g.id === 'claude-code')).toEqual({
       kind: 'subscription',
       id: 'claude-code',
@@ -111,7 +112,7 @@ describe('aiProviderPickerGroups', () => {
   })
 
   it('keeps a stored model that is not in the catalog selectable', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers.codex = { apiKey: '', model: 'gpt-next', cliPath: '' }
     const codex = aiProviderPickerGroups(settings, ready).find((g) => g.id === 'codex')!
     expect(codex.models).toEqual(['', 'gpt-next'])
@@ -126,17 +127,17 @@ describe('aiProviderPickerGroups', () => {
       aiProviderPickerGroups(settings, withLists).find((g) => g.id === id)!
 
     it('offers the CLI default first, then what the CLI lists, by the value it takes', () => {
-      expect(group(defaultAiSettings(), 'claude-code').models).toEqual([
+      expect(group(upstreamAiSettings(), 'claude-code').models).toEqual([
         '',
         'opus',
         'fable',
         'claude-sonnet-5',
       ])
-      expect(group(defaultAiSettings(), 'codex').models).toEqual(['', 'gpt-next-codex', 'gpt-next'])
+      expect(group(upstreamAiSettings(), 'codex').models).toEqual(['', 'gpt-next-codex', 'gpt-next'])
     })
 
     it('gives each entry its display name and its concrete id', () => {
-      const claude = group(defaultAiSettings(), 'claude-code').details!
+      const claude = group(upstreamAiSettings(), 'claude-code').details!
       expect(claude.get('opus')).toEqual({ name: 'Opus 5.5', concrete: 'claude-opus-5-5' })
       expect(claude.get('fable')).toEqual({ name: 'Fable 5.1', concrete: 'claude-fable-5-1' })
       // an entry that is its own concrete id
@@ -144,7 +145,7 @@ describe('aiProviderPickerGroups', () => {
         name: 'Sonnet 5',
         concrete: 'claude-sonnet-5',
       })
-      const codex = group(defaultAiSettings(), 'codex').details!
+      const codex = group(upstreamAiSettings(), 'codex').details!
       expect(codex.get('gpt-next')).toEqual({ name: 'GPT-Next', concrete: 'gpt-next-2026-09-01' })
       expect(codex.get('gpt-next-codex')).toEqual({
         name: 'GPT-Next-Codex',
@@ -154,17 +155,17 @@ describe('aiProviderPickerGroups', () => {
 
     it('says what the default resolves to', () => {
       // Claude names the model its default runs on: shown by that model's own name
-      expect(group(defaultAiSettings(), 'claude-code').details!.get('')).toEqual({
+      expect(group(upstreamAiSettings(), 'claude-code').details!.get('')).toEqual({
         name: 'Opus 5.5',
         concrete: 'claude-opus-5-5',
       })
       // Codex flags one of its entries as the default
-      expect(group(defaultAiSettings(), 'codex').details!.get('')).toEqual({
+      expect(group(upstreamAiSettings(), 'codex').details!.get('')).toEqual({
         name: 'GPT-Next-Codex',
         concrete: 'gpt-next-codex',
       })
       // a default that resolves to a model the list does not name is shown by its id
-      const lone = aiProviderPickerGroups(defaultAiSettings(), {
+      const lone = aiProviderPickerGroups(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'ready', {
           models: [
             { id: '', label: 'Default', resolved: 'claude-next-9', isDefault: true },
@@ -174,7 +175,7 @@ describe('aiProviderPickerGroups', () => {
       }).find((g) => g.id === 'claude-code')!
       expect(lone.details!.get('')).toEqual({ name: 'claude-next-9' })
       // a CLI that does not say leaves the default entry as it was
-      const silent = aiProviderPickerGroups(defaultAiSettings(), {
+      const silent = aiProviderPickerGroups(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'ready', {
           models: [{ id: 'haiku', label: 'Haiku 4.5' }],
         }),
@@ -184,7 +185,7 @@ describe('aiProviderPickerGroups', () => {
     })
 
     it('still shows a stored selection the CLI does not list, right after the default', () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.providers['claude-code'] = { apiKey: '', model: 'claude-old-3' }
       const claude = group(settings, 'claude-code')
       expect(claude.models).toEqual(['', 'claude-old-3', 'opus', 'fable', 'claude-sonnet-5'])
@@ -200,7 +201,7 @@ describe('aiProviderPickerGroups', () => {
     })
 
     it('a stored selection named like an object property is just another id', () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.providers['claude-code'] = { apiKey: '', model: 'constructor' }
       const claude = group(settings, 'claude-code')
       expect(claude.details!.get('constructor')).toBeUndefined()
@@ -209,8 +210,8 @@ describe('aiProviderPickerGroups', () => {
 
     it('every listed entry still passes selectAiProvider once picked, stored by its id', () => {
       for (const id of ['claude-code', 'codex'] as const) {
-        for (const model of group(defaultAiSettings(), id).models) {
-          const next = withAiProviderSelection(defaultAiSettings(), { provider: id, model })
+        for (const model of group(upstreamAiSettings(), id).models) {
+          const next = withAiProviderSelection(upstreamAiSettings(), { provider: id, model })
           expect(next.providers[id].model).toBe(model)
           expect(selectAiProvider(next, withLists).connected).toBe(true)
         }
@@ -218,7 +219,7 @@ describe('aiProviderPickerGroups', () => {
     })
 
     it('without a list the static catalog is shown, with no details', () => {
-      const claude = aiProviderPickerGroups(defaultAiSettings(), ready).find(
+      const claude = aiProviderPickerGroups(upstreamAiSettings(), ready).find(
         (g) => g.id === 'claude-code',
       )!
       expect(claude.models).toEqual(['', ...claudeModels])
@@ -233,7 +234,7 @@ describe('aiProviderPickerGroups', () => {
     }
 
     it('names the model the stored selection runs on', () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       expect(aiSubscriptionModelName(settings, withLists, 'claude-code')).toBe('Opus 5.5')
       expect(aiSubscriptionModelName(settings, withLists, 'codex')).toBe('GPT-Next-Codex')
       settings.providers['claude-code'] = { apiKey: '', model: 'fable' }
@@ -243,13 +244,13 @@ describe('aiProviderPickerGroups', () => {
     })
 
     it('falls back to the stored id for a model the CLI does not list', () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.providers['claude-code'] = { apiKey: '', model: 'claude-old-3' }
       expect(aiSubscriptionModelName(settings, withLists, 'claude-code')).toBe('claude-old-3')
     })
 
     it('is absent without a list, for a key provider, and for no provider', () => {
-      const settings = defaultAiSettings()
+      const settings = upstreamAiSettings()
       settings.providers['claude-code'] = { apiKey: '', model: 'sonnet' }
       expect(aiSubscriptionModelName(settings, ready, 'claude-code')).toBeUndefined()
       expect(aiSubscriptionModelName(settings, {}, 'claude-code')).toBeUndefined()
@@ -259,7 +260,7 @@ describe('aiProviderPickerGroups', () => {
   })
 
   it('lists a key provider only once its settings are filled in', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     expect(aiProviderPickerGroups(settings, ready).some((g) => g.kind === 'key')).toBe(false)
     // a key without a model, and a model without a key, are both unfinished
     settings.providers.anthropic = { apiKey: 'k', model: '' }
@@ -273,7 +274,7 @@ describe('aiProviderPickerGroups', () => {
   })
 
   it('never lists a provider config stored under an id this build does not know', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     const stored = settings.providers as Record<string, { apiKey: string; model: string }>
     stored['retired-provider'] = { apiKey: 'k', model: 'claude-opus-5-5' }
     const ids: string[] = aiProviderPickerGroups(settings, ready).map((g) => g.id)
@@ -290,14 +291,14 @@ describe('aiProviderPickerGroups', () => {
 
   it('leaves a metered login out until the user accepted it', () => {
     const metered = { 'claude-code': status('claude-code', 'metered') }
-    expect(aiProviderPickerGroups(defaultAiSettings(), metered)).toEqual([])
+    expect(aiProviderPickerGroups(upstreamAiSettings(), metered)).toEqual([])
     // the stored flag alone is not enough: the status must carry it too
-    const stale = defaultAiSettings()
+    const stale = upstreamAiSettings()
     stale.meteredAccepted = { 'claude-code': true }
     expect(aiProviderPickerGroups(stale, metered)).toEqual([])
     // and neither is the status flag without the stored one
     expect(
-      aiProviderPickerGroups(defaultAiSettings(), {
+      aiProviderPickerGroups(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'metered', { meteredAccepted: true }),
       }),
     ).toEqual([])
@@ -308,7 +309,7 @@ describe('aiProviderPickerGroups', () => {
       aiProviderPickerGroups(settings, statuses).find((g) => g.kind === 'auto')
 
     it('resolves to Claude while both subscriptions are ready', () => {
-      expect(autoOf(defaultAiSettings(), ready)).toEqual({
+      expect(autoOf(upstreamAiSettings(), ready)).toEqual({
         kind: 'auto',
         id: 'auto',
         label: 'Claude',
@@ -319,7 +320,7 @@ describe('aiProviderPickerGroups', () => {
     })
 
     it('resolves to Codex when Claude is not ready', () => {
-      const auto = autoOf(defaultAiSettings(), {
+      const auto = autoOf(upstreamAiSettings(), {
         'claude-code': status('claude-code', 'signed-out'),
         codex: status('codex', 'ready'),
       })
@@ -394,7 +395,7 @@ describe('aiProviderPickerGroups', () => {
 
 describe('selection under the subscription contract', () => {
   it('reads the automatic selection and what it runs on', () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers['claude-code'] = { apiKey: '', model: 'sonnet' }
     expect(aiProviderPickerSelection(settings, ready)).toEqual({
       provider: 'auto',
@@ -411,12 +412,12 @@ describe('selection under the subscription contract', () => {
   })
 
   it('reads an unknown provider id as the automatic selection', () => {
-    const settings = { ...defaultAiSettings(), provider: 'retired-provider' as never }
+    const settings = { ...upstreamAiSettings(), provider: 'retired-provider' as never }
     expect(aiProviderPickerSelection(settings, ready).provider).toBe('auto')
   })
 
   it('picking a subscription model stores the provider and the model', () => {
-    const start = defaultAiSettings()
+    const start = upstreamAiSettings()
     const next = withAiProviderSelection(start, { provider: 'codex', model: 'gpt-next' })
     expect(next.provider).toBe('codex')
     expect(next.providers.codex.model).toBe('gpt-next')
@@ -432,7 +433,7 @@ describe('selection under the subscription contract', () => {
   })
 
   it('picking the automatic entry only changes the selection', () => {
-    const start = withAiProviderSelection(defaultAiSettings(), {
+    const start = withAiProviderSelection(upstreamAiSettings(), {
       provider: 'codex',
       model: 'gpt-next',
     })
@@ -461,7 +462,7 @@ describe('selection under the subscription contract', () => {
 
   it('picking a model on a saved custom endpoint activates that endpoint', () => {
     const settings: AiSettings = {
-      ...defaultAiSettings(),
+      ...upstreamAiSettings(),
       customEndpoints: [
         { id: 'a', name: 'Ollama', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'm1' },
         { id: 'b', name: '', baseUrl: 'https://gw.example.com/v1', apiKey: 'k', model: 'm2' },

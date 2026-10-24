@@ -17,6 +17,7 @@ import {
   type AiTokenUsageView,
   type DriveAttachPicked,
   type OnTemplateSkill,
+  type SkillChipRef,
   type SkillUse,
   type AiComposerDocs,
 } from '@genoffice/ui'
@@ -259,6 +260,9 @@ interface ExcelShellProps {
   readonly skillNotes?: ReactNode
   /** a chip whose skill has a template runs in a new tab (spec 5.7) */
   readonly onTemplateSkill?: OnTemplateSkill | undefined
+  /** Cheil fork: handed to the AI panel, which puts its chip filler there */
+  readonly prefillChipsRef?:
+    { current: ((chips: readonly SkillChipRef[]) => void) | null } | undefined
   /** bumped when a request was handed over to this tab: the AI panel opens */
   readonly openAiRequest?: number | undefined
   /// Chat attachments (chips + 📎 button + drag-and-drop), same structure as the
@@ -483,6 +487,7 @@ export function ExcelShell({
   renderSkillCard,
   skillNotes,
   onTemplateSkill,
+  prefillChipsRef,
   openAiRequest,
   attachments,
   attachNotice,
@@ -989,6 +994,7 @@ export function ExcelShell({
           renderSkillCard={renderSkillCard}
           skillNotes={skillNotes}
           onTemplateSkill={onTemplateSkill}
+          prefillChipsRef={prefillChipsRef}
           attachments={attachments}
           attachNotice={attachNotice}
           onPickAttachments={onPickAttachments}

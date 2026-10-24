@@ -3,7 +3,6 @@ import {
   AI_MEDIA_PROVIDERS,
   AI_PROVIDERS,
   HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
-  defaultAiSettings,
 } from '@genoffice/ai-provider'
 import type { AiSettings, AiSubscriptionStatus } from '@genoffice/ai-provider'
 import {
@@ -27,6 +26,7 @@ import {
   subscriptionLaunchResultOf,
   subscriptionStatusMapOf,
 } from '../src/shared/subscription-api'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 /**
  * The rules behind the AI part of Settings (src/renderer/src/settings-ai.ts):
@@ -43,7 +43,7 @@ function status(
 }
 
 function settingsWith(patch: Partial<AiSettings> = {}): AiSettings {
-  return { ...defaultAiSettings(), ...patch }
+  return { ...upstreamAiSettings(), ...patch }
 }
 
 function withOpenAiKey(settings: AiSettings): AiSettings {

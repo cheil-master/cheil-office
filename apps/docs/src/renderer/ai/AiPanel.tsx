@@ -31,6 +31,12 @@ import {
   type TemplateDocument,
   type SkillChipRef,
   type SkillUse,
+  buildCheilFillPrompt,
+  cheilFillPlan,
+  cheilFillSkillOf,
+  cheilFillSummary,
+  findCheilSlots,
+  parseCheilFillAnswer,
 } from '@genoffice/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
@@ -44,7 +50,11 @@ import {
   type KbFileInfo,
   composeWithDrive,
 } from '@genoffice/agent-core'
-import type { AiSubscriptionProviderId, AiSubscriptionUsage } from '@genoffice/ai-provider/browser'
+import type {
+  AiChatResponse,
+  AiSubscriptionProviderId,
+  AiSubscriptionUsage,
+} from '@genoffice/ai-provider/browser'
 import type {
   AiSettings,
   AiToolCapabilities,
@@ -54,6 +64,8 @@ import type {
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { captureRollbackSnapshot, restoreRollbackSnapshot } from './rollback-snapshot'
+import { executeOps } from './ops'
+import { replaceLeftoverBlanks } from './cheil-fill-docs'
 import { countWords, findNumId, type NumIds } from './protocol'
 import { DOC_NAV_SCHEME, navigateToBlock, parseDocNavHref } from './doc-nav'
 import {
@@ -479,6 +491,11 @@ export function AiPanel({
       if (!open) onExpand?.()
     },
     setComposer: setInput,
+    // Cheil fork: a home template card fills the composer and waits for the person
+    prefill: (text, chips) => {
+      setInput(text)
+      skillsRef.current.prefill(chips)
+    },
   })
   const skillTemplatesRef = useRef(skillTemplates)
   skillTemplatesRef.current = skillTemplates
@@ -1256,6 +1273,96 @@ export function AiPanel({
     return images
   }
 
+  /**
+   * Cheil fork: fill the open Cheil template's `[blanks]` with one model call
+   * (packages/ui/src/cheil-fill.ts): the app lists the blanks, the model
+   * answers one JSON object, and the editor's own find-and-replace writes the
+   * values (undoable, tracked when tracking is on). A document without blanks
+   * runs the request through the tool loop as usual.
+   */
+  const runCheilFill = async (
+    instruction: string,
+    skillUse: SkillUse,
+    atts: AttachmentMeta[],
+  ): Promise<void> => {
+    const editor = editorRef.current
+    const ko = langRef.current === 'ko'
+    const finish = (patch: Partial<ChatEntry>) => {
+      patchLastAssistant((last) => ({ streaming: false, tools: last.tools, ...patch }))
+      setBusy(false)
+    }
+    const doc = editor?.state.doc
+    const slots = doc ? findCheilSlots(doc.textBetween(0, doc.content.size, '\n', '\n')) : []
+    if (!editor || slots.length === 0) {
+      await loopRef.current?.run(instruction + skillUse.text)
+      return
+    }
+    patchLastAssistant({
+      text: ko
+        ? `양식 칸 ${slots.length}개를 자료로 채우는 중입니다. 이 PC 의 AI 는 몇 분 걸릴 수 있습니다.`
+        : `Filling ${slots.length} blanks from the material…`,
+    })
+    const materials: string[] = []
+    for (const att of atts) {
+      if (ATTACHMENT_IMAGE_EXTS.has(att.ext)) continue
+      const read = await window.desktop.readAttachment(att.path, 0, 24_000).catch(() => null)
+      if (read?.ok && read.text) materials.push(`[${att.name}]\n${read.text}`)
+    }
+    const prompt = buildCheilFillPrompt({
+      request: instruction,
+      skillText: skillUse.text,
+      materials: materials.join('\n\n'),
+      slots,
+    })
+    const reply = await window.desktop
+      .aiChat({
+        settings: settingsRef.current,
+        system: prompt.system,
+        user: prompt.user,
+        json: true,
+      })
+      .catch((e: unknown): AiChatResponse => ({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      }))
+    if (!reply.ok || !reply.content) {
+      finish({ text: '', error: reply.error ?? tModule('aiNoReply') })
+      return
+    }
+    const plan = cheilFillPlan(slots, parseCheilFillAnswer(reply.content, slots))
+    if (plan.replacements.length > 0) {
+      const snapshot = captureRollbackSnapshot(editor)
+      if (snapshot && !runSnapshotRef.current) runSnapshotRef.current = snapshot
+      const outcome = executeOps(
+        editor,
+        plan.replacements.map((r) => ({ op: 'findReplace', find: r.find, replace: r.replace })),
+        { track: trackChangesRef.current ? { author: AI_REVISION_AUTHOR } : null },
+      )
+      if (!outcome.ok) {
+        finish({ text: '', error: outcome.error ?? 'fill failed' })
+        return
+      }
+      // the op does not reach table cells: the blanks left there are written directly
+      replaceLeftoverBlanks(editor, plan.replacements)
+      if (!trackChangesRef.current) clearAiHighlights(true)
+    }
+    const text = cheilFillSummary(langRef.current, {
+      total: slots.length,
+      fromMaterial: plan.fromMaterial,
+      open: plan.open,
+    })
+    const tool = {
+      name: 'cheil_fill',
+      summary: ko
+        ? `양식 칸 ${plan.replacements.length}개 채움`
+        : `${plan.replacements.length} blanks filled`,
+    }
+    runToolsRef.current.push(tool)
+    finish({ text, tools: [tool], snapshot: runSnapshotRef.current ?? undefined })
+    window.dispatchEvent(new Event('ai-docs-run-done'))
+    persistMessage('assistant', text, runToolsRef.current)
+  }
+
   const runWith = (
     instruction: string,
     displayInstruction = instruction,
@@ -1359,6 +1466,8 @@ export function AiPanel({
           setBusy(false)
           return
         }
+        // Cheil fork: a Cheil template's blanks are filled with one model call, not the tool loop
+        if (cheilFillSkillOf(skillUse.chips)) return runCheilFill(instruction, skillUse, sentAtts)
         // the skill text rides with this request only; the bubble and the record keep the chips
         return loop.run(instruction + skillUse.text, images)
       })

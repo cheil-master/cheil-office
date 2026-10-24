@@ -2616,6 +2616,8 @@ export const aiChatRequestSchema = z
     settings: aiSettingsInputSchema,
     system: z.string(),
     user: z.string(),
+    /** Cheil fork: ask for one JSON object (the workbook template fill) */
+    json: z.boolean().optional(),
   })
   .strict()
 

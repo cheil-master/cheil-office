@@ -44,7 +44,13 @@ export interface TemplateDocument {
 
 /** The calls of `window.aiOfficeUserSkills` the template flow uses */
 export interface SkillTemplateBridge {
-  openTemplate(input: { skillId: string; text: string; chips: SkillChipRef[] }): Promise<unknown>
+  openTemplate(input: {
+    skillId: string
+    text: string
+    chips: SkillChipRef[]
+    /** Cheil fork: the new tab fills its composer and sends nothing */
+    prefill?: boolean
+  }): Promise<unknown>
   openPreview(input: {
     bytes: Uint8Array
     fileName: string
@@ -238,6 +244,8 @@ export interface HandedRequest {
   text: string
   chips: SkillChipRef[]
   preview?: HandedPreview | undefined
+  /** Cheil fork: put the request and chips in the composer instead of sending */
+  prefill?: boolean | undefined
 }
 
 /** A taken hand-off as the panel reads it; null for none or a malformed one */
@@ -279,7 +287,13 @@ export function handedRequestOf(raw: unknown, target: TemplateEditor): HandedReq
       }
     }
   }
-  return { id: raw.id, text: raw.text, chips, ...(preview ? { preview } : {}) }
+  return {
+    id: raw.id,
+    text: raw.text,
+    chips,
+    ...(preview ? { preview } : {}),
+    ...(raw.prefill === true ? { prefill: true } : {}),
+  }
 }
 
 /**

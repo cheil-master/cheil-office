@@ -1,12 +1,18 @@
+import { assertCheilEgressAllowed } from './cheil-grade'
 import { chatAnthropic } from './protocols/anthropic'
 import { chatGemini } from './protocols/gemini'
 import { chatOpenAiCompatible } from './protocols/openai-compatible'
+import { chatOllama } from './protocols/ollama'
 import { ResponseBodyTooLargeError } from './protocols/shared'
 import { chatCodexAppServer } from './codex-app-server'
 import { chatClaudeCodeCli } from './claude-code-cli'
 import { getProviderAdapter, type ResolvedEndpoint } from './registry'
 import type { AiChatResponse, AiProviderConfig, AiProviderSelection } from './types'
-import { AI_CHAT_RESPONSE_TIMEOUT_MS, createStreamWatchdog } from './watchdog'
+import {
+  AI_CHAT_RESPONSE_TIMEOUT_MS,
+  AI_WATCHDOG_MAX_TIMEOUT_MS,
+  createStreamWatchdog,
+} from './watchdog'
 
 /** route a one-shot (non-streaming, non-tool-calling) chat call by provider id */
 export async function chatForProvider(
@@ -15,10 +21,16 @@ export async function chatForProvider(
   system: string,
   user: string,
   signal?: AbortSignal,
+  /** Cheil fork: request options a provider may honour */
+  options: { json?: boolean | undefined } = {},
 ): Promise<AiChatResponse> {
   // non-streaming: the server generates the full answer before the headers arrive,
-  // so the connect phase gets the long budget; the body read then gets the idle budget
-  const wd = createStreamWatchdog(signal, AI_CHAT_RESPONSE_TIMEOUT_MS)
+  // so the connect phase gets the long budget; the body read then gets the idle budget.
+  // Cheil fork: a model on this PC's CPU reads a long prompt for minutes first
+  const wd = createStreamWatchdog(
+    signal,
+    provider === 'ollama' ? AI_WATCHDOG_MAX_TIMEOUT_MS : AI_CHAT_RESPONSE_TIMEOUT_MS,
+  )
   const result = wd.guard(() => {
     let endpoint: ResolvedEndpoint
     try {
@@ -29,6 +41,12 @@ export async function chatForProvider(
         ok: false as const,
         error: e instanceof Error ? e.message : String(e),
       })
+    }
+    // Cheil fork: nothing client-confidential or personal leaves this PC
+    try {
+      assertCheilEgressAllowed(endpoint.baseUrl, [user])
+    } catch (e) {
+      return Promise.resolve({ ok: false as const, error: (e as Error).message })
     }
     if (endpoint.model) config = { ...config, model: endpoint.model }
     switch (endpoint.protocol) {
@@ -47,6 +65,8 @@ export async function chatForProvider(
           omitTemperature: endpoint.omitTemperature,
           bodyExtras: endpoint.bodyExtras,
         })
+      case 'ollama':
+        return chatOllama(wd, endpoint.baseUrl, config, system, user, options)
     }
   })
   return result.catch((e) => {

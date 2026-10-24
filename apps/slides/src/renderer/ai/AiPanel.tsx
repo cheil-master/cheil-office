@@ -29,6 +29,12 @@ import {
   type TemplateDocument,
   type SkillChipRef,
   type SkillUse,
+  buildCheilFillPrompt,
+  cheilFillPlan,
+  cheilFillSkillOf,
+  cheilFillSummary,
+  findCheilSlots,
+  parseCheilFillAnswer,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -51,6 +57,7 @@ import type {
 import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import {
   createSlidesSkill,
+  formatSlideDump,
   type DeckAccess,
   type ClarifyQuestion,
   type DeckProgressEvent,
@@ -515,6 +522,11 @@ export function AiPanel({
       if (!open) onExpand?.()
     },
     setComposer: setInput,
+    // Cheil fork: a home template card fills the composer and waits for the person
+    prefill: (text, chips) => {
+      setInput(text)
+      skillsRef.current.prefill(chips)
+    },
   })
   const skillTemplatesRef = useRef(skillTemplates)
   skillTemplatesRef.current = skillTemplates
@@ -1966,12 +1978,117 @@ export function AiPanel({
         runStartingRef.current = false
         await onBeforeRunRef.current?.()
         if (await window.slidesApi.beginHistoryBatch()) historyBatchActiveRef.current = true
+        // Cheil fork: a Cheil template's blanks are filled with one model call, not the tool loop
+        if (cheilFillSkillOf(skillUse.chips)) return runCheilFill(instruction, skillUse, sentAtts)
         loop.run(modelInstruction, images)
       })
       .catch(() => {
         runStartingRef.current = false
         void finishHistoryBatch().finally(() => setBusy(false))
       })
+  }
+
+  /**
+   * Cheil fork: fill the open Cheil template's `[blanks]` with one model call
+   * (packages/ui/src/cheil-fill.ts, as in the docs panel): the app lists the
+   * blanks of every slide, the model answers one JSON object, and the deck's
+   * own find-and-replace writes the values inside this run's history batch.
+   */
+  const runCheilFill = async (
+    instruction: string,
+    skillUse: SkillUse,
+    atts: AttachmentMeta[],
+  ): Promise<void> => {
+    const access = accessRef.current
+    const ko = langRef.current === 'ko'
+    const finish = (patch: Partial<ChatEntry>) => {
+      patchLastAssistant((last) => ({ streaming: false, tools: last.tools, ...patch }))
+      void finishHistoryBatch().finally(() => setBusy(false))
+    }
+    const slides = access?.getSlides() ?? []
+    const deckText = slides
+      .map((slide, i) =>
+        [
+          `슬라이드 ${i + 1}`,
+          ...formatSlideDump(slide)
+            .split('\n')
+            .filter((line) => !/ \| pos\(/.test(line)),
+        ].join('\n'),
+      )
+      .join('\n')
+    const slots = findCheilSlots(deckText)
+    if (!access || slots.length === 0) {
+      loopRef.current?.run(instruction + skillUse.text)
+      return
+    }
+    patchLastAssistant({
+      text: ko
+        ? `양식 칸 ${slots.length}개를 자료로 채우는 중입니다. 이 PC 의 AI 는 몇 분 걸릴 수 있습니다.`
+        : `Filling ${slots.length} blanks from the material…`,
+    })
+    const materials: string[] = []
+    for (const att of atts) {
+      if (ATTACHMENT_IMAGE_EXTS.has(att.ext)) continue
+      const read = await window.desktop.readAttachment(att.path, 0, 24_000).catch(() => null)
+      if (read?.ok && read.text) materials.push(`[${att.name}]\n${read.text}`)
+    }
+    const prompt = buildCheilFillPrompt({
+      request: instruction,
+      skillText: skillUse.text,
+      materials: materials.join('\n\n'),
+      slots,
+    })
+    const reply = await window.slidesApi
+      .aiChat({
+        settings: settingsRef.current,
+        system: prompt.system,
+        user: prompt.user,
+        json: true,
+      })
+      .catch((e: unknown): { ok: boolean; content?: string; error?: string } => ({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      }))
+    if (!reply.ok || !reply.content) {
+      finish({ text: '', error: reply.error ?? tGlobal('aiNoResponse') })
+      return
+    }
+    const plan = cheilFillPlan(slots, parseCheilFillAnswer(reply.content, slots))
+    if (plan.replacements.length > 0) {
+      // one transaction takes at most 50 ops (applySessionTxn); a proposal has more blanks
+      const ops = plan.replacements.map((r) => ({
+        op: 'findReplace',
+        find: r.find,
+        replace: r.replace,
+      }))
+      let deck: RenderSlide[] | null = null
+      for (let at = 0; at < ops.length; at += 50) {
+        const result = await window.slidesApi.applyTxn({
+          ops: ops.slice(at, at + 50),
+          isolation: 'per_op',
+        })
+        if (result?.applied && result.slides) deck = result.slides
+      }
+      if (!deck) {
+        finish({ text: '', error: tGlobal('aiFailApplyOps') })
+        return
+      }
+      access.applyDeck(deck, Math.max(0, Math.min(access.getCurrent(), deck.length - 1)))
+    }
+    const text = cheilFillSummary(langRef.current, {
+      total: slots.length,
+      fromMaterial: plan.fromMaterial,
+      open: plan.open,
+    })
+    const tool = {
+      name: 'cheil_fill',
+      summary: ko
+        ? `양식 칸 ${plan.replacements.length}개 채움`
+        : `${plan.replacements.length} blanks filled`,
+    }
+    runToolsRef.current.push(tool)
+    finish({ text, tools: [tool] })
+    persistMessage('assistant', text, runToolsRef.current)
   }
 
   /** One page of a queue submission — runWith's bookkeeping minus the composer and the user bubble */

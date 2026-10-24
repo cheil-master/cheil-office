@@ -179,6 +179,7 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
           target,
           text: input.text,
           chips: input.chips,
+          ...(input.prefill ? { prefill: true } : {}),
           createdAt: deps.now(),
         }),
       )

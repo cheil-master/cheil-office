@@ -20,35 +20,35 @@ export const OFFICE_TYPES: readonly OfficeType[] = [
     ext: 'docx',
     uti: 'org.openxmlformats.wordprocessingml.document',
     mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    progId: 'IeumOffice.WordDocument',
+    progId: 'CheilOffice.WordDocument',
   },
   {
     ext: 'xlsx',
     uti: 'org.openxmlformats.spreadsheetml.sheet',
     mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    progId: 'IeumOffice.ExcelWorkbook',
+    progId: 'CheilOffice.ExcelWorkbook',
   },
   {
     ext: 'xlsm',
     uti: 'org.openxmlformats.spreadsheetml.sheet.macroenabled',
     mime: 'application/vnd.ms-excel.sheet.macroEnabled.12',
-    progId: 'IeumOffice.ExcelMacroEnabledWorkbook',
+    progId: 'CheilOffice.ExcelMacroEnabledWorkbook',
   },
   {
     ext: 'xls',
     uti: 'com.microsoft.excel.xls',
     mime: 'application/vnd.ms-excel',
-    progId: 'IeumOffice.Excel972003Workbook',
+    progId: 'CheilOffice.Excel972003Workbook',
   },
   {
     ext: 'pptx',
     uti: 'org.openxmlformats.presentationml.presentation',
     mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    progId: 'IeumOffice.PowerPointPresentation',
+    progId: 'CheilOffice.PowerPointPresentation',
   },
 ]
 
-const LINUX_DESKTOP_ID = 'ieumoffice.desktop'
+const LINUX_DESKTOP_ID = 'cheiloffice.desktop'
 const WINDOWS_DEFAULT_APPS_URL = 'ms-settings:defaultapps'
 
 export type RunCommand = (cmd: string, args: string[]) => Promise<string>

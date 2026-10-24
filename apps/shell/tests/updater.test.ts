@@ -67,6 +67,13 @@ class FakeCancellationToken {
 }
 const quitAndInstall = vi.fn()
 
+// Cheil fork: the fork never checks the upstream's feed; these tests describe
+// the feed path itself, so they run with the switch open unless a test closes it
+const cheilPolicy = vi.hoisted(() => ({ feedOff: false }))
+vi.mock('../src/main/cheil-update-policy', () => ({
+  cheilUpdateFeedOff: () => cheilPolicy.feedOff,
+}))
+
 vi.mock('electron-updater', () => ({
   CancellationToken: FakeCancellationToken,
   autoUpdater: {
@@ -334,6 +341,7 @@ beforeEach(() => {
   showMessageBox.mockImplementation(() => Promise.resolve({ response: 0 }))
   // the platform that updates itself; a Mac install is pointed at the release page
   setPlatform('win32')
+  cheilPolicy.feedOff = false
 })
 
 afterEach(() => {
@@ -341,6 +349,27 @@ afterEach(() => {
   platformSpy?.restore()
   platformSpy = null
   delete process.env.GENOFFICE_FAKE_UPDATE
+})
+
+describe('Cheil fork: no update feed', () => {
+  it('never checks for updates, even packaged on Windows', async () => {
+    cheilPolicy.feedOff = true
+    const { initAutoUpdater } = await loadUpdater()
+    initAutoUpdater(() => null)
+    vi.advanceTimersByTime(FIRST_CHECK_DELAY_MS + RECHECK_INTERVAL_MS)
+    expect(updaterState.listeners.size).toBe(0)
+    expect(checkForUpdates).not.toHaveBeenCalled()
+  })
+
+  it('answers a manual check without pointing at the upstream download page', async () => {
+    cheilPolicy.feedOff = true
+    const { initAutoUpdater, checkForUpdatesNow } = await loadUpdater()
+    initAutoUpdater(() => null)
+    await checkForUpdatesNow()
+    expect(showMessageBox).toHaveBeenCalledTimes(1)
+    expect((showMessageBox.mock.calls[0]![0] as { buttons: string[] }).buttons).toEqual(['OK'])
+    expect(openExternal).not.toHaveBeenCalled()
+  })
 })
 
 describe('initAutoUpdater', () => {

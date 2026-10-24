@@ -369,6 +369,6 @@ describe('open_documents tool', () => {
     await startService(undefined)
     const result = await client!.callTool({ name: 'open_documents', arguments: { action: 'list' } })
     expect(result.isError).toBe(true)
-    expect(textOf(result.content)).toContain('IeumOffice is not running')
+    expect(textOf(result.content)).toContain('CheilOffice is not running')
   })
 })

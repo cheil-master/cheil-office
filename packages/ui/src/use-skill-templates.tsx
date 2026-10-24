@@ -63,6 +63,12 @@ export interface SkillTemplatesOptions {
   onTaken?: (() => void) | undefined
   /** put text into the composer (a handed-over request that did not start; '' clears it) */
   setComposer?: ((text: string) => void) | undefined
+  /**
+   * Cheil fork: a hand-off marked `prefill` (the home's template cards) puts
+   * its request and chips into the composer and sends nothing; the chips run
+   * on this document, which is the template's copy.
+   */
+  prefill?: ((text: string, chips: SkillChipRef[]) => void) | undefined
   /** tests inject one; the default is the window's `aiOfficeUserSkills` */
   bridge?: SkillTemplateBridge | null | undefined
 }
@@ -206,6 +212,13 @@ export function useSkillTemplates(options: SkillTemplatesOptions): SkillTemplate
       const taken = handedRequestOf(await b.takeHandoff(editor).catch(() => null), editor)
       if (!taken || !liveRef.current) return
       optionsRef.current.onTaken?.()
+      if (taken.prefill) {
+        const fill = optionsRef.current.prefill
+        if (fill) fill(taken.text, taken.chips)
+        else optionsRef.current.setComposer?.(taken.text)
+        setRunPhase('done')
+        return
+      }
       setHanded(taken)
       let use: SkillUse = { text: '', chips: [] }
       if (taken.chips.length > 0) {

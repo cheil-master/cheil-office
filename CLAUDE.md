@@ -1,4 +1,16 @@
-# 이음오피스 (IeumOffice)
+# Cheil 기획 오피스 (이음오피스 포크)
+
+> **이 사본은 Cheil 포크다(2026-10-23~).** 광고대행사 기획 문서용으로 고친 이음오피스. 아래 원본 규칙은 그대로 지키고, 포크에서 바꾼 것은 `CHEIL.md`에 모두 적는다. 고친 코드에는 `Cheil fork:` 주석을 단다.
+>
+> **이어받는 개발자(Codex 등)는 먼저 `HANDOVER.md`를 읽는다** — 지금 상태, 이 PC 환경, 명령, 걸리기 쉬운 것, 다음 할 일. 이 파일(`CLAUDE.md`)과 `AGENTS.md`는 같은 내용으로 유지한다.
+>
+> - 화면 이름 'Cheil 기획 오피스', 설치 이름 `CheilOffice`(데이터 폴더·파일 연결·설치 ID 모두 이음오피스와 겹치지 않음). 내부 이름(`@genoffice/*`, `GENOFFICE_*`)과 명령어 `ieumoffice`는 아직 그대로.
+> - 기본 AI 엔진은 이 PC 의 Ollama(제공자 `ollama`, `packages/ai-provider/src/protocols/ollama.ts`). 이 PC 밖 AI 로 가는 요청은 `cheil-grade.ts`가 광고주 기밀·개인정보를 막는다(설정으로 못 엶).
+> - 광고대행사 양식 스킬은 `apps/shell/resources/builtin-skills/cheil-*`, 양식 문서는 `python -I tools/cheil/make_templates.py`. 홈 카드는 `apps/shell/src/renderer/src/cheil/`.
+> - 자동 업데이트는 꺼져 있다(원본 릴리스로 바뀌는 것을 막음). 시험 자료는 가상 이름(가상전자, 에어린, 블루윈드, 오로라7)만.
+> - 빌드 도구: Rust(rustup, MSVC) + Visual Studio 2022 Build Tools 가 이 PC 에 있다(2026-10-23). 엑셀 처리 프로그램·설치 파일 빌드 방법은 `CHEIL.md` 7절.
+
+# 이음오피스 (IeumOffice) — 원본 규칙
 
 워드·엑셀·파워포인트·PDF·마크다운·HTML·한글(HWP) 문서와 마인드맵(XMind 파일 `.xmind`)을 한 창에서 열고 고치는 데스크톱 오피스 프로그램이다. AI가 문서를 직접 고친다. 누구나 무료로 쓰도록 배포하며, 특정 직업군용이 아니다.
 

@@ -1,0 +1,206 @@
+import { test, expect } from '@playwright/test'
+import { writeFile, mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import {
+  ARTIFACTS_DIR,
+  closeAndSaveVideo,
+  launchShell,
+  screenshotPath,
+  waitForPageWithUrl,
+} from './helpers'
+
+/**
+ * Cheil fork: one real run on this PC's Ollama. A brief template is opened
+ * from the home card, fictional orientation notes go in, and the local model
+ * fills the document through the docs editor's tools. Nothing leaves the PC.
+ *
+ * Opt-in (slow on a laptop CPU): CHEIL_REAL_OLLAMA=1 npx playwright test
+ *   --config e2e/playwright.config.ts e2e/cheil-ollama-real.spec.ts
+ */
+const NOTES = [
+  '가상전자 에어린 공기청정기 봄 캠페인 OT 메모(2026-10-20)',
+  '- 과제: 봄 미세먼지 시즌 전에 2030 1인 가구의 제품 인지도를 올린다',
+  '- 타깃: 원룸·오피스텔에 사는 25~34세 직장인',
+  '- 제품 특징: 소형, 저소음 22dB, 필터 교체 알림 앱',
+  '- 톤: 가볍고 위트 있게',
+  "- 꼭 들어갈 것: 로고, '실내 공기질 측정 기준' 고지 문구",
+  '- 산출물: 15초 영상 2편(유튜브), 인스타그램 카드뉴스 6장',
+  '- 마감: 카드뉴스 11/21, 영상 11/28',
+].join('\n')
+
+test('Cheil: the local model fills a brief template', async () => {
+  test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
+  test.setTimeout(30 * 60_000)
+  const launched = await launchShell({ videoDir: 'cheil-ollama', lang: 'ko', onboardingSeen: true })
+  const { app, page } = launched
+  const started = Date.now()
+  try {
+    await page.getByTestId('cheil-template-cheil-brief').click()
+    const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
+    const composer = docs.locator('.ai-input-box textarea').first()
+    await expect(composer).toHaveValue(/브리프를 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 OT 메모로 이 브리프를 채워 줘.\n${NOTES}`)
+    await composer.press('Enter')
+    // the run shows as busy, then ends
+    await expect(docs.locator('.ai-input-box')).toBeVisible()
+    await expect(docs.locator('.ai-stop-btn')).toBeVisible({ timeout: 30_000 })
+    await docs.waitForTimeout(5_000)
+    await docs.screenshot({ path: screenshotPath('cheil-ollama-running') })
+    await expect
+      .poll(async () => docs.evaluate(() => document.querySelector('.ai-stop-btn') === null), {
+        timeout: 40 * 60_000,
+        intervals: [10_000],
+      })
+      .toBe(true)
+    await docs.screenshot({ path: screenshotPath('cheil-ollama-done') })
+    const bodyText = await docs.evaluate(() => document.body.innerText)
+    // the document alone, without the AI panel (which repeats the notes)
+    const docText = await docs.evaluate(
+      () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
+    )
+    const out = `${ARTIFACTS_DIR}/cheil-ollama-result.txt`
+    await mkdir(dirname(out), { recursive: true })
+    await writeFile(
+      out,
+      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n--- document ---\n${docText}\n\n--- whole window ---\n${bodyText}`,
+      'utf8',
+    )
+    expect(bodyText).not.toContain('시간 초과')
+    expect(bodyText).toMatch(/양식 칸 \d+개 중 [1-9]\d*개를 자료로 채웠습니다/)
+    // the client named in the notes reaches the header table
+    expect(docText).toContain('가상전자')
+    expect(docText).not.toContain('[광고주]')
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-ollama')
+  }
+})
+
+test('Cheil: the local model fills a proposal deck in one call', async () => {
+  test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
+  test.setTimeout(30 * 60_000)
+  const launched = await launchShell({
+    videoDir: 'cheil-ollama-deck',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  const started = Date.now()
+  const dumpEventsRef: { current: (() => Promise<unknown>) | null } = { current: null }
+  try {
+    await page.getByTestId('cheil-template-cheil-proposal').click()
+    const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
+    // diagnostics: why a slides view goes away mid-run
+    const events: string[] = []
+    const note = (line: string) =>
+      events.push(`${Math.round((Date.now() - started) / 1000)}s ${line}`)
+    slides.on('crash', () => note('page crash'))
+    slides.on('close', () => note('page close'))
+    slides.on('console', (msg) => {
+      if (msg.type() === 'error') note(`console error: ${msg.text().slice(0, 300)}`)
+    })
+    slides.on('pageerror', (err) => note(`page error: ${String(err).slice(0, 300)}`))
+    app.on('window', (w) => note(`new window ${w.url()}`))
+    const dumpEvents = () =>
+      writeFile(`${ARTIFACTS_DIR}/cheil-ollama-deck-events.txt`, events.join('\n'), 'utf8').catch(
+        () => undefined,
+      )
+    dumpEventsRef.current = dumpEvents
+    const composer = slides.locator('.ai-input-box textarea').first()
+    await expect(composer).toHaveValue(/제안서 양식을 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 OT 메모로 이 제안서 양식을 채워 줘. 팀명: 기획 3팀\n${NOTES}`)
+    await composer.press('Enter')
+    await expect(slides.locator('.ai-stop-btn')).toBeVisible({ timeout: 30_000 })
+    await expect
+      .poll(async () => slides.evaluate(() => document.querySelector('.ai-stop-btn') === null), {
+        timeout: 25 * 60_000,
+        intervals: [5_000],
+      })
+      .toBe(true)
+    await slides.screenshot({ path: screenshotPath('cheil-ollama-deck-done') })
+    const bodyText = await slides.evaluate(() => document.body.innerText)
+    const out = `${ARTIFACTS_DIR}/cheil-ollama-deck-result.txt`
+    await mkdir(dirname(out), { recursive: true })
+    await writeFile(
+      out,
+      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n${bodyText}`,
+      'utf8',
+    )
+    expect(bodyText).toMatch(/양식 칸 \d+개 중 [1-9]\d*개를 자료로 채웠습니다/)
+  } finally {
+    await mkdir(ARTIFACTS_DIR, { recursive: true }).catch(() => undefined)
+    await dumpEventsRef.current?.()
+    await closeAndSaveVideo(launched, 'cheil-ollama-deck')
+  }
+})
+
+const QUOTE = [
+  '가상전자 에어린 봄 캠페인 매체 견적(블루윈드미디어, 2026-10-21)',
+  '- 유튜브 인스트림: 2026-11-01~2026-11-30, 30,000,000원, 예상 노출 6,000,000, 예상 클릭 60,000',
+  '- 인스타그램 피드: 2026-11-01~2026-11-21, 15,000,000원, 예상 노출 3,000,000, 예상 클릭 45,000',
+  '- 네이버 GFA: 2026-11-10~2026-11-30, 10,000,000원, 예상 노출 2,500,000 (클릭 추정치 없음)',
+].join('\n')
+
+test('Cheil: the local model fills the media plan workbook in one call', async () => {
+  test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
+  test.setTimeout(30 * 60_000)
+  const launched = await launchShell({
+    videoDir: 'cheil-ollama-sheet',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  const started = Date.now()
+  try {
+    await page.getByTestId('cheil-template-cheil-media-plan').click()
+    const sheets = await waitForPageWithUrl(app, '://sheets/', 60_000)
+    const composer = sheets.locator('.ai-input-box textarea').first()
+    await expect(composer).toHaveValue(/미디어 플랜을 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 매체 견적으로 이 미디어 플랜을 채워 줘.\n${QUOTE}`)
+    await composer.press('Enter')
+    await expect(sheets.locator('.ai-stop-btn')).toBeVisible({ timeout: 30_000 })
+    await expect
+      .poll(async () => sheets.evaluate(() => document.querySelector('.ai-stop-btn') === null), {
+        timeout: 25 * 60_000,
+        intervals: [5_000],
+      })
+      .toBe(true)
+    await sheets.waitForTimeout(2_000)
+    await sheets.screenshot({ path: screenshotPath('cheil-ollama-sheet-done') })
+    const panelText = await sheets.evaluate(() => document.body.innerText)
+    // the grid is a canvas: select the filled block through the name box and copy it
+    const nameBox = sheets
+      .locator('input[class*="univer"]')
+      .filter({ hasNot: sheets.locator('[aria-label]') })
+      .first()
+    await nameBox.click()
+    await nameBox.fill('A1:L8')
+    await nameBox.press('Enter')
+    await sheets.waitForTimeout(500)
+    await sheets.keyboard.press('Control+C')
+    await sheets.waitForTimeout(800)
+    const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
+    // the sources sheet: its tab is plain DOM
+    await sheets.getByText('가정·출처', { exact: true }).last().click()
+    await sheets.waitForTimeout(1_000)
+    await nameBox.click()
+    await nameBox.fill('A1:C14')
+    await nameBox.press('Enter')
+    await sheets.waitForTimeout(500)
+    await sheets.keyboard.press('Control+C')
+    await sheets.waitForTimeout(800)
+    const sources = await app.evaluate(({ clipboard }) => clipboard.readText())
+    const out = `${ARTIFACTS_DIR}/cheil-ollama-sheet-result.txt`
+    await mkdir(dirname(out), { recursive: true })
+    await writeFile(
+      out,
+      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n--- A1:L8 ---\n${copied}\n\n--- 가정·출처 A1:C14 ---\n${sources}\n\n--- window ---\n${panelText}`,
+      'utf8',
+    )
+    expect(panelText).toMatch(/'미디어 플랜' [1-9]\d*줄/)
+    expect(copied).toContain('유튜브')
+    expect(copied).toMatch(/30,?000,?000/)
+    expect(copied).not.toContain('[매체]')
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-ollama-sheet')
+  }
+})

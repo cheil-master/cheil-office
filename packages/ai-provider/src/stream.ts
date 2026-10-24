@@ -1,8 +1,10 @@
 import type { AgentMessage, AgentToolDef } from '@genoffice/agent-core'
+import { assertCheilEgressAllowed, requestTextOf } from './cheil-grade'
 import { withOutputCapFallback } from './output-cap'
 import { streamAnthropic } from './protocols/anthropic'
 import { streamGemini } from './protocols/gemini'
 import { streamOpenAiCompatible } from './protocols/openai-compatible'
+import { streamOllama } from './protocols/ollama'
 import { streamCodexAppServer } from './codex-app-server'
 import { streamClaudeCodeCli } from './claude-code-cli'
 import type { StreamCallbacks } from './protocols/shared'
@@ -27,6 +29,8 @@ export async function streamForProvider(
 ): Promise<void> {
   const endpoint = getProviderAdapter(provider).resolveEndpoint(config)
   const { baseUrl } = endpoint
+  // Cheil fork: nothing client-confidential or personal leaves this PC
+  assertCheilEgressAllowed(baseUrl, requestTextOf(messages))
   if (endpoint.model) config = { ...config, model: endpoint.model }
   if (endpoint.protocol === 'codex-app-server') {
     return streamCodexAppServer(config, system, messages, tools, maxTokens, cb)
@@ -49,6 +53,8 @@ export async function streamForProvider(
           useMaxCompletionTokens: endpoint.useMaxCompletionTokens,
           bodyExtras: endpoint.bodyExtras,
         })
+      case 'ollama':
+        return streamOllama(baseUrl, config, system, messages, tools, cap, cb)
     }
   })
 }

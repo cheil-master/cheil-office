@@ -5,7 +5,6 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defaultAiSettings } from '@genoffice/ai-provider'
 import type {
   AiSettings,
   AiSubscriptionStatus,
@@ -17,6 +16,7 @@ import type { SubscriptionApi } from '../src/shared/subscription-api'
 import { Home } from '../src/renderer/src/Home'
 import { LocaleProvider } from '../src/renderer/src/locale'
 import type { SubscriptionConnection } from '../src/renderer/src/subscription-client'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 const actEnvironment = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean
@@ -34,8 +34,8 @@ function installHome(): void {
     starredGroups: async () => [],
     folderRoots: async () => [],
     kbList: async () => [],
-    getAiSettings: async () => defaultAiSettings(),
-    aiGetSettings: async () => defaultAiSettings(),
+    getAiSettings: async () => upstreamAiSettings(),
+    aiGetSettings: async () => upstreamAiSettings(),
     getAiProviders: () => [],
     getAiMediaProviders: () => [],
     getAiSearchProviders: () => [],
@@ -123,7 +123,7 @@ async function renderHome(map: SubscriptionStatusMap, options: RenderOptions = {
         { initial: 'en' },
         createElement(Home, {
           connection,
-          aiSettings: options.aiSettings === undefined ? defaultAiSettings() : options.aiSettings,
+          aiSettings: options.aiSettings === undefined ? upstreamAiSettings() : options.aiSettings,
           noticeDue: options.noticeDue ?? false,
           onNoticeAcknowledge: options.onNoticeAcknowledge ?? vi.fn(),
         }),

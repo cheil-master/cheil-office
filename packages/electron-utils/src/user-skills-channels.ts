@@ -282,6 +282,8 @@ export interface UserSkillTemplateOpenInput {
   text: string
   /** every chip the request carried; the receiving panel reads their skills */
   chips: HandoffSkillChip[]
+  /** Cheil fork: the new tab's panel only fills its composer; nothing is sent */
+  prefill?: boolean | undefined
 }
 
 /** Open the current document's copy in a template preview tab (spec 5.6) */
@@ -458,7 +460,7 @@ export function templateOpenInputOf(value: unknown): UserSkillTemplateOpenInput 
   const request = text(value.text, USER_SKILL_HANDOFF_TEXT_MAX)
   const chips = chipsOf(value.chips)
   if (!skillId || request === undefined || !chips) return undefined
-  return { skillId, text: request, chips }
+  return { skillId, text: request, chips, ...(value.prefill === true ? { prefill: true } : {}) }
 }
 
 /** Largest plain-data proposal or draft a preview carries */

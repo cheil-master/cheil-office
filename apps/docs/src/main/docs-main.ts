@@ -4072,7 +4072,17 @@ export function registerAiIpc(): void {
     if (!target.ok) return { ok: false, ...target.refusal }
     const { system, user } = request
     try {
-      const result = await chatForProvider(target.provider, target.config, system, user)
+      // Cheil fork: a template fill asks for one JSON object
+      const result = await chatForProvider(
+        target.provider,
+        target.config,
+        system,
+        user,
+        undefined,
+        {
+          json: request.json === true,
+        },
+      )
       // the one-shot path reports HTTP failures as ok:false with the raw body —
       // replace capacity/rate-limit dumps with the localized "busy" message
       if (!result.ok && isAiOverloadedError(result.error)) {

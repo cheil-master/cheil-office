@@ -2,9 +2,9 @@
  * Uses design tokens from @genoffice/ui/tokens.css; custom properties below
  * provide light, dark, and system-dark values. */
 :root {
-  --accent: #0f7fff;
-  --accent-hover: #0e72e5;
-  --accent-soft: #eaf0fd;
+  --accent: #1d4fb8;
+  --accent-hover: #173f94;
+  --accent-soft: #e8eefa;
   --ql-on-accent: #ffffff;
   --ql-backdrop: rgba(15, 23, 42, 0.48);
   --ql-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
@@ -24,9 +24,9 @@
 }
 
 [data-theme='dark'] {
-  --accent: #3f99ff;
-  --accent-hover: #5ba5ff;
-  --accent-soft: #24354d;
+  --accent: #6f9bf5;
+  --accent-hover: #8aaef7;
+  --accent-soft: #22314f;
   --ql-on-accent: #ffffff;
   --ql-backdrop: rgba(0, 0, 0, 0.65);
   --ql-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
@@ -47,9 +47,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --accent: #3f99ff;
-    --accent-hover: #5ba5ff;
-    --accent-soft: #24354d;
+    --accent: #6f9bf5;
+    --accent-hover: #8aaef7;
+    --accent-soft: #22314f;
     --ql-on-accent: #ffffff;
     --ql-backdrop: rgba(0, 0, 0, 0.65);
     --ql-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);

@@ -83,6 +83,15 @@ import {
   type SkillUse,
   docMentionActions,
   type AiComposerDocs,
+  SHEET_SCAN_COLUMNS,
+  SHEET_SCAN_ROWS,
+  buildCheilSheetFillPrompt,
+  cheilFillSkillOf,
+  cheilFillSummary,
+  cheilSheetWrites,
+  findCheilSheetBlanks,
+  sheetScanAddresses,
+  type SheetSnapshot,
 } from '@genoffice/ui'
 
 import {
@@ -161,6 +170,7 @@ import { type WorkbookOperation } from '@genoffice/xlsx-gateway/domain/workbook-
 import {
   columnLabel,
   parseAddress,
+  parseRange,
   rangeCellCount,
 } from '@genoffice/xlsx-gateway/domain/cell-address'
 import { aggregateWorkbookRange } from './ai/aggregate-range'
@@ -213,7 +223,7 @@ import {
   type FrozenSelection,
   type SheetsSkillDeps,
 } from './ai/tools'
-import { scopeLabel, type AiChatMessage } from './ai/AiChatPanel'
+import { scopeLabel, type AiChatMessage, type AiToolChip } from './ai/AiChatPanel'
 import { pruneFailedExchange } from './ai/retry-prune'
 import { parseSheetNavHref } from './ai/sheet-nav'
 import {
@@ -1188,6 +1198,8 @@ export function App({
    * request a new tab was opened for runs here once (after the workbook is
    * open) through the send gate.
    */
+  /** Cheil fork: the AI panel's chip filler, for a home template card's hand-off */
+  const prefillChipsRef = useRef<((chips: readonly SkillChipRef[]) => void) | null>(null)
   const skillTemplates = useSkillTemplates({
     lang: getLang(),
     editor: 'sheets',
@@ -1199,6 +1211,11 @@ export function App({
     },
     onTaken: () => setOpenAiRequest((n) => n + 1),
     setComposer: setPrompt,
+    // Cheil fork: a home template card fills the composer and waits for the person
+    prefill: (text, chips) => {
+      setPrompt(text)
+      prefillChipsRef.current?.(chips)
+    },
   })
   const skillTemplatesRef = useRef(skillTemplates)
   skillTemplatesRef.current = skillTemplates
@@ -1751,6 +1768,115 @@ export function App({
         runStartingRef.current = false
         loop.run(instruction)
       })
+  }
+
+  /**
+   * Cheil fork: fill the open Cheil workbook template with one model call
+   * (packages/ui/src/cheil-sheet-fill.ts): the app reads the cells, lists the
+   * `[blanks]` and the empty input tables, the model answers one JSON object,
+   * and the values go in through the editor's own cell operations (one undo
+   * step). Formula columns are never written. A workbook without blanks runs
+   * the request through the tool loop as usual.
+   */
+  async function runCheilSheetFill(
+    instruction: string,
+    skillUse: SkillUse,
+    sentAttachments: readonly AttachmentMeta[],
+  ): Promise<void> {
+    if (aiBusy || runStartingRef.current) return
+    const ko = getLang() === 'ko'
+    const scan = parseRange(`A1:${SHEET_SCAN_COLUMNS.at(-1)}${SHEET_SCAN_ROWS}`)
+    const addresses = sheetScanAddresses()
+    const sheets: SheetSnapshot[] = []
+    for (const sheet of getActiveSheetInfo().sheets) {
+      await sheetsSkillDeps().ensureRangeLoaded?.(scan, sheet.id)
+      const read = readCellsImpl(readContext(), addresses, sheet.id)
+      const cells: Record<
+        string,
+        { value: string | number | boolean | null; formula?: string | undefined }
+      > = {}
+      for (const [address, cell] of Object.entries(read)) {
+        const empty = cell.value === null || cell.value === ''
+        if (!empty || cell.formula) cells[address] = { value: cell.value, formula: cell.formula }
+      }
+      sheets.push({ id: sheet.id, name: sheet.name, cells })
+    }
+    const plan = findCheilSheetBlanks(sheets)
+    if (plan.slots.length === 0 && plan.tables.length === 0) {
+      runAgent(instruction + skillUse.text, sentAttachments)
+      return
+    }
+    setAiBusy(true)
+    setMessage(t('appAiThinking'))
+    appendChat({
+      role: 'assistant',
+      text: ko
+        ? `양식 칸 ${plan.slots.length}개와 표 ${plan.tables.length}개를 자료로 채우는 중입니다. 이 PC 의 AI 는 몇 분 걸릴 수 있습니다.`
+        : `Filling ${plan.slots.length} blanks and ${plan.tables.length} tables from the material…`,
+      tools: [],
+      streaming: true,
+    })
+    const finish = (text: string, isError: boolean, tools: AiToolChip[] = []) => {
+      patchLastAssistant((entry) => ({ ...entry, text, streaming: false, isError, tools }))
+      setMessage(isError ? text : t('appAiDone'))
+      if (!isError) persistChatMessage('assistant', text, runToolsRef.current)
+      void autoSaveCompletedAiRun().finally(() => setAiBusy(false))
+    }
+    const materials: string[] = []
+    for (const att of sentAttachments) {
+      if (ATTACHMENT_IMAGE_EXTS.has(att.ext)) continue
+      const read = await window.desktopApi.readAttachment(att.path, 0, 24_000).catch(() => null)
+      if (read?.ok && read.text) materials.push(`[${att.name}]\n${read.text}`)
+    }
+    const prompt = buildCheilSheetFillPrompt({
+      request: instruction,
+      skillText: skillUse.text,
+      materials: materials.join('\n\n'),
+      plan,
+    })
+    const settings = aiSettingsRef.current
+    const reply = settings
+      ? await window.desktopApi
+          .aiChat({ settings, system: prompt.system, user: prompt.user, json: true })
+          .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+      : { ok: false, error: t('appAiThinking') }
+    if (!reply.ok || !('content' in reply) || !reply.content) {
+      finish(('error' in reply && reply.error) || 'no reply', true)
+      return
+    }
+    const result = cheilSheetWrites(sheets, plan, reply.content)
+    if (result.writes.length > 0) {
+      const outcome = proposeOperations(
+        result.writes.map((w) => ({
+          op: 'set_cell' as const,
+          sheetId: w.sheetId,
+          address: w.address,
+          value: w.value,
+        })),
+        ko ? '양식 채우기' : 'Template fill',
+      )
+      if (!outcome.ok) {
+        finish(outcome.error, true)
+        return
+      }
+    }
+    const text = [
+      cheilFillSummary(getLang(), {
+        total: plan.slots.length,
+        fromMaterial: result.fromMaterial,
+        open: result.open,
+      }),
+      ko
+        ? `표에 쓴 줄: ${result.rowsByTable.map((r) => `'${r.sheetName}' ${r.rows}줄`).join(', ')}. 회색 계산 칸은 그대로 두었습니다.`
+        : `Rows written: ${result.rowsByTable.map((r) => `'${r.sheetName}' ${r.rows}`).join(', ')}; the formula cells were left as they are.`,
+    ].join('\n')
+    const chip: AiToolChip = {
+      name: 'cheil_fill',
+      summary: ko ? `셀 ${result.writes.length}개 채움` : `${result.writes.length} cells filled`,
+      isError: false,
+    }
+    runToolsRef.current = [...runToolsRef.current, { name: 'cheil_fill', summary: chip.summary }]
+    finish(text, false, [chip])
   }
 
   const mergeAttachments = (result: AttachmentAddResult | null): void => {
@@ -3635,6 +3761,11 @@ export function App({
     // otherwise fall back to the local, deterministic regex planner
     // (kept for offline use and for the fixed micro-DSL it still supports).
     if (agentConfigured) {
+      // Cheil fork: a Cheil template is filled with one model call, not the tool loop
+      if (cheilFillSkillOf(skillUse.chips)) {
+        void runCheilSheetFill(instruction, skillUse, sentAtts)
+        return
+      }
       // the skill text rides with this request only; the bubble and the record keep the chips
       runAgent(instruction + skillUse.text, sentAtts)
       return
@@ -5304,6 +5435,7 @@ export function App({
         renderSkillCard={skillCards.render}
         skillNotes={skillTemplates.notes}
         onTemplateSkill={(request) => skillTemplatesRef.current.onTemplateSkill(request)}
+        prefillChipsRef={prefillChipsRef}
         openAiRequest={openAiRequest}
         attachments={attachments}
         attachNotice={attachNotice}

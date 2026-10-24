@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { defaultAiSettings } from '@genoffice/ai-provider'
 import type {
   AiSettings,
   AiSubscriptionState,
@@ -12,6 +11,7 @@ import {
   askSendGate,
   withContinuedProvider,
 } from '../src/renderer/src/kb-ask-connection'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 /**
  * The ask panel's rules under the subscription contract
@@ -27,7 +27,7 @@ function statuses(claude: AiSubscriptionState, codex: AiSubscriptionState): Subs
 }
 
 const settings = (patch: Partial<AiSettings> = {}): AiSettings => ({
-  ...defaultAiSettings(),
+  ...upstreamAiSettings(),
   ...patch,
 })
 

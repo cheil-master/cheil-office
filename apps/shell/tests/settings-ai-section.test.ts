@@ -10,7 +10,6 @@ import {
   AI_PROVIDERS,
   AI_SEARCH_PROVIDERS,
   HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
-  defaultAiSettings,
 } from '@genoffice/ai-provider'
 import type {
   AiSettings,
@@ -23,6 +22,7 @@ import type { SubscriptionApi } from '../src/shared/subscription-api'
 import { LocaleProvider } from '../src/renderer/src/locale'
 import { SettingsModal } from '../src/renderer/src/SettingsModal'
 import type { SettingsTarget } from '../src/renderer/src/SettingsModal'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 /**
  * The AI part of the settings dialog, in the real modal: the subscription
@@ -239,7 +239,7 @@ function lastSaved(): AiSettings {
 
 /** a settings file from before the subscription providers: everything on a provider this build does not know */
 function legacySettings(): AiSettings {
-  const settings = defaultAiSettings()
+  const settings = upstreamAiSettings()
   return {
     ...settings,
     provider: 'retired-provider',
@@ -265,7 +265,7 @@ function withOpenAiKey(settings: AiSettings): AiSettings {
 
 describe('the default view', () => {
   it('lists one AI entry in the navigation, with no separate media section', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'signed-out'))
     await openModal()
     const labels = [...host.querySelectorAll('.set-nav-item')].map((item) =>
@@ -275,7 +275,7 @@ describe('the default view', () => {
   })
 
   it('shows both subscription cards, the free cards, and no paid key input', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'signed-out'))
     await openModal()
     await openAiSection()
@@ -294,7 +294,7 @@ describe('the default view', () => {
   })
 
   it('keeps the key panes under Advanced, one area at a time', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -318,7 +318,7 @@ describe('the default view', () => {
   })
 
   it('does not offer Claude in the key pane', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -331,7 +331,7 @@ describe('the default view', () => {
   })
 
   it('opens straight on the Advanced media area when an outside entry point asks for it', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal({ section: 'aiMedia', block: 'rerank' })
     expect(nav('AI')?.classList.contains('active')).toBe(true)
@@ -341,7 +341,7 @@ describe('the default view', () => {
   })
 
   it('shows where each subscription stands in the account section', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription({
       'claude-code': status('claude-code', 'ready', { planName: 'max' }),
       codex: status('codex', 'not-installed'),
@@ -364,7 +364,7 @@ describe('the default view', () => {
 
 describe('"AI to use"', () => {
   it('lists auto, the usable subscriptions and configured key providers only', async () => {
-    installHome(withOpenAiKey(defaultAiSettings()))
+    installHome(withOpenAiKey(upstreamAiSettings()))
     installSubscription(statusMap('ready', 'metered'))
     await openModal()
     await openAiSection()
@@ -377,7 +377,7 @@ describe('"AI to use"', () => {
   })
 
   it('writes the explicit provider id, then auto again', async () => {
-    installHome(withOpenAiKey(defaultAiSettings()))
+    installHome(withOpenAiKey(upstreamAiSettings()))
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -395,7 +395,7 @@ describe('"AI to use"', () => {
   })
 
   it('lists an accepted metered login with a cost marker and warns while it is in use', async () => {
-    installHome({ ...defaultAiSettings(), provider: 'codex', meteredAccepted: { codex: true } })
+    installHome({ ...upstreamAiSettings(), provider: 'codex', meteredAccepted: { codex: true } })
     installSubscription({
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'metered', { meteredAccepted: true }),
@@ -410,7 +410,7 @@ describe('"AI to use"', () => {
   })
 
   it('shows a stored selection that cannot run without offering it, and says so', async () => {
-    installHome({ ...defaultAiSettings(), provider: 'codex' })
+    installHome({ ...upstreamAiSettings(), provider: 'codex' })
     installSubscription(statusMap('ready', 'metered'))
     await openModal()
     await openAiSection()
@@ -428,7 +428,7 @@ describe('"AI to use"', () => {
   })
 
   it('says a connection is needed while auto resolves to nothing', async () => {
-    installHome(withOpenAiKey(defaultAiSettings()))
+    installHome(withOpenAiKey(upstreamAiSettings()))
     installSubscription(statusMap('signed-out', 'not-installed'))
     await openModal()
     await openAiSection()
@@ -440,7 +440,7 @@ describe('"AI to use"', () => {
   })
 
   it('shows the Codex line only where Codex can be chosen', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(statusMap('ready', 'signed-out'))
     await openModal()
     await openAiSection()
@@ -455,7 +455,7 @@ describe('"AI to use"', () => {
   })
 
   it('re-opens the first-connection notice without writing anything', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -474,7 +474,7 @@ describe('"AI to use"', () => {
 
 describe('the connect cards', () => {
   it('reads the statuses and checks again when the dialog opens', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(statusMap('ready', 'ready'))
     await openModal()
     expect(subscription.statuses).toHaveBeenCalledTimes(1)
@@ -484,7 +484,7 @@ describe('the connect cards', () => {
   })
 
   it('runs the install, then checks again each time the window regains focus', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(statusMap('not-installed', 'ready'))
     await openModal()
     await openAiSection()
@@ -511,7 +511,7 @@ describe('the connect cards', () => {
   })
 
   it('wires sign-in, check-again, the install guide and "use anyway"', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription({
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'metered'),
@@ -542,7 +542,7 @@ describe('the connect cards', () => {
   })
 
   it('says so when an install could not be started, without the raw error', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('not-installed', 'ready'), { launchOk: false })
     await openModal()
     await openAiSection()
@@ -563,7 +563,7 @@ describe('the account on a card', () => {
   const confirmBox = (): HTMLElement | null => host.querySelector('.set-sub-confirm')
 
   it('shows the signed-in account next to the plan name, on the card only', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(signedIn())
     await openModal()
     // the account section sums up the state and names nobody
@@ -579,7 +579,7 @@ describe('the account on a card', () => {
   })
 
   it('offers both account actions while a login is known, and neither otherwise', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn())
     await openModal()
     await openAiSection()
@@ -594,7 +594,7 @@ describe('the account on a card', () => {
   })
 
   it('asks before signing out, says it applies to the whole PC, and runs nothing on cancel', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn())
     await openModal()
     await openAiSection()
@@ -616,7 +616,7 @@ describe('the account on a card', () => {
   })
 
   it('signs out only once confirmed, with the vendor logout, and shows the new state', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn())
     await openModal()
     await openAiSection()
@@ -636,7 +636,7 @@ describe('the account on a card', () => {
   })
 
   it('asks before signing in with another account, then runs the vendor login again', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn())
     await openModal()
     await openAiSection()
@@ -666,7 +666,7 @@ describe('the account on a card', () => {
   })
 
   it('asks about one account at a time', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(signedIn())
     await openModal()
     await openAiSection()
@@ -678,7 +678,7 @@ describe('the account on a card', () => {
   })
 
   it('says so when the sign-out failed, in a sentence of its own', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn(), { launchOk: false })
     await openModal()
     await openAiSection()
@@ -691,7 +691,7 @@ describe('the account on a card', () => {
   })
 
   it('words the confirmations as the product specifies, in Korean', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(signedIn())
     await act(async () => {
       root.render(
@@ -716,7 +716,7 @@ describe('the account on a card', () => {
   })
 
   it('a preload without the sign-out reports a failure instead of throwing', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(signedIn())
     delete (subscription as { logout?: unknown }).logout
     await openModal()
@@ -744,7 +744,7 @@ describe('the model the selection runs on', () => {
   })
 
   it('is named in "AI to use", under automatic too', async () => {
-    const settings = defaultAiSettings()
+    const settings = upstreamAiSettings()
     settings.providers['claude-code'] = { apiKey: '', model: 'fable' }
     installHome(settings)
     installSubscription(withModels())
@@ -759,7 +759,7 @@ describe('the model the selection runs on', () => {
   })
 
   it('follows the list when it arrives after the status', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(statusMap('ready', 'signed-out'))
     await openModal()
     await openAiSection()
@@ -782,7 +782,7 @@ describe('automatic requests', () => {
   }
 
   it('is off by default and turns on only after the warning is passed', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -816,7 +816,7 @@ describe('automatic requests', () => {
   it('shows a switch turned on under the older warning as off, and asks again', async () => {
     // a settings file from before the hourly cap was removed: on, with no consent version
     installHome({
-      ...defaultAiSettings(),
+      ...upstreamAiSettings(),
       headlessSubscriptionEnabled: true,
       headlessSubscriptionConsentVersion: undefined,
     })
@@ -840,7 +840,7 @@ describe('automatic requests', () => {
 
   it('turns off at once, with no question asked', async () => {
     installHome({
-      ...defaultAiSettings(),
+      ...upstreamAiSettings(),
       headlessSubscriptionEnabled: true,
       headlessSubscriptionConsentVersion: HEADLESS_SUBSCRIPTION_CONSENT_VERSION,
     })
@@ -856,7 +856,7 @@ describe('automatic requests', () => {
   })
 
   it('shows the warning in the wording the product specifies, in Korean', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await act(async () => {
       root.render(
@@ -902,7 +902,7 @@ describe('the GitHub read token', () => {
   }
 
   it('shows an empty token masked, with the guidance for the optional key', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openAdvancedAi()
 
@@ -915,7 +915,7 @@ describe('the GitHub read token', () => {
   })
 
   it('saves a pasted token and leaves the other settings as they were', async () => {
-    installHome({ ...defaultAiSettings(), maxOutputTokens: 9216 })
+    installHome({ ...upstreamAiSettings(), maxOutputTokens: 9216 })
     installSubscription(statusMap('ready', 'ready'))
     await openAdvancedAi()
 
@@ -930,7 +930,7 @@ describe('the GitHub read token', () => {
   })
 
   it('loads a stored token masked, and clears it', async () => {
-    installHome({ ...defaultAiSettings(), readUrl: { githubToken: 'ghp_stored' } })
+    installHome({ ...upstreamAiSettings(), readUrl: { githubToken: 'ghp_stored' } })
     installSubscription(statusMap('ready', 'ready'))
     await openAdvancedAi()
 
@@ -946,7 +946,7 @@ describe('the GitHub read token', () => {
   })
 
   it('words the guidance in Korean', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await act(async () => {
       root.render(
@@ -975,7 +975,7 @@ describe('media providers', () => {
   }
 
   it('offers the Codex subscription for images only when the main process says it can', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'), { codexImage: false })
     await openMedia()
     const without = (await optionsOf('Image generation')).map((option) => option.label)
@@ -987,7 +987,7 @@ describe('media providers', () => {
   })
 
   it('lists and selects the Codex subscription when it is available', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'), { codexImage: true })
     await openMedia()
     const labels = (await optionsOf('Image generation')).map((option) => option.label)
@@ -1011,7 +1011,7 @@ describe('media providers', () => {
   })
 
   it('shows the key rows once a key provider is picked, and saves the pick', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openMedia()
     const keyProvider = (await optionsOf('Image analysis'))[1]!.label
@@ -1080,7 +1080,7 @@ describe('saving', () => {
   })
 
   it('a key pane save does not undo a selection made while its draft was open', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'ready'))
     await openModal()
     await openAiSection()
@@ -1115,7 +1115,7 @@ describe('without the main-process handlers', () => {
   }
 
   it('treats rejected calls as "still checking" and stays usable', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const rejected = (channel: string) => () =>
       Promise.reject(new Error(`No handler registered for '${channel}'`))
     window.aiOfficeSubscription = {
@@ -1146,7 +1146,7 @@ describe('without the main-process handlers', () => {
   })
 
   it('renders when the preload exposes no subscription bridge at all', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     delete window.aiOfficeSubscription
     await openModal()
     expect(host.querySelectorAll('.set-field[data-provider]')).toHaveLength(2)
@@ -1157,7 +1157,7 @@ describe('without the main-process handlers', () => {
   })
 
   it('survives a bridge whose event subscription throws', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     const subscription = installSubscription(statusMap('ready', 'ready'))
     subscription.onChanged.mockImplementation(() => {
       throw new Error('no event source')
@@ -1170,7 +1170,7 @@ describe('without the main-process handlers', () => {
   })
 
   it('renders the AI section when the settings cannot be read', async () => {
-    installHome(defaultAiSettings())
+    installHome(upstreamAiSettings())
     ;(window.aiOffice as unknown as { getAiSettings: () => Promise<never> }).getAiSettings = () =>
       Promise.reject(new Error("No handler registered for 'ai:get-settings'"))
     installSubscription(statusMap('ready', 'ready'))

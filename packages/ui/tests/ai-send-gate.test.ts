@@ -17,6 +17,7 @@ import {
   withAiSubscriptionNoticeSeen,
   type AiSendGate,
 } from '../src/ai-send-gate'
+import { upstreamAiSettings } from './cheil-upstream-defaults'
 
 const status = (
   provider: AiSubscriptionProviderId,
@@ -33,7 +34,7 @@ const statuses = (
 })
 
 const settingsWith = (patch: Partial<AiSettings> = {}): AiSettings => ({
-  ...defaultAiSettings(),
+  ...upstreamAiSettings(),
   ...patch,
 })
 
