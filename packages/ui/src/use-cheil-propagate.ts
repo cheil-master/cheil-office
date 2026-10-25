@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { cheilCardChangeNote, cheilChangeCounts, type CheilPropagatePair } from './cheil-fields'
+import { cheilTemplateNote } from './cheil-my-template'
 
 /** how long a document just opened may take to load before the change goes in anyway */
 const LOAD_TRIES = 100
@@ -29,19 +30,24 @@ export function useCheilPropagate(options: {
       globalThis as {
         aiOfficeUserSkills?: {
           onCheilPropagate?: (
-            apply: (pairs: CheilPropagatePair[]) => Promise<number[]>,
+            apply: (pairs: CheilPropagatePair[], purpose: 'card' | 'template') => Promise<number[]>,
           ) => () => void
         }
       }
     ).aiOfficeUserSkills
     if (!bridge?.onCheilPropagate) return
-    return bridge.onCheilPropagate(async (pairs) => {
+    return bridge.onCheilPropagate(async (pairs, purpose) => {
       let tries = 0
       while (ref.current.loaded && !ref.current.loaded() && tries++ < LOAD_TRIES) {
         await new Promise((resolve) => setTimeout(resolve, LOAD_WAIT_MS))
       }
       const counts = await ref.current.apply(pairs)
-      ref.current.note(cheilCardChangeNote(ref.current.lang, cheilChangeCounts(pairs, counts)))
+      const items = cheilChangeCounts(pairs, counts)
+      ref.current.note(
+        purpose === 'template'
+          ? cheilTemplateNote(ref.current.lang, items)
+          : cheilCardChangeNote(ref.current.lang, items),
+      )
       return counts
     })
   }, [])

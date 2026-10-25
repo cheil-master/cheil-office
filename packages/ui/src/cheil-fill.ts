@@ -23,6 +23,8 @@ export const CHEIL_FILL_SKILLS: ReadonlySet<string> = new Set([
   'cheil-meeting-notes',
   'cheil-pitch-analysis',
   'cheil-media-plan',
+  // Cheil fork (plan item 13): the person's own templates share one skill
+  'cheil-my-template',
 ])
 
 /** The Cheil template skill a request's chips name, or null */

@@ -2733,6 +2733,64 @@ html[dir='rtl'] .quick-title-row {
   }
 }
 
+/* plan item 13: the campaigns in Obsidian */
+.cheil-obsidian {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.cheil-obsidian-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* plan item 13: the person's own templates */
+.cheil-mine-mark {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--badge-bg);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.cheil-blank-rows {
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.cheil-blank-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.cheil-blank-row.is-off .cheil-blank-find,
+.cheil-blank-row.is-off input:not([type='checkbox']) {
+  opacity: 0.5;
+}
+
+.cheil-blank-find {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.cheil-blank-arrow,
+.cheil-blank-count {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.cheil-blank-add {
+  margin-top: 10px;
+}
+
 /* plan items 6, 7: mail drafts */
 .cheil-mail-row {
   display: flex;

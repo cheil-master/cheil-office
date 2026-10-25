@@ -63,6 +63,8 @@ export interface CampaignStoreDeps {
   /** write a whole file so a crash leaves the old one or the new one */
   writeFile(path: string, bytes: Uint8Array): Promise<void>
   now(): Date
+  /** plan item 13: a campaign's card or timeline was written (its Obsidian notes follow) */
+  onChange?(id: string): void
 }
 
 const fail = (reason: 'not-found' | 'invalid' | 'failed') => ({ ok: false as const, reason })
@@ -304,10 +306,12 @@ export function createCampaignStore(deps: CampaignStoreDeps) {
       join(folderOf(id), CAMPAIGN_FILE),
       encoder.encode(`${JSON.stringify(file, null, 2)}\n`),
     )
+    deps.onChange?.(id)
   }
 
   async function appendEvent(id: string, event: CampaignEvent): Promise<void> {
     await appendFile(join(folderOf(id), TIMELINE_FILE), `${JSON.stringify(event)}\n`, 'utf8')
+    deps.onChange?.(id)
   }
 
   async function detailOf(id: string): Promise<CampaignDetail | null> {

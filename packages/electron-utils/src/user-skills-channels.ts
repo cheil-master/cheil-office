@@ -42,6 +42,8 @@ export interface CheilPropagatePair {
 export interface CheilPropagateRequest {
   requestId: string
   pairs: CheilPropagatePair[]
+  /** plan item 13: values turned into blanks for the person's own template, not a card change */
+  purpose?: 'card' | 'template'
 }
 
 /** What an editor reports: the campaign card's fill, or the one-call quick fill */

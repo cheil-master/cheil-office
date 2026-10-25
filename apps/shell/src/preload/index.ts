@@ -888,9 +888,19 @@ const cheilCampaignApi: CheilCampaignApi = {
   openFolder: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openFolder, id),
   openHistory: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openHistory, id),
   openSet: (id, items) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openSet, id, items),
-  addTasks: (id, tasks) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.addTasks, id, tasks),
+  addTasks: (id, tasks, mail) =>
+    ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.addTasks, id, tasks, mail),
+  obsidian: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidian),
+  obsidianPick: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidianPick),
+  obsidianClear: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidianClear),
   documents: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.documents, id),
   mailDrafted: (id, draft) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.mailDrafted, id, draft),
+  myTemplates: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplates),
+  myTemplateAdd: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplateAdd),
+  myTemplateApply: (name, pairs) =>
+    ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplateApply, name, pairs),
+  myTemplateDiscard: (name) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplateDiscard, name),
+  myTemplateOpen: (name) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplateOpen, name),
   async aiChat(request) {
     const raw = ((await ipcRenderer.invoke('ai:chat', request).catch((e: unknown) => ({
       ok: false,

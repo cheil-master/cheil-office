@@ -464,6 +464,14 @@ export { useCheilPropagate } from './use-cheil-propagate'
 // Cheil fork: to-dos from a received mail (plan item 3)
 export { buildCheilTaskPrompt, parseCheilTasks } from './cheil-mail'
 export type { CheilMailTask } from './cheil-mail'
+// Cheil fork: a report becomes the person's own template (plan item 13)
+export {
+  cheilBlankForLabel,
+  cheilBlankOf,
+  cheilTemplateNote,
+  findCheilTemplateBlanks,
+} from './cheil-my-template'
+export type { CheilBlankCandidate, CheilBlankKind } from './cheil-my-template'
 // Cheil fork: mail drafts from a campaign (plan items 6, 7)
 export {
   CHEIL_MAIL_AUDIENCES,

@@ -13,6 +13,8 @@ import {
   isCampaignId,
 } from '../src/main/cheil/campaign-store'
 import { registerCheilCampaignIpc } from '../src/main/cheil/campaign-ipc'
+import { createObsidianLink } from '../src/main/cheil/obsidian'
+import { createMyTemplates } from '../src/main/cheil/my-templates'
 import { CHEIL_CAMPAIGN_CHANNELS } from '../src/shared/cheil-campaign-api'
 import {
   CHEIL_PROPAGATED_CHANNEL,
@@ -238,6 +240,11 @@ describe('Cheil fork: campaign channels', () => {
       reopen: async () => null,
       showHome: () => undefined,
       documentNames: async () => ['크리에이티브 브리프.docx', '캠페인 제안서.pptx'],
+      myTemplates: createMyTemplates({ root: () => join(root, '..', 'Cheil 양식') }),
+      pickDocument: async () => null,
+      obsidian: noObsidian(),
+      pickFolder: async () => null,
+      nowIso: () => '2026-10-26T00:00:00.000Z',
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
@@ -575,6 +582,11 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
       },
       showHome,
       documentNames: async () => [],
+      myTemplates: createMyTemplates({ root: () => join(root, '..', 'Cheil 양식') }),
+      pickDocument: async () => null,
+      obsidian: noObsidian(),
+      pickFolder: async () => null,
+      nowIso: () => '2026-10-26T00:00:00.000Z',
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
@@ -747,3 +759,13 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
     expect(same).not.toHaveProperty('propagation')
   })
 })
+
+/** an Obsidian link with no vault set: it writes nothing */
+function noObsidian() {
+  return createObsidianLink({
+    settingsPath: () => join(tmpdir(), 'cheil-no-vault', 'none.json'),
+    readText: async () => null,
+    campaign: async () => null,
+    documents: async () => [],
+  })
+}

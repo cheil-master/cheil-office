@@ -41,6 +41,12 @@ import {
 } from '../../shared/cheil-campaign-api'
 import type { CampaignStore } from './campaign-store'
 import { REOPEN_MAX } from './campaign-files'
+import { isMyTemplateName, type MyTemplates } from './my-templates'
+import type { ObsidianLink } from './obsidian'
+import {
+  cheilBlankOf,
+  findCheilTemplateBlanks,
+} from '../../../../../packages/ui/src/cheil-my-template'
 
 export interface CheilCampaignIpcDeps {
   ipc: Pick<IpcMain, 'handle'>
@@ -80,6 +86,16 @@ export interface CheilCampaignIpcDeps {
   showHome(): void
   /** Plan items 6, 7: the file names of the campaign's documents, open or not */
   documentNames(campaignId: string): Promise<string[]>
+  /** Plan item 13: the person's own templates */
+  myTemplates: MyTemplates
+  /** a Word, PowerPoint or Excel file the person picks; null when they close the dialog */
+  pickDocument(): Promise<string | null>
+  /** plan item 13: the campaigns as Obsidian notes */
+  obsidian: ObsidianLink
+  /** a folder the person picks; null when they close the dialog */
+  pickFolder(): Promise<string | null>
+  /** ISO time now */
+  nowIso(): string
 }
 
 /** An open tab of a campaign's document: its webContents id, title, and a way to message it */
@@ -149,6 +165,8 @@ export function campaignRecordText(title: string, raw: unknown): string | null {
 }
 
 const SUBJECT_MAX = 200
+/** the longest mail kept in a mail note */
+const MAIL_MAX = 20_000
 
 /** The timeline line for a mail draft the person copied; null for one that is not */
 export function campaignMailText(raw: unknown): string | null {
@@ -167,8 +185,31 @@ export function campaignMailText(raw: unknown): string | null {
   return `메일 초안(${kind})${title ? `: ${title}` : ''}`
 }
 
+/** a set item naming one of the person's own templates: "mine:<file name>" */
+export const MINE = 'mine:'
+
+/** most values one template takes, and the longest one */
+const BLANKS_MAX = 200
+const FIND_MAX = 200
+
+/** The value → blank pairs the screen sent, checked; null when unusable */
+export function myTemplatePairsOf(raw: unknown): CheilPropagatePair[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > BLANKS_MAX) return null
+  const pairs: CheilPropagatePair[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') return null
+    const { find, blank } = entry as Record<string, unknown>
+    if (typeof find !== 'string' || find.trim().length < 2 || find.length > FIND_MAX) return null
+    const to = typeof blank === 'string' ? cheilBlankOf(blank) : null
+    if (!to || find.includes('[')) return null
+    if (pairs.some((p) => p.find === find.trim())) return null
+    pairs.push({ label: to, from: find.trim(), to, find: find.trim() })
+  }
+  return pairs
+}
+
 /** most templates one set opens, and the longest title and request taken */
-const SET_MAX = 6
+const SET_MAX = 10
 const TITLE_MAX = 100
 const TEXT_MAX = 4_000
 
@@ -179,7 +220,12 @@ export function campaignSetItemsOf(raw: unknown): CampaignSetItem[] | null {
   for (const entry of raw) {
     if (!entry || typeof entry !== 'object') return null
     const { skill, title, text } = entry as Record<string, unknown>
-    if (typeof skill !== 'string' || !CHEIL_FILL_SKILLS.has(skill)) return null
+    // a Cheil template, or one of the person's own (plan item 13: "mine:<file name>")
+    const known =
+      typeof skill === 'string' &&
+      (CHEIL_FILL_SKILLS.has(skill) ||
+        (skill.startsWith(MINE) && isMyTemplateName(skill.slice(MINE.length))))
+    if (!known) return null
     if (typeof title !== 'string' || !title.trim() || title.length > TITLE_MAX) return null
     if (typeof text !== 'string' || text.length > TEXT_MAX) return null
     if (items.some((item) => item.skill === skill)) return null
@@ -218,7 +264,13 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
     })
 
   /** Send one tab the pairs once it listens; what it changed, or not answered within `ms` */
-  const reach = (tab: CampaignTab, pairs: CheilPropagatePair[], ms: number, reopened = false) =>
+  const reach = (
+    tab: CampaignTab,
+    pairs: CheilPropagatePair[],
+    ms: number,
+    reopened = false,
+    purpose: 'card' | 'template' = 'card',
+  ) =>
     new Promise<CampaignPropagation['tabs'][number]>((resolve) => {
       const requestId = `p${++requests}-${tab.senderId}`
       let settled = false
@@ -239,7 +291,11 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       void whenListening(tab.senderId, ms).then((ok) => {
         if (!ok || settled) return done(null)
         try {
-          tab.send(CHEIL_PROPAGATE_CHANNEL, { requestId, pairs })
+          tab.send(CHEIL_PROPAGATE_CHANNEL, {
+            requestId,
+            pairs,
+            ...(purpose === 'template' ? { purpose } : {}),
+          })
         } catch {
           done(null)
         }
@@ -396,6 +452,11 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
     homeOnly(async (id: unknown, rawItems: unknown) => {
       const items = campaignSetItemsOf(rawItems)
       if (!items) return { ok: false as const, reason: 'invalid' as const }
+      // plan item 13: one of the person's own templates must be there
+      const mine = new Set((await deps.myTemplates.list()).map((t) => t.name))
+      if (items.some((i) => i.skill.startsWith(MINE) && !mine.has(i.skill.slice(MINE.length)))) {
+        return { ok: false as const, reason: 'invalid' as const }
+      }
       const found = await store.get(id)
       if (!found.ok) return found
       const { card } = found.campaign
@@ -429,7 +490,7 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
   // plan item 4 → 3: to-dos the person confirmed from a pasted mail
   ipc.handle(
     CHEIL_CAMPAIGN_CHANNELS.addTasks,
-    homeOnly(async (id: unknown, rawTasks: unknown) => {
+    homeOnly(async (id: unknown, rawTasks: unknown, mail: unknown) => {
       const tasks = campaignTasksOf(rawTasks)
       if (!tasks) return { ok: false as const, reason: 'invalid' as const }
       let last: Awaited<ReturnType<CampaignStore['record']>> | null = null
@@ -440,6 +501,17 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
           ...(t.due ? { due: t.due } : {}),
         })
         if (!last.ok) return last
+      }
+      // plan item 13: the mail goes into the campaign's mail note
+      if (last?.ok && typeof mail === 'string' && mail.length <= MAIL_MAX) {
+        await deps.obsidian
+          .appendMail(last.campaign.id, {
+            kind: 'received',
+            title: '',
+            text: mail,
+            at: deps.nowIso(),
+          })
+          .catch(() => false)
       }
       return last?.ok
         ? { ok: true as const, added: tasks.length, campaign: last.campaign }
@@ -461,7 +533,102 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
     homeOnly(async (id: unknown, raw: unknown) => {
       const text = campaignMailText(raw)
       if (!text) return { ok: false as const, reason: 'invalid' as const }
-      return store.record(id as string, { kind: 'mail', text })
+      const recorded = await store.record(id as string, { kind: 'mail', text })
+      const { subject, body } = raw as { subject: string; body?: unknown }
+      if (recorded.ok && typeof body === 'string' && body.length <= MAIL_MAX) {
+        await deps.obsidian
+          .appendMail(recorded.campaign.id, {
+            kind: 'draft',
+            title: subject,
+            text: body,
+            at: deps.nowIso(),
+          })
+          .catch(() => false)
+      }
+      return recorded
+    }),
+  )
+  // plan item 13: the person's own templates
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.myTemplates,
+    homeOnly(async () => ({ ok: true as const, templates: await deps.myTemplates.list() })),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.myTemplateAdd,
+    homeOnly(async () => {
+      const source = await deps.pickDocument().catch(() => null)
+      if (!source) return { ok: false as const, reason: 'canceled' as const }
+      const added = await deps.myTemplates.add(source).catch(() => null)
+      if (!added) return { ok: false as const, reason: 'failed' as const }
+      // a file still under DRM or a password reads as nothing: it is not kept
+      const text = await deps.readText(added.path).catch(() => null)
+      if (text === null || !text.trim()) {
+        await deps.myTemplates.remove(added.name).catch(() => false)
+        return { ok: false as const, reason: 'unreadable' as const }
+      }
+      // the report itself, as a note in Obsidian (before any value becomes a blank)
+      await deps.obsidian
+        .writeTemplateSource(added.name.replace(/\.[^.]+$/, ''), source, text)
+        .catch(() => false)
+      return { ok: true as const, name: added.name, candidates: findCheilTemplateBlanks(text) }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.myTemplateApply,
+    homeOnly(async (name: unknown, rawPairs: unknown) => {
+      const path = deps.myTemplates.pathOf(name)
+      const pairs = myTemplatePairsOf(rawPairs)
+      if (!path || !pairs) return { ok: false as const, reason: 'invalid' as const }
+      const tab = await deps.reopen(path).catch(() => null)
+      if (!tab) return { ok: false as const, reason: 'failed' as const }
+      const reached = await reach(tab, pairs, REOPEN_TIMEOUT_MS, false, 'template')
+      return {
+        ok: true as const,
+        answered: reached.answered,
+        changed: reached.items.reduce((sum, item) => sum + item.count, 0),
+      }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.myTemplateDiscard,
+    homeOnly(async (name: unknown): Promise<CampaignResult> =>
+      (await deps.myTemplates.remove(name).catch(() => false))
+        ? { ok: true }
+        : { ok: false, reason: 'not-found' },
+    ),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.myTemplateOpen,
+    homeOnly(async (name: unknown): Promise<CampaignResult> => {
+      const path = deps.myTemplates.pathOf(name)
+      if (!path) return refused
+      return deps.openDocument(path) ? { ok: true } : { ok: false, reason: 'failed' }
+    }),
+  )
+  // plan item 13: the Obsidian vault
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.obsidian,
+    homeOnly(async () => ({ ok: true as const, vault: await deps.obsidian.vault() })),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.obsidianPick,
+    homeOnly(async () => {
+      const folder = await deps.pickFolder().catch(() => null)
+      if (!folder) return { ok: false as const, reason: 'canceled' as const }
+      await deps.obsidian.setVault(folder)
+      const listed = await store.list()
+      let written = 0
+      for (const c of listed.ok ? listed.campaigns : []) {
+        if (await deps.obsidian.syncCampaign(c.id)) written++
+      }
+      return { ok: true as const, vault: folder, written }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.obsidianClear,
+    homeOnly(async (): Promise<CampaignResult> => {
+      await deps.obsidian.setVault(null)
+      return { ok: true }
     }),
   )
   // plan item 3: an editor tab a set opened reports a fill it finished; any other tab is ignored

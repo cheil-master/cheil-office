@@ -208,16 +208,29 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
       place: { dir: string; title: string },
       cheil?: SkillHandoff['cheil'],
     ): Promise<UserSkillsResult<{ tabId: string; path: string }>> {
-      const { openFile, fileExists } = deps
-      if (!openFile || !fileExists) return fail('failed')
       const template = await deps.templateFileOf(input.skillId)
       if (!template.ok) return template
-      const extension = extname(template.fileName).toLowerCase()
-      const editor = handoffEditorForFile(template.fileName)
+      return this.openSourceFile(template, input, place, cheil)
+    },
+
+    /**
+     * Cheil fork (plan item 13): the same, from any template file (one of the
+     * person's own in "Cheil 양식") rather than a skill's
+     */
+    async openSourceFile(
+      source: { path: string; fileName: string },
+      input: UserSkillTemplateOpenInput,
+      place: { dir: string; title: string },
+      cheil?: SkillHandoff['cheil'],
+    ): Promise<UserSkillsResult<{ tabId: string; path: string }>> {
+      const { openFile, fileExists } = deps
+      if (!openFile || !fileExists) return fail('failed')
+      const extension = extname(source.fileName).toLowerCase()
+      const editor = handoffEditorForFile(source.fileName)
       if (!editor) return fail('bad-template')
       let bytes: Uint8Array
       try {
-        bytes = await deps.readFile(template.path)
+        bytes = await deps.readFile(source.path)
       } catch {
         return fail('no-template')
       }

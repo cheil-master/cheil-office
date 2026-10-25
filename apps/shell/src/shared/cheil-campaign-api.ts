@@ -27,6 +27,16 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   /** plan items 6, 7: the folder's document names, and a mail draft the person took */
   documents: 'cheil:campaign-documents',
   mailDrafted: 'cheil:campaign-mail-drafted',
+  /** plan item 13: the person's own templates in "Cheil 양식" */
+  myTemplates: 'cheil:my-templates-list',
+  myTemplateAdd: 'cheil:my-template-add',
+  myTemplateApply: 'cheil:my-template-apply',
+  myTemplateDiscard: 'cheil:my-template-discard',
+  myTemplateOpen: 'cheil:my-template-open',
+  /** plan item 13: the campaigns as notes in the person's Obsidian vault */
+  obsidian: 'cheil:obsidian-get',
+  obsidianPick: 'cheil:obsidian-pick',
+  obsidianClear: 'cheil:obsidian-clear',
   /** from an editor tab (plan item 3); the same name as electron-utils' CHEIL_RECORD_CHANNEL */
   record: 'cheil:campaign-record',
 } as const
@@ -51,6 +61,22 @@ export interface CampaignPropagation {
   left?: string[]
 }
 
+/** One of the person's own templates (plan item 13) */
+export interface MyTemplate {
+  /** the file name in "Cheil 양식" */
+  name: string
+  title: string
+  updatedAt: string
+}
+
+/** A value of an added report that may become a blank: what the rules found */
+export interface MyTemplateCandidate {
+  find: string
+  blank: string
+  kind: 'field' | 'money' | 'rate' | 'date'
+  count: number
+}
+
 /** A mail draft the person copied (plan items 6, 7), for its timeline line */
 export interface CampaignMailDraft {
   /** situation, audience and strength codes (`send`, `client`, `firm`, ...) */
@@ -58,6 +84,8 @@ export interface CampaignMailDraft {
   audience: string
   strength: string
   subject: string
+  /** the body, for the campaign's mail note in Obsidian (plan item 13) */
+  body?: string
 }
 
 /** A to-do read from a received mail, as the person confirmed it (plan item 3) */
@@ -154,6 +182,10 @@ export type CampaignFailReason =
   | 'invalid'
   /** the disk refused */
   | 'failed'
+  /** the person closed the file dialog */
+  | 'canceled'
+  /** the file's text could not be read (DRM, a password, a broken file) */
+  | 'unreadable'
 
 export type CampaignResult<T = object> =
   ({ ok: true } & T) | { ok: false; reason: CampaignFailReason }
@@ -189,7 +221,34 @@ export interface CheilCampaignApi {
   addTasks(
     id: string,
     tasks: CampaignTask[],
+    /** the mail they came from, for the campaign's mail note in Obsidian (plan item 13) */
+    mail?: string,
   ): Promise<CampaignResult<{ added: number; campaign: CampaignDetail }>>
+  /** Plan item 13: the Obsidian vault the campaigns are written into, if any */
+  obsidian(): Promise<CampaignResult<{ vault: string | null }>>
+  /** Plan item 13: pick the vault folder (a dialog); every campaign is written into it */
+  obsidianPick(): Promise<CampaignResult<{ vault: string | null; written: number }>>
+  /** Plan item 13: stop writing into the vault (the notes already there stay) */
+  obsidianClear(): Promise<CampaignResult>
+  /** Plan item 13: the person's own templates, the last saved first */
+  myTemplates(): Promise<CampaignResult<{ templates: MyTemplate[] }>>
+  /**
+   * Plan item 13: pick a report (a file dialog), copy it into "Cheil 양식"
+   * and find the values that may become blanks; nothing is changed yet
+   */
+  myTemplateAdd(): Promise<CampaignResult<{ name: string; candidates: MyTemplateCandidate[] }>>
+  /**
+   * Plan item 13: open the copy in its editor and turn each value into its
+   * blank everywhere (one undo step, not saved: the person checks and saves)
+   */
+  myTemplateApply(
+    name: string,
+    pairs: Array<{ find: string; blank: string }>,
+  ): Promise<CampaignResult<{ answered: boolean; changed: number }>>
+  /** Plan item 13: drop a copy the person decided not to keep */
+  myTemplateDiscard(name: string): Promise<CampaignResult>
+  /** Plan item 13: open a template itself, to edit it */
+  myTemplateOpen(name: string): Promise<CampaignResult>
   /** Plan items 6, 7: the Word, PowerPoint and Excel files in the campaign's folder */
   documents(id: string): Promise<CampaignResult<{ names: string[] }>>
   /** Plan items 6, 7: a mail draft the person copied goes into the timeline */

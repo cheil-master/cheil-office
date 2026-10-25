@@ -119,7 +119,9 @@ export interface UserSkillsBridge {
    * pairs in this tab's document and returns how many places each changed.
    * The shell hears that the tab listens, and that it stopped.
    */
-  onCheilPropagate(apply: (pairs: CheilPropagatePair[]) => Promise<number[]>): () => void
+  onCheilPropagate(
+    apply: (pairs: CheilPropagatePair[], purpose: 'card' | 'template') => Promise<number[]>,
+  ): () => void
 }
 
 const unavailable = { ok: false as const, reason: 'failed' as const }
@@ -231,7 +233,7 @@ export function userSkillsBridge(): UserSkillsBridge {
             p.find.length > 0,
         )
         if (pairs.length !== request.pairs.length) return
-        void apply(pairs)
+        void apply(pairs, request.purpose === 'template' ? 'template' : 'card')
           .catch(() => pairs.map(() => 0))
           .then((counts) =>
             ipcRenderer.invoke(CHEIL_PROPAGATED_CHANNEL, {

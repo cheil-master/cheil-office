@@ -4,6 +4,7 @@ import logoLockup from './assets/genoffice-logo.svg'
 import { KbAskPanel } from './KbAskPanel'
 import { AgencyTemplates } from './cheil/AgencyTemplates'
 import { MyCampaigns } from './cheil/MyCampaigns'
+import { MyTemplates } from './cheil/MyTemplates'
 import { localEngineView } from './cheil/local-engine'
 import { useAiSettings } from './FreeAiCards'
 import iconDocx from './assets/file-docx.svg'
@@ -2944,6 +2945,8 @@ export function Home({
         </section>
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        {/* Cheil fork: the person's own templates (plan item 13) */}
+        <MyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
         {/* Cheil fork: the campaigns, each with its card and timeline */}
         <MyCampaigns />
 
@@ -3073,6 +3076,8 @@ export function Home({
         </section>
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        {/* Cheil fork: the person's own templates (plan item 13) */}
+        <MyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
         {/* Cheil fork: the campaigns, each with its card and timeline */}
         <MyCampaigns />
 

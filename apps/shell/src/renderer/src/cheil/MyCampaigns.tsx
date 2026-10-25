@@ -44,6 +44,7 @@ import {
   type CampaignSetItem,
   type CampaignTask,
   type CampaignSummary,
+  type MyTemplate,
   type CheilCampaignApi,
   type CheilCampaignCard,
 } from '../../../shared/cheil-campaign-api'
@@ -111,6 +112,14 @@ const WORDS = {
     setDesc:
       '고른 양식이 캠페인 폴더에 파일로 만들어져 새 탭으로 열리고, 카드의 광고주·캠페인명·기간·예산·타깃·KPI가 공통 칸에 바로 들어갑니다(AI 없이). 저장하면 그 파일에 저장됩니다. 나머지 칸은 각 탭에서 자료를 붙여 보내면 채웁니다.',
     setOpen: (n: number) => `선택한 양식 열기 (${n})`,
+    mineMark: '내 양식',
+    obsidianOff: '옵시디언 연결',
+    obsidianOn: (folder: string) => `옵시디언: ${folder}`,
+    obsidianTitle:
+      '고른 옵시디언 볼트의 Cheil 폴더에 캠페인마다 카드·타임라인·문서·주고받은 메일 노트를 씁니다(이 PC 안의 폴더). 누르면 끊습니다.',
+    obsidianDone: (n: number) => `옵시디언 볼트에 캠페인 ${n}개를 썼습니다.`,
+    obsidianCleared: '옵시디언 연결을 끊었습니다. 이미 쓴 노트는 그대로 있습니다.',
+    mineRequest: '이 양식의 [칸]을 첨부한 자료로 채워 줘. 자료에 없는 것은 [확인 필요]로 남겨 줘.',
     setOpened: (n: number) =>
       `양식 ${n}개를 캠페인 폴더에 만들어 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
     propTitle: '카드 변경을 캠페인 문서에 반영했습니다',
@@ -174,6 +183,9 @@ const WORDS = {
       'not-found': '캠페인 폴더를 찾지 못했습니다. 폴더 이름이 바뀌었거나 지워졌을 수 있습니다.',
       invalid: '입력한 내용을 저장할 수 없습니다. 길이와 날짜를 확인해 주세요.',
       failed: '저장하지 못했습니다. 문서 폴더에 쓸 수 있는지 확인해 주세요.',
+      canceled: '파일을 고르지 않았습니다.',
+      unreadable:
+        '이 파일의 글을 읽지 못했습니다. DRM 이나 암호가 걸려 있으면 풀어서 다시 넣어 주세요.',
     } satisfies Record<CampaignFailReason, string>,
     now: '방금',
     minutes: (n: number) => `${n}분 전`,
@@ -236,6 +248,15 @@ const WORDS = {
     setDesc:
       'The chosen templates are made as files in the campaign’s folder and open in new tabs with the card’s client, campaign, period, budget, target and KPI already in their common blanks (no AI). Saving writes those files. Send your material in each tab to fill the rest.',
     setOpen: (n: number) => `Open the chosen templates (${n})`,
+    mineMark: 'Mine',
+    obsidianOff: 'Link Obsidian',
+    obsidianOn: (folder: string) => `Obsidian: ${folder}`,
+    obsidianTitle:
+      'Writes each campaign’s card, timeline, documents and mails as notes in the Cheil folder of the vault you pick (a folder on this PC). Click to unlink.',
+    obsidianDone: (n: number) => `Wrote ${n} campaigns into the Obsidian vault.`,
+    obsidianCleared: 'Unlinked from Obsidian. The notes already written stay.',
+    mineRequest:
+      'Fill this template’s [blanks] from the attached material. Leave anything it does not have as [확인 필요].',
     setOpened: (n: number) =>
       `Made ${n} templates in the campaign’s folder and opened them; each AI panel has its request waiting.`,
     propTitle: 'The card change went into the campaign’s documents',
@@ -297,6 +318,9 @@ const WORDS = {
       'not-found': 'The campaign folder was not found. It may have been renamed or removed.',
       invalid: 'This cannot be saved. Check the lengths and dates.',
       failed: 'Could not save. Check that the Documents folder can be written.',
+      canceled: 'No file was picked.',
+      unreadable:
+        'The file’s text could not be read. If it has DRM or a password, remove it and add the file again.',
     } satisfies Record<CampaignFailReason, string>,
     now: 'just now',
     minutes: (n: number) => `${n} min ago`,
@@ -413,6 +437,7 @@ export function MyCampaigns() {
     <section className="quick-start cheil-campaigns" aria-label={w.label}>
       <div className="section-head">
         <span className="section-label">{w.label}</span>
+        <ObsidianLink w={w} api={api} />
         <button
           className="cheil-campaign-add"
           data-testid="cheil-campaign-add"
@@ -476,6 +501,68 @@ export function MyCampaigns() {
         />
       ) : null}
     </section>
+  )
+}
+
+/**
+ * Plan item 13: the campaigns as notes in the person's Obsidian vault. One
+ * button: pick the vault (every campaign is written at once and follows every
+ * change), or, once linked, unlink.
+ */
+function ObsidianLink({ w, api }: { w: Words; api: CheilCampaignApi }) {
+  const [vault, setVault] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    let live = true
+    void api
+      .obsidian()
+      .then((res) => live && res.ok && setVault(res.vault))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [api])
+
+  const toggle = async () => {
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    if (vault) {
+      const res = await api.obsidianClear().catch(() => null)
+      if (res?.ok) {
+        setVault(null)
+        setMessage(w.obsidianCleared)
+      }
+    } else {
+      const res = await api.obsidianPick().catch(() => null)
+      if (res?.ok) {
+        setVault(res.vault)
+        setMessage(w.obsidianDone(res.written))
+      }
+    }
+    setBusy(false)
+  }
+
+  const folder = vault ? (vault.split(/[\\/]/).filter(Boolean).pop() ?? vault) : ''
+  return (
+    <span className="cheil-obsidian">
+      {message ? (
+        <span className="cheil-obsidian-note" role="status">
+          {message}
+        </span>
+      ) : null}
+      <button
+        className="cheil-campaign-add"
+        data-testid="cheil-obsidian"
+        title={w.obsidianTitle}
+        disabled={busy}
+        onClick={() => void toggle()}
+      >
+        {vault ? w.obsidianOn(folder) : w.obsidianOff}
+      </button>
+    </span>
   )
 }
 
@@ -636,11 +723,14 @@ function DocumentSet({
   w,
   lang,
   card,
+  mine,
   onOpen,
 }: {
   w: Words
   lang: 'ko' | 'en'
   card: CheilCampaignCard
+  /** plan item 13: the person's own templates */
+  mine: MyTemplate[]
   /** the number of tabs opened, or null when it failed (the view says why) */
   onOpen: (items: CampaignSetItem[]) => Promise<number | null>
 }) {
@@ -664,6 +754,14 @@ function DocumentSet({
       title: tpl.ko.title,
       text: summary ? `${tpl[lang].request.trimEnd()}\n\n${summary}` : tpl[lang].request,
     }))
+    for (const tpl of mine) {
+      if (!chosen.has(`mine:${tpl.name}`)) continue
+      items.push({
+        skill: `mine:${tpl.name}`,
+        title: tpl.title,
+        text: summary ? `${w.mineRequest}\n\n${summary}` : w.mineRequest,
+      })
+    }
     setBusy(true)
     setDone(null)
     const opened = await onOpen(items)
@@ -692,6 +790,21 @@ function DocumentSet({
             {tpl[lang].title}
           </label>
         ))}
+        {mine.map((tpl) => {
+          const skill = `mine:${tpl.name}`
+          return (
+            <label key={skill} className={`cheil-set-option${chosen.has(skill) ? ' is-on' : ''}`}>
+              <input
+                type="checkbox"
+                checked={chosen.has(skill)}
+                data-skill={skill}
+                onChange={() => toggle(skill)}
+              />
+              <span className="cheil-mine-mark">{w.mineMark}</span>
+              {tpl.title}
+            </label>
+          )
+        })}
       </div>
       <div className="cheil-set-foot">
         <button
@@ -727,8 +840,8 @@ function MailTasks({
   w: Words
   api: CheilCampaignApi
   card: CheilCampaignCard
-  /** the number recorded, or null when it failed (the view says why) */
-  onAdd: (tasks: CampaignTask[]) => Promise<number | null>
+  /** the number recorded, or null when it failed (the view says why); the mail goes along */
+  onAdd: (tasks: CampaignTask[], mail: string) => Promise<number | null>
 }) {
   const [mail, setMail] = useState('')
   const [phase, setPhase] = useState<'idle' | 'reading' | 'review'>('idle')
@@ -766,7 +879,10 @@ function MailTasks({
 
   const chosen = rows.filter((r) => r.on && r.task.trim())
   const add = async () => {
-    const added = await onAdd(chosen.map(({ task, owner, due }) => ({ task, owner, due })))
+    const added = await onAdd(
+      chosen.map(({ task, owner, due }) => ({ task, owner, due })),
+      mail,
+    )
     if (added === null) return
     setRows([])
     setMail('')
@@ -1009,7 +1125,7 @@ function MailDraft({
     const copied = await copyText(draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body)
     if (!copied) return
     const res = await api
-      .mailDrafted(id, { situation, audience, strength, subject: draft.subject })
+      .mailDrafted(id, { situation, audience, strength, subject: draft.subject, body: draft.body })
       .catch(() => ({ ok: false as const, reason: 'failed' as const }))
     if (!res.ok) {
       setMessage(w.fail[res.reason])
@@ -1194,7 +1310,20 @@ function CampaignView({
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [mine, setMine] = useState<MyTemplate[]>([])
   useEscape(onClose)
+
+  // plan item 13: the person's own templates join the document set
+  useEffect(() => {
+    let live = true
+    void api
+      .myTemplates()
+      .then((res) => live && res.ok && setMine(res.templates))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [api])
 
   useEffect(() => {
     let live = true
@@ -1286,6 +1415,7 @@ function CampaignView({
             w={w}
             lang={lang}
             card={card}
+            mine={mine}
             onOpen={async (items) => {
               setError('')
               const res = await api
@@ -1310,10 +1440,10 @@ function CampaignView({
             w={w}
             api={api}
             card={card}
-            onAdd={async (tasks) => {
+            onAdd={async (tasks, mail) => {
               setError('')
               const res = await api
-                .addTasks(id, tasks)
+                .addTasks(id, tasks, mail)
                 .catch(() => ({ ok: false as const, reason: 'failed' as const }))
               if (!res.ok) {
                 setError(w.fail[res.reason])

@@ -26,7 +26,12 @@ import {
   shell,
   webContents,
 } from 'electron'
-import type { MenuItemConstructorOptions, NativeImage, WebContents } from 'electron'
+import type {
+  MenuItemConstructorOptions,
+  NativeImage,
+  OpenDialogOptions,
+  WebContents,
+} from 'electron'
 import { atomicCopyFile, atomicWriteFile } from './atomic-write'
 import { tabStripOverlay } from './title-bar-overlay'
 import menuDocxIcon1x from './assets/menu-docx.png?asset'
@@ -109,6 +114,8 @@ import {
   campaignDocumentTitle,
   isCampaignDocumentName,
 } from './cheil/campaign-files'
+import { createMyTemplates } from './cheil/my-templates'
+import { createObsidianLink } from './cheil/obsidian'
 import { cheilToday } from '../../../../packages/ui/src/cheil-fields'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
@@ -7236,10 +7243,35 @@ const cheilCampaignsRoot = (): string =>
     process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
     'Cheil 캠페인',
   )
+// plan item 13: the person's own templates, next to the campaigns
+const cheilMyTemplates = createMyTemplates({
+  root: () =>
+    process.env.CHEIL_TEMPLATES_DIR ||
+    join(
+      process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
+      'Cheil 양식',
+    ),
+})
 const cheilCampaigns = createCampaignStore({
   root: cheilCampaignsRoot,
   writeFile: (path, bytes) => atomicWriteFile(path, bytes),
   now: () => new Date(),
+  // plan item 13: the campaign's Obsidian notes follow every change
+  onChange: (id) => cheilObsidian.schedule(id),
+})
+/** read a document's text, null when it cannot be read (DRM, a password, a broken file) */
+const cheilReadText = async (path: string): Promise<string | null> => {
+  const parsed = await parseFileToText(path)
+  return parsed.ok && parsed.kind === 'text' ? (parsed.text ?? '') : null
+}
+const cheilObsidian = createObsidianLink({
+  settingsPath: () => join(app.getPath('userData'), 'cheil-settings.json'),
+  readText: cheilReadText,
+  campaign: async (id) => {
+    const found = await cheilCampaigns.get(id)
+    return found.ok ? found.campaign : null
+  },
+  documents: async (id) => cheilCampaignDocuments(id).map(({ path, title }) => ({ path, title })),
 })
 /** plan item 5: the tab or detached window showing a file, if one does */
 const cheilTabOfPath = (path: string) =>
@@ -7287,6 +7319,25 @@ registerCheilCampaignIpc({
   openTemplate: async (item, cheil, campaignId) => {
     const dir = cheilCampaigns.folderOf(campaignId)
     if (!dir) return false
+    // plan item 13: one of the person's own templates, with the shared Cheil fill skill's chip
+    if (item.skill.startsWith('mine:')) {
+      const fileName = item.skill.slice('mine:'.length)
+      const path = cheilMyTemplates.pathOf(fileName)
+      if (!path) return false
+      const skillId = 'builtin:cheil-my-template'
+      const opened = await templateTabs.openSourceFile(
+        { path, fileName },
+        {
+          skillId,
+          text: item.text,
+          chips: [{ id: skillId, source: 'builtin', title: item.title }],
+          prefill: true,
+        },
+        { dir, title: item.title },
+        cheil,
+      )
+      return opened.ok
+    }
     const skillId = `builtin:${item.skill}`
     const opened = await templateTabs.openTemplateFile(
       {
@@ -7319,10 +7370,7 @@ registerCheilCampaignIpc({
     cheilCampaignDocuments(campaignId).flatMap(({ path, title, tab }) =>
       tab ? [] : [{ path, title }],
     ),
-  readText: async (path) => {
-    const parsed = await parseFileToText(path)
-    return parsed.ok && parsed.kind === 'text' ? (parsed.text ?? '') : null
-  },
+  readText: cheilReadText,
   reopen: async (path) => {
     if (!openDocumentPath(path)) return null
     const tab = cheilTabOfPath(path)
@@ -7330,6 +7378,28 @@ registerCheilCampaignIpc({
   },
   showHome: () => tabManager?.openHomeTab(),
   documentNames: async (campaignId) => cheilCampaignDocuments(campaignId).map((doc) => doc.name),
+  myTemplates: cheilMyTemplates,
+  obsidian: cheilObsidian,
+  nowIso: () => new Date().toISOString(),
+  pickFolder: async () => {
+    const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+  pickDocument: async () => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: 'Word · PowerPoint · Excel', extensions: ['docx', 'pptx', 'xlsx'] }],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */
