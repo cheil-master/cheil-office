@@ -94,6 +94,7 @@ import {
   type SheetSnapshot,
   cheilCardFillNote,
   cheilCardSheetWrites,
+  cheilRecordFill,
   type CheilCardFill,
 } from '@genoffice/ui'
 
@@ -1833,6 +1834,7 @@ export function App({
       tools: [],
       streaming: false,
     })
+    cheilRecordFill({ kind: 'card', filled: done })
   }
 
   /**
@@ -1927,6 +1929,13 @@ export function App({
     }
     runToolsRef.current = [...runToolsRef.current, { name: 'cheil_fill', summary: chip.summary }]
     finish(text, false, [chip])
+    // plan item 3: the campaign this tab was opened for (if any) records the fill
+    cheilRecordFill({
+      kind: 'fill',
+      total: plan.slots.length,
+      filled: result.fromMaterial,
+      open: result.open.length,
+    })
   }
 
   const mergeAttachments = (result: AttachmentAddResult | null): void => {

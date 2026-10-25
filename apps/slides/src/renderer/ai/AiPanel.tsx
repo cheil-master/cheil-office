@@ -37,6 +37,7 @@ import {
   parseCheilFillAnswer,
   cheilCardFillNote,
   cheilCardReplacements,
+  cheilRecordFill,
   type CheilCardFill,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
@@ -2050,6 +2051,7 @@ export function AiPanel({
           }),
         },
       ])
+      cheilRecordFill({ kind: 'card', filled: deck ? pairs.length : 0 })
     }
     void attempt()
   }
@@ -2144,6 +2146,13 @@ export function AiPanel({
     runToolsRef.current.push(tool)
     finish({ text, tools: [tool] })
     persistMessage('assistant', text, runToolsRef.current)
+    // plan item 3: the campaign this tab was opened for (if any) records the fill
+    cheilRecordFill({
+      kind: 'fill',
+      total: slots.length,
+      filled: plan.fromMaterial,
+      open: plan.open.length,
+    })
   }
 
   /** One page of a queue submission — runWith's bookkeeping minus the composer and the user bubble */

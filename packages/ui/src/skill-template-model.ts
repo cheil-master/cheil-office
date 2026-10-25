@@ -70,11 +70,29 @@ export interface SkillTemplateBridge {
   ): Promise<unknown>
   takeHandoff(target: TemplateEditor): Promise<unknown>
   focusTab(tabId: string): Promise<unknown>
+  /** Cheil fork (plan item 3): a fill this tab finished, for its campaign's timeline */
+  cheilRecord?(
+    input:
+      | { kind: 'card'; filled: number }
+      | { kind: 'fill'; total: number; filled: number; open: number },
+  ): Promise<void>
   onPreviewEnded(listener: (ended: unknown) => void): () => void
   aiRead(id: string): Promise<unknown>
 }
 
 /** The template calls of this window's skills bridge, or null (tests, an older preload) */
+/**
+ * Cheil fork (plan item 3): report a fill this tab finished. The shell records
+ * it in the campaign the tab was opened for and ignores any other tab, so a
+ * panel can report every fill without knowing whether it belongs to one.
+ */
+export function cheilRecordFill(
+  input: Parameters<NonNullable<SkillTemplateBridge['cheilRecord']>>[0],
+): void {
+  const b = (globalThis as { aiOfficeUserSkills?: Partial<SkillTemplateBridge> }).aiOfficeUserSkills
+  void b?.cheilRecord?.(input).catch(() => undefined)
+}
+
 export function skillTemplateBridge(): SkillTemplateBridge | null {
   const b = (globalThis as { aiOfficeUserSkills?: Partial<SkillTemplateBridge> }).aiOfficeUserSkills
   const calls: Array<keyof SkillTemplateBridge> = [

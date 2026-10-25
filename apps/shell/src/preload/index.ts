@@ -888,6 +888,18 @@ const cheilCampaignApi: CheilCampaignApi = {
   openFolder: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openFolder, id),
   openHistory: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openHistory, id),
   openSet: (id, items) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openSet, id, items),
+  addTasks: (id, tasks) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.addTasks, id, tasks),
+  async aiChat(request) {
+    const raw = ((await ipcRenderer.invoke('ai:chat', request).catch((e: unknown) => ({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    }))) ?? {}) as { ok?: unknown; content?: unknown; error?: unknown }
+    return {
+      ok: raw.ok === true,
+      ...(typeof raw.content === 'string' ? { content: raw.content } : {}),
+      ...(typeof raw.error === 'string' ? { error: raw.error } : {}),
+    }
+  },
 }
 contextBridge.exposeInMainWorld(CHEIL_CAMPAIGN_BRIDGE_KEY, cheilCampaignApi)
 

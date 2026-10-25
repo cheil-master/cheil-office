@@ -23,7 +23,19 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   openFolder: 'cheil:campaign-open-folder',
   openHistory: 'cheil:campaign-open-history',
   openSet: 'cheil:campaign-open-set',
+  addTasks: 'cheil:campaign-add-tasks',
+  /** from an editor tab (plan item 3); the same name as electron-utils' CHEIL_RECORD_CHANNEL */
+  record: 'cheil:campaign-record',
 } as const
+
+/** A to-do read from a received mail, as the person confirmed it (plan item 3) */
+export interface CampaignTask {
+  task: string
+  /** who does it; empty when the mail does not say */
+  owner: string
+  /** YYYY-MM-DD, or empty */
+  due: string
+}
 
 /** One template of a document set: its builtin skill, the chip's title, the waiting request */
 export interface CampaignSetItem {
@@ -134,6 +146,21 @@ export interface CheilCampaignApi {
     id: string,
     items: CampaignSetItem[],
   ): Promise<CampaignResult<{ opened: number; campaign: CampaignDetail }>>
+  /** Plan item 3: to-dos the person confirmed, each a timeline line with its due day */
+  addTasks(
+    id: string,
+    tasks: CampaignTask[],
+  ): Promise<CampaignResult<{ added: number; campaign: CampaignDetail }>>
+  /**
+   * One model call (the shared `ai:chat`: the stored provider, the
+   * confidentiality line), for reading to-dos out of a pasted mail
+   */
+  aiChat(request: {
+    settings: unknown
+    system: string
+    user: string
+    json: boolean
+  }): Promise<{ ok: boolean; content?: string; error?: string }>
 }
 
 export const CHEIL_CAMPAIGN_BRIDGE_KEY = 'aiOfficeCheilCampaigns'

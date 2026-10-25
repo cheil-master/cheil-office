@@ -10,6 +10,17 @@ import { isHandoffEditor, type HandoffEditor } from './handoff-editors'
 /** The renderer-exposed bridge name every window shares */
 export const USER_SKILLS_BRIDGE_KEY = 'aiOfficeUserSkills'
 
+/**
+ * Cheil fork (plan item 3): an editor tab reports a fill it finished; the
+ * shell records it in the campaign the tab was opened for, and ignores a tab
+ * no campaign opened. The tab names no campaign itself.
+ */
+export const CHEIL_RECORD_CHANNEL = 'cheil:campaign-record'
+
+/** What an editor reports: the campaign card's fill, or the one-call quick fill */
+export type CheilRecordInput =
+  { kind: 'card'; filled: number } | { kind: 'fill'; total: number; filled: number; open: number }
+
 export const USER_SKILLS_CHANNELS = {
   list: 'skills:list',
   read: 'skills:read',

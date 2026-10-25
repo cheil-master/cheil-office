@@ -101,7 +101,16 @@
 - 카드에 비어 있는 칸은 그대로 `[칸]`으로 남아 빠른 채우기가 채우거나 `[확인 필요]`로 둔다. 기간의 한쪽만 있으면 다른 쪽은 `[확인 필요]`.
 - 코드: 규칙 `packages/ui/src/cheil-fields.ts`(`cheilCardFillOf` 넘겨주기 읽기, `cheilCardReplacements`, `cheilCardSummary`, `cheilCardFillNote`)·`cheil-sheet-fill.ts`(`cheilCardSheetWrites`), 넘겨주기 `packages/electron-utils/src/generate-handoff.ts`(`SkillHandoff.cheil`)·`packages/ui/src/skill-template-model.ts`·`use-skill-templates.tsx`(`prefill`의 세 번째 인자), 편집기 `fillFromCampaignCard`(워드·PPT `AiPanel.tsx`, 엑셀 `App.tsx`), 뒷단 `campaign-ipc.ts`(`campaignSetItemsOf`), 화면 `MyCampaigns.tsx`의 `DocumentSet`, 양식 목록 `apps/shell/src/renderer/src/cheil/templates.ts`(홈 카드와 함께 씀).
 - 시험: `packages/ui/tests/cheil-card-fill.test.ts`, `skill-template-model.test.ts`의 Cheil 항목, `apps/shell/tests/cheil-campaign-store.test.ts`의 문서 세트 항목, 화면 `e2e/cheil-campaign-set.spec.ts`(브리프·제안서. 미디어 플랜은 엑셀 처리 프로그램이 있는 PC 에서만 돈다).
-- 아직: 저장 위치는 지금처럼 첫 저장 때 묻는다(캠페인 폴더로 바로 저장은 5번 '변경 전파'와 함께). 채운 칸 수를 타임라인에 남기는 일은 3번.
+- 아직: 저장 위치는 지금처럼 첫 저장 때 묻는다(캠페인 폴더로 바로 저장은 5번 '변경 전파'와 함께).
+
+## 5-4. 자동 기록 (공모전 수정 계획 3번, 10-26)
+
+- **채우기 기록**: 캠페인의 문서 세트로 연 탭에서 카드 채우기·빠른 채우기가 끝나면 타임라인에 한 줄이 저절로 남는다("크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움", "…: 빠른 채우기 — 양식 칸 19개 중 17개를 자료로 채움, 2개는 [확인 필요]"). 문서 세트를 열 때는 "문서 세트를 엽니다: …"가 먼저 남고, 열지 못한 양식이 있으면 그 줄도 남는다.
+  - 길: 편집기는 끝난 채우기의 숫자만 보낸다(`cheilRecordFill` → 공용 다리 `aiOfficeUserSkills.cheilRecord` → `cheil:campaign-record`). 뒷단은 **보낸 탭의 webContents** 로 캠페인과 양식 이름을 찾는다(`index.ts`의 `cheilCampaignTabs`, 문서 세트가 연 탭만, 탭이 닫히면 지움). 탭이 캠페인을 지정할 수는 없고, 다른 탭의 보고는 무시한다. 문장은 뒷단이 만든다(`campaignRecordText`).
+  - 열린 캠페인 보기는 3초마다 타임라인을 다시 읽어 탭이 남긴 줄을 보여 준다.
+- **받은 메일 → 할 일**: 캠페인 보기의 '받은 메일 → 할 일'에 메일을 붙여넣고 '할 일 뽑기' → AI 한 번(공용 `ai:chat`, 금지선 검사를 거친다, `json`) → 할 일·담당·마감 목록 → **사람이 고치고 고른 것만** '선택한 할 일 기록'으로 타임라인 '할 일' 줄(마감 표시)이 된다. 기록 전에는 아무것도 남지 않는다. 지시문은 "메일에 적힌 것만, 날짜가 확실하지 않으면 빈칸"(`packages/ui/src/cheil-mail.ts`의 `buildCheilTaskPrompt`), 답은 앱이 다시 검사한다(`parseCheilTasks`: 한 줄, 실재하는 날짜만, 중복 제거, 20개까지). 뒷단도 다시 검사한다(`campaignTasksOf`).
+- 메일 초안·보내기 전 점검·수정 반영(6~10번)의 기록은 그 기능과 함께 같은 길(`record`, 사건 종류 `mail check revise`)로 붙인다.
+- 시험: `packages/ui/tests/cheil-mail.test.ts`, `apps/shell/tests/cheil-campaign-store.test.ts`(탭 보고·다른 탭 무시·잘못된 보고·할 일 기록), 화면 `e2e/cheil-auto-record.spec.ts`(이 PC 의 가짜 OpenAI 호환 서버로 빠른 채우기와 메일 읽기), `e2e/cheil-campaign-set.spec.ts`의 타임라인 줄.
 
 ## 6. 자동 업데이트 끔
 

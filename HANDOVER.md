@@ -60,6 +60,7 @@
 ### 4-0. AI 엔진: 사용자 자신의 API 키 (배포 기준, 10-25)
 
 - `CHEIL.md` 2-0절. 규칙은 `apps/shell/src/renderer/src/cheil/api-keys.ts`(키 저장 = 그 AI 를 고름, 키 지우기 = `auto`로 돌아감, 다른 유료 키로 넘어가지 않음), 화면 `ApiKeyCards.tsx`. Solar 는 `packages/ai-provider`의 `upstage`(OpenAI 호환 `https://api.upstage.ai/v1`).
+- 편집기 AI 창의 '연결 필요' 안내도 API 키가 먼저다([API 키 넣기] → 설정 → AI). 구독·무료 길은 그 아래(`CHEIL.md` 2-0절).
 - **실제 키로는 아직 한 번도 돌리지 않았다**(Claude·GPT·Solar 모두). 가짜 API 서버로 요청 모양(키 헤더, 모델, 한 번 호출, JSON 답 해석)만 확인했다. 사용자가 키를 넣고 브리프·제안서를 한 번씩 채워 봐야 한다. Solar 모델 id(`solar-pro3` 등)도 실제 키로 확인 필요.
 - 금지선은 API 에도 그대로 걸린다(받는 곳이 이 PC 밖). 대외비 표지가 있는 자료는 API 로 안 나간다. 실제 업무 자료에서 얼마나 자주 막히는지는 확인 필요(자주 막히면 8절 11번 "막기 → 고르기" 논의).
 
@@ -148,6 +149,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 
 마지막 결과: AI 연결 패키지 1,223개 중 1,222 통과, 공용 UI 812개 통과, 엑셀 처리 프로그램 시험 32개 통과, Cheil 화면 시험·실제 Ollama 시험 모두 통과.
 알려진 실패(이번 변경과 무관해 보이나 원본에서도 나는지는 확인 안 함): `ai-settings-guard`(Windows 경로 이어 붙이기), 껍데기의 `file-index-scan`·`folder-tree`(Windows 심볼릭 링크 권한), `headless-export` 16개(리눅스식 경로), `default-app`의 리눅스 앱 이름 1개, 부하 중 시간 초과(`detached-windows`, `mcp-http-surface`, `third-party-notices`).
+(10-26 확인) `packages/electron-utils`의 7개(`app-menu` 정보 창의 제품 이름 3, `default-save-dir` 2, `dialog-memory` 2)도 이번 변경 전 코드에서 똑같이 실패한다 — 이름을 Cheil 로 바꾼 뒤 원본 기대값이 남은 것으로 보인다(확인 필요). 셸은 늘 같은 18개(`headless-export` 16, `default-app` 리눅스 1, 부하 때 `detached-windows` 1).
 
 ## 7. 걸리기 쉬운 것
 
@@ -176,7 +178,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 | ---- | -------- | ---- | ----------------- |
 | 1 | 양식 칸 이름 통일 | **끝남(10-25)** | `CHEIL.md` 4절. 공통 칸 10개 사전 `packages/ui/src/cheil-fields.json`, 생성기가 확인 |
 | 2 | 캠페인 이력 | **끝남(10-25)** | `CHEIL.md` 5-2절. `문서\Cheil 캠페인\<광고주> - <캠페인명>\campaign.json`·`timeline.jsonl`, 홈 '내 캠페인' |
-| 3 | 자동 기록 | 할 일 | 캠페인 보기에서 양식을 열 때 넘겨주기(`SkillHandoff`, `packages/electron-utils/src/generate-handoff.ts`)에 캠페인 id 를 실어 편집기가 알게 하고, 빠른 채우기 끝(`runCheilFill` 워드·PPT, `runCheilSheetFill` 엑셀)에서 기록한다. 기록 창구는 지금의 홈 전용 창구와 따로(편집기 webContents 를 확인), 저장은 `campaign-store.ts`의 `record()`(사건 종류 `fill document mail check revise task`는 이미 정의됨). 받은 메일 → 할 일·마감은 `ai:chat` json 한 번 호출 → `kind:'task', due` |
+| 3 | 자동 기록 | **끝남(10-26)** | `CHEIL.md` 5-4절. 문서 세트로 연 탭의 카드 채우기·빠른 채우기가 타임라인에 저절로 남음(탭 → 캠페인은 뒷단이 webContents 로 찾음), 받은 메일 → 할 일·마감(사람이 확인한 것만 기록). 실제 API 키로 메일 읽기는 확인 필요. 메일·점검·수정 반영의 기록은 6~10번과 함께 같은 길로 |
 | 4 | 문서 세트 채우기 | **끝남(10-25)** | `CHEIL.md` 5-3절. 캠페인 보기 '문서 세트 만들기' → 양식마다 새 탭, 카드 값이 공통 칸에 AI 없이, 요청+`[캠페인 카드]`는 보내지 않고 대기, 타임라인 기록. 워드·PPT 화면 시험 통과, **엑셀은 엑셀 처리 프로그램이 있는 PC 에서 `e2e/cheil-campaign-set.spec.ts` 두 번째 시험으로 확인 필요**. 저장 위치(캠페인 폴더)는 5번과 함께 |
 | 5 | 변경 전파 | 할 일 | 카드 수정은 이미 `changes`(바뀐 칸, 전·후 값)로 남는다. 문서마다 어느 칸에 무슨 값을 넣었는지 기록해 두고 그 값을 바꾼다 |
 | 6 | 메일 양식 2종 | 할 일 | 광고주용(합니다체·첨부 요약·다음 일정), 내부용(개조식·요청·마감) 스킬 + 양식 |

@@ -7222,6 +7222,8 @@ const cheilCampaignsRoot = (): string =>
     process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
     'Cheil 캠페인',
   )
+/** plan item 3: editor tabs a campaign's set opened, by webContents id */
+const cheilCampaignTabs = new Map<number, { id: string; title: string }>()
 const cheilCampaigns = createCampaignStore({
   root: cheilCampaignsRoot,
   writeFile: (path, bytes) => atomicWriteFile(path, bytes),
@@ -7235,7 +7237,7 @@ registerCheilCampaignIpc({
   openFolder: (path) => shell.openPath(path),
   openDocument: (path) => openDocumentPath(path),
   // plan item 4: the same path as a home template card, with the card's values for the new tab
-  openTemplate: async (item, cheil) => {
+  openTemplate: async (item, cheil, campaignId) => {
     const skillId = `builtin:${item.skill}`
     const opened = await templateTabs.openTemplate(
       {
@@ -7246,9 +7248,20 @@ registerCheilCampaignIpc({
       },
       cheil,
     )
-    return opened.ok
+    if (!opened.ok) return false
+    // plan item 3: the tab reports its fills to this campaign while it lives
+    const contents = tabManager?.webContentsForTab(opened.tabId)
+    if (contents) {
+      cheilCampaignTabs.set(contents.id, { id: campaignId, title: item.title })
+      contents.once('destroyed', () => cheilCampaignTabs.delete(contents.id))
+    }
+    return true
   },
   today: () => cheilToday(),
+  campaignOfSender: (sender) => {
+    const id = (sender as { id?: unknown } | null)?.id
+    return typeof id === 'number' ? (cheilCampaignTabs.get(id) ?? null) : null
+  },
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */

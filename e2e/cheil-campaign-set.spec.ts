@@ -156,9 +156,15 @@ test('Cheil: a campaign opens a brief and a proposal with the card in their comm
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     const view = page.getByTestId('cheil-campaign-view')
     await expect(view.locator('.cheil-set-done')).toContainText('양식 2개를 새 탭으로 열었습니다')
-    await expect(page.getByTestId('cheil-campaign-timeline').locator('li').first()).toContainText(
-      '문서 세트를 열었습니다: 캠페인 제안서, 크리에이티브 브리프',
-    )
+    // the set's line, then each tab's own card fill (plan item 3), picked up while the view is open
+    const timeline = page.getByTestId('cheil-campaign-timeline')
+    await expect(timeline).toContainText('문서 세트를 엽니다: 캠페인 제안서, 크리에이티브 브리프')
+    await expect(timeline).toContainText('크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움', {
+      timeout: 15_000,
+    })
+    await expect(timeline).toContainText('캠페인 제안서: 캠페인 카드로 공통 칸 8개를 채움', {
+      timeout: 15_000,
+    })
     await page.screenshot({ path: screenshotPath('cheil-campaign-set-home') })
   } finally {
     await closeAndSaveVideo(launched, 'cheil-campaign-set')

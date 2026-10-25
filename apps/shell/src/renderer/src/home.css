@@ -2675,6 +2675,51 @@ html[dir='rtl'] .quick-title-row {
   color: var(--text-secondary);
 }
 
+/* plan item 3: to-dos out of a received mail */
+.cheil-mail-input,
+.cheil-task-row input:not([type='checkbox']) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cheil-mail-input {
+  margin-top: 8px;
+  resize: vertical;
+}
+
+.cheil-task-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cheil-task-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 110px 140px;
+  align-items: center;
+  gap: 6px;
+}
+
+.cheil-task-row.is-off input:not([type='checkbox']) {
+  opacity: 0.5;
+}
+
+@media (max-width: 640px) {
+  .cheil-task-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
 .cheil-campaign-actions {
   display: flex;
   flex-wrap: wrap;

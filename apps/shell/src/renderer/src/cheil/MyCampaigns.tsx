@@ -13,8 +13,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import { EMPTY_CHEIL_CARD, cheilBudgetText, cheilCardSummary } from '@genoffice/ui'
+import {
+  EMPTY_CHEIL_CARD,
+  buildCheilTaskPrompt,
+  cheilBudgetText,
+  cheilCardSummary,
+  cheilToday,
+  parseCheilTasks,
+} from '@genoffice/ui'
 import { useI18n } from '../locale'
+import { readAiSettings } from '../settings-ai'
 import {
   CHEIL_CAMPAIGN_BRIDGE_KEY,
   type CampaignDetail,
@@ -22,6 +30,7 @@ import {
   type CampaignEventKind,
   type CampaignFailReason,
   type CampaignSetItem,
+  type CampaignTask,
   type CampaignSummary,
   type CheilCampaignApi,
   type CheilCampaignCard,
@@ -92,6 +101,20 @@ const WORDS = {
     setOpen: (n: number) => `선택한 양식 열기 (${n})`,
     setOpened: (n: number) =>
       `양식 ${n}개를 새 탭으로 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
+    mailTitle: '받은 메일 → 할 일',
+    mailPlaceholder:
+      '받은 메일을 붙여넣으면 할 일·담당·마감을 뽑습니다(AI 한 번). 대외비·개인정보가 보이면 이 PC 밖 AI 로는 보내지 않습니다.',
+    mailRead: '할 일 뽑기',
+    mailReading: 'AI 가 메일을 읽는 중…',
+    tasksReview:
+      '메일에서 뽑은 할 일입니다. 고치거나 빼고 기록하세요. 기록하기 전에는 아무것도 남지 않습니다.',
+    taskLabel: '할 일',
+    ownerLabel: '담당',
+    dueLabel: '마감',
+    tasksAdd: (n: number) => `선택한 할 일 기록 (${n})`,
+    tasksAdded: (n: number) => `할 일 ${n}개를 타임라인에 기록했습니다.`,
+    tasksNone: '메일에서 할 일을 찾지 못했습니다.',
+    tasksFailed: (why: string) => `할 일을 뽑지 못했습니다${why ? `: ${why}` : '.'}`,
     emptyValue: '(비어 있음)',
     due: (d: string) => `마감 ${d}`,
     fail: {
@@ -162,6 +185,19 @@ const WORDS = {
     setOpen: (n: number) => `Open the chosen templates (${n})`,
     setOpened: (n: number) =>
       `Opened ${n} templates in new tabs; each AI panel has its request waiting.`,
+    mailTitle: 'Received mail → to-dos',
+    mailPlaceholder:
+      'Paste a received mail to pick out to-dos, owners and due days (one AI call). Confidential or personal content is not sent to an AI outside this PC.',
+    mailRead: 'Pick out to-dos',
+    mailReading: 'The AI is reading the mail…',
+    tasksReview: 'To-dos from the mail. Edit or untick, then record. Nothing is kept before that.',
+    taskLabel: 'To-do',
+    ownerLabel: 'Owner',
+    dueLabel: 'Due',
+    tasksAdd: (n: number) => `Record the chosen to-dos (${n})`,
+    tasksAdded: (n: number) => `Recorded ${n} to-dos in the timeline.`,
+    tasksNone: 'No to-dos found in the mail.',
+    tasksFailed: (why: string) => `Could not pick out to-dos${why ? `: ${why}` : '.'}`,
     emptyValue: '(empty)',
     due: (d: string) => `due ${d}`,
     fail: {
@@ -179,6 +215,9 @@ const WORDS = {
 type Words = (typeof WORDS)['ko']
 
 const words = (lang: Lang): Words => (lang === 'ko' ? WORDS.ko : (WORDS.en as unknown as Words))
+
+/** how often an open campaign view re-reads its timeline (editor tabs add lines) */
+const VIEW_REFRESH_MS = 3_000
 
 /** the campaign view's card: short fields in pairs, then target and KPI across */
 const VIEW_ROWS: Array<Exclude<keyof CheilCampaignCard, 'campaign' | 'start' | 'end'> | 'period'> =
@@ -570,6 +609,165 @@ function DocumentSet({
   )
 }
 
+/**
+ * Plan item 3: to-dos out of a received mail. One model call reads them (the
+ * shared `ai:chat`, so the confidentiality line applies); the person checks,
+ * edits and picks them; only then do they go into the timeline with their
+ * due days.
+ */
+function MailTasks({
+  w,
+  api,
+  card,
+  onAdd,
+}: {
+  w: Words
+  api: CheilCampaignApi
+  card: CheilCampaignCard
+  /** the number recorded, or null when it failed (the view says why) */
+  onAdd: (tasks: CampaignTask[]) => Promise<number | null>
+}) {
+  const [mail, setMail] = useState('')
+  const [phase, setPhase] = useState<'idle' | 'reading' | 'review'>('idle')
+  const [rows, setRows] = useState<Array<CampaignTask & { on: boolean }>>([])
+  const [message, setMessage] = useState('')
+
+  const read = async () => {
+    if (!mail.trim() || phase === 'reading') return
+    setPhase('reading')
+    setMessage('')
+    const settings = await readAiSettings()
+    const prompt = buildCheilTaskPrompt({
+      mail,
+      today: cheilToday(),
+      campaign: card.campaign,
+      client: card.client,
+    })
+    const reply = await api
+      .aiChat({ settings, system: prompt.system, user: prompt.user, json: true })
+      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+    if (!reply.ok || !('content' in reply) || !reply.content) {
+      setPhase('idle')
+      setMessage(w.tasksFailed(('error' in reply && reply.error) || ''))
+      return
+    }
+    const tasks = parseCheilTasks(reply.content)
+    if (tasks.length === 0) {
+      setPhase('idle')
+      setMessage(w.tasksNone)
+      return
+    }
+    setRows(tasks.map((t) => ({ ...t, on: true })))
+    setPhase('review')
+  }
+
+  const chosen = rows.filter((r) => r.on && r.task.trim())
+  const add = async () => {
+    const added = await onAdd(chosen.map(({ task, owner, due }) => ({ task, owner, due })))
+    if (added === null) return
+    setRows([])
+    setMail('')
+    setPhase('idle')
+    setMessage(w.tasksAdded(added))
+  }
+  const edit = (i: number, patch: Partial<CampaignTask & { on: boolean }>) =>
+    setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+
+  return (
+    <section
+      className="cheil-set cheil-mail"
+      aria-label={w.mailTitle}
+      data-testid="cheil-mail-tasks"
+    >
+      <div className="cheil-set-head">
+        <span className="section-label">{w.mailTitle}</span>
+      </div>
+      {phase !== 'review' ? (
+        <>
+          <textarea
+            className="cheil-mail-input"
+            rows={3}
+            value={mail}
+            placeholder={w.mailPlaceholder}
+            data-testid="cheil-mail-input"
+            onChange={(e) => setMail(e.target.value)}
+          />
+          <div className="cheil-set-foot">
+            <button
+              className="btn btn-secondary"
+              data-testid="cheil-mail-read"
+              disabled={!mail.trim() || phase === 'reading'}
+              onClick={() => void read()}
+            >
+              {phase === 'reading' ? w.mailReading : w.mailRead}
+            </button>
+            {message ? (
+              <span className="cheil-set-done" role="status">
+                {message}
+              </span>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="cheil-set-desc">{w.tasksReview}</p>
+          <ul className="cheil-task-rows" data-testid="cheil-mail-review">
+            {rows.map((row, i) => (
+              <li key={i} className={`cheil-task-row${row.on ? '' : ' is-off'}`}>
+                <input
+                  type="checkbox"
+                  checked={row.on}
+                  aria-label={row.task}
+                  onChange={(e) => edit(i, { on: e.target.checked })}
+                />
+                <input
+                  className="cheil-task-text"
+                  value={row.task}
+                  aria-label={w.taskLabel}
+                  onChange={(e) => edit(i, { task: e.target.value })}
+                />
+                <input
+                  className="cheil-task-owner"
+                  value={row.owner}
+                  placeholder={w.ownerLabel}
+                  aria-label={w.ownerLabel}
+                  onChange={(e) => edit(i, { owner: e.target.value })}
+                />
+                <input
+                  className="cheil-task-due"
+                  type="date"
+                  value={row.due}
+                  aria-label={w.dueLabel}
+                  onChange={(e) => edit(i, { due: e.target.value })}
+                />
+              </li>
+            ))}
+          </ul>
+          <div className="cheil-set-foot">
+            <button
+              className="btn btn-primary"
+              data-testid="cheil-mail-add"
+              disabled={chosen.length === 0}
+              onClick={() => void add()}
+            >
+              {w.tasksAdd(chosen.length)}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setRows([])
+                setPhase('idle')
+              }}
+            >
+              {w.cancel}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
 function CampaignView({
   w,
   lang,
@@ -598,8 +796,20 @@ function CampaignView({
       if (res.ok) setCampaign(res.campaign)
       else setError(w.fail[res.reason])
     })
+    // plan item 3: editor tabs add lines on their own (fills); pick them up while the view is open
+    const timer = window.setInterval(() => {
+      void api.get(id).then((res) => {
+        if (!live || !res.ok) return
+        setCampaign((prev) =>
+          prev && prev.events === res.campaign.events && prev.updatedAt === res.campaign.updatedAt
+            ? prev
+            : res.campaign,
+        )
+      })
+    }, VIEW_REFRESH_MS)
     return () => {
       live = false
+      window.clearInterval(timer)
     }
   }, [api, id, w])
 
@@ -678,6 +888,26 @@ function CampaignView({
               }
               setCampaign(res.campaign)
               return res.opened
+            }}
+          />
+        ) : null}
+
+        {card ? (
+          <MailTasks
+            w={w}
+            api={api}
+            card={card}
+            onAdd={async (tasks) => {
+              setError('')
+              const res = await api
+                .addTasks(id, tasks)
+                .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+              if (!res.ok) {
+                setError(w.fail[res.reason])
+                return null
+              }
+              setCampaign(res.campaign)
+              return res.added
             }}
           />
         ) : null}

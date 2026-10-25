@@ -24,6 +24,8 @@ import {
   type UserSkillUpdateCheck,
   type UserSkillView,
   type UserSkillsResult,
+  CHEIL_RECORD_CHANNEL,
+  type CheilRecordInput,
 } from './user-skills-channels'
 
 export interface UserSkillsBridge {
@@ -105,6 +107,8 @@ export interface UserSkillsBridge {
   onPreviewEnded(listener: (ended: UserSkillPreviewEnded) => void): () => void
   /** the list or a state changed somewhere */
   onChanged(listener: () => void): () => void
+  /** Cheil fork (plan item 3): a fill this tab finished, for its campaign's timeline */
+  cheilRecord(input: CheilRecordInput): Promise<void>
 }
 
 const unavailable = { ok: false as const, reason: 'failed' as const }
@@ -197,6 +201,9 @@ export function userSkillsBridge(): UserSkillsBridge {
       return answer && typeof answer === 'object' ? (answer as SkillHandoff) : null
     },
     focusTab: (tabId) => result(C.focusTab, String(tabId)),
+    cheilRecord: async (input) => {
+      await ipcRenderer.invoke(CHEIL_RECORD_CHANNEL, input).catch(() => undefined)
+    },
     onPreviewEnded(listener) {
       const handler = (_event: unknown, raw: unknown) => {
         const ended = previewEndedOf(raw)

@@ -213,8 +213,11 @@ describe('Cheil fork: campaign channels', () => {
       async (
         _item: { skill: string; title: string; text: string },
         _cheil: { campaign: string; values: Record<string, string> },
+        _campaignId: string,
       ) => true,
     )
+    // editor tabs a set opened: webContents id → campaign and template title
+    const tabs = new Map<number, { id: string; title: string }>()
     registerCheilCampaignIpc({
       ipc: { handle: (channel: string, fn: never) => void handlers.set(channel, fn) } as never,
       store: makeStore(),
@@ -223,10 +226,11 @@ describe('Cheil fork: campaign channels', () => {
       openDocument,
       openTemplate,
       today: () => '2026-10-25',
+      campaignOfSender: (sender) => tabs.get((sender as { id: number }).id) ?? null,
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
-    return { handlers, home, call, openFolder, openDocument, openTemplate }
+    return { handlers, home, call, openFolder, openDocument, openTemplate, tabs }
   }
 
   const SET = [
@@ -261,11 +265,11 @@ describe('Cheil fork: campaign channels', () => {
       '[작성자]': '홍길동',
       '[작성일]': '2026-10-25',
     })
+    // the set's line comes first; each tab adds its own card fill once it has loaded
     const last = res.campaign.timeline.at(-1)!
-    expect(last.kind).toBe('fill')
-    expect(last.text).toBe(
-      '문서 세트를 열었습니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜 — 캠페인 카드로 공통 칸을 채움',
-    )
+    expect(last.kind).toBe('document')
+    expect(last.text).toBe('문서 세트를 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜')
+    expect(openTemplate.mock.calls[0]![2]).toBe(made.campaign.id)
   })
 
   it('takes only known templates, each once, and never values from the page', async () => {
@@ -297,7 +301,7 @@ describe('Cheil fork: campaign channels', () => {
     })
   })
 
-  it('says it failed when no template opened, and records nothing', async () => {
+  it('says it failed when no template opened, and the timeline says which', async () => {
     const { home, call, openTemplate } = wire()
     openTemplate.mockResolvedValue(false)
     const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
@@ -308,9 +312,97 @@ describe('Cheil fork: campaign channels', () => {
       reason: 'failed',
     })
     const got = (await call(home, CHEIL_CAMPAIGN_CHANNELS.get, made.campaign.id)) as {
-      campaign: { timeline: unknown[] }
+      campaign: { timeline: Array<{ text: string }> }
     }
-    expect(got.campaign.timeline).toHaveLength(1)
+    expect(got.campaign.timeline.map((e) => e.text).slice(1)).toEqual([
+      '문서 세트를 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
+      '열지 못한 양식: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
+    ])
+  })
+
+  it("records an editor tab's fills in the campaign that opened it, and ignores other tabs", async () => {
+    const { home, call, tabs } = wire()
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    const id = made.campaign.id
+    const brief = { id: 7 }
+    tabs.set(brief.id, { id, title: '크리에이티브 브리프' })
+    expect(await call(brief, CHEIL_CAMPAIGN_CHANNELS.record, { kind: 'card', filled: 10 })).toEqual(
+      {
+        ok: true,
+      },
+    )
+    expect(
+      await call(brief, CHEIL_CAMPAIGN_CHANNELS.record, {
+        kind: 'fill',
+        total: 29,
+        filled: 21,
+        open: 8,
+      }),
+    ).toEqual({ ok: true })
+    // a tab no set opened, and reports that are not ones
+    expect(
+      await call({ id: 9 }, CHEIL_CAMPAIGN_CHANNELS.record, { kind: 'card', filled: 1 }),
+    ).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+    for (const bad of [
+      { kind: 'card', filled: -1 },
+      { kind: 'fill', total: 3 },
+      { kind: 'x' },
+      null,
+    ]) {
+      expect(await call(brief, CHEIL_CAMPAIGN_CHANNELS.record, bad)).toEqual({
+        ok: false,
+        reason: 'invalid',
+      })
+    }
+    const got = (await call(home, CHEIL_CAMPAIGN_CHANNELS.get, id)) as {
+      campaign: { timeline: Array<{ kind: string; text: string }> }
+    }
+    expect(got.campaign.timeline.slice(1)).toEqual([
+      expect.objectContaining({
+        kind: 'fill',
+        text: '크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움',
+      }),
+      expect.objectContaining({
+        kind: 'fill',
+        text: '크리에이티브 브리프: 빠른 채우기 — 양식 칸 29개 중 21개를 자료로 채움, 8개는 [확인 필요]',
+      }),
+    ])
+  })
+
+  it('records the to-dos the person confirmed, each with its due day', async () => {
+    const { home, call } = wire()
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    const id = made.campaign.id
+    const res = (await call(home, CHEIL_CAMPAIGN_CHANNELS.addTasks, id, [
+      { task: '시안 2안 송부', owner: '기획 3팀', due: '2026-11-03' },
+      { task: '견적서  재송부', owner: '', due: '' },
+    ])) as { ok: boolean; added: number; campaign: { timeline: unknown[] } }
+    expect(res.ok).toBe(true)
+    expect(res.added).toBe(2)
+    expect(res.campaign.timeline.slice(1)).toEqual([
+      expect.objectContaining({
+        kind: 'task',
+        text: '시안 2안 송부 (담당 기획 3팀)',
+        due: '2026-11-03',
+      }),
+      expect.objectContaining({ kind: 'task', text: '견적서 재송부' }),
+    ])
+    const invalid = { ok: false, reason: 'invalid' }
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.addTasks, id, [])).toEqual(invalid)
+    expect(
+      await call(home, CHEIL_CAMPAIGN_CHANNELS.addTasks, id, [{ task: 'x', due: '11/03' }]),
+    ).toEqual(invalid)
+    expect(await call({ id: 2 }, CHEIL_CAMPAIGN_CHANNELS.addTasks, id, [{ task: 'x' }])).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
   })
 
   it('registers every channel and answers the home only', async () => {

@@ -145,6 +145,7 @@ export {
   handedRequestOf,
   isTemplateMissing,
   skillTemplateBridge,
+  cheilRecordFill,
   templateChoice,
   templateDocumentOf,
   templateFileNameFor,
@@ -447,6 +448,9 @@ export {
   cheilToday,
 } from './cheil-fields'
 export type { CheilCampaignCard, CheilCardFill, CheilField, CheilFieldKey } from './cheil-fields'
+// Cheil fork: to-dos from a received mail (plan item 3)
+export { buildCheilTaskPrompt, parseCheilTasks } from './cheil-mail'
+export type { CheilMailTask } from './cheil-mail'
 // Cheil fork: one-call workbook template fill
 export {
   SHEET_SCAN_COLUMNS,
