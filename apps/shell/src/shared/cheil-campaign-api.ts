@@ -28,6 +28,21 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   record: 'cheil:campaign-record',
 } as const
 
+/**
+ * Plan item 5: a card edit carried into the campaign's open documents. Each
+ * tab a set opened for this campaign replaced the old values; `answered` is
+ * false for one that did not answer in time.
+ */
+export interface CampaignPropagation {
+  tabs: Array<{
+    title: string
+    answered: boolean
+    items: Array<{ label: string; from: string; to: string; count: number }>
+  }>
+  /** fields emptied on the card: the documents keep what they have */
+  cleared: string[]
+}
+
 /** A to-do read from a received mail, as the person confirmed it (plan item 3) */
 export interface CampaignTask {
   task: string
@@ -130,8 +145,14 @@ export interface CheilCampaignApi {
   list(): Promise<CampaignResult<{ campaigns: CampaignSummary[] }>>
   create(card: CheilCampaignCard): Promise<CampaignResult<{ campaign: CampaignDetail }>>
   get(id: string): Promise<CampaignResult<{ campaign: CampaignDetail }>>
-  /** the whole card; only fields that differ go into the timeline */
-  update(id: string, card: CheilCampaignCard): Promise<CampaignResult<{ campaign: CampaignDetail }>>
+  /**
+   * the whole card; only fields that differ go into the timeline. A change to
+   * a common field is carried into the campaign's open documents (plan item 5)
+   */
+  update(
+    id: string,
+    card: CheilCampaignCard,
+  ): Promise<CampaignResult<{ campaign: CampaignDetail; propagation?: CampaignPropagation }>>
   note(id: string, text: string): Promise<CampaignResult<{ campaign: CampaignDetail }>>
   /** the campaign's folder in the file manager */
   openFolder(id: string): Promise<CampaignResult>

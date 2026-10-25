@@ -7262,6 +7262,25 @@ registerCheilCampaignIpc({
     const id = (sender as { id?: unknown } | null)?.id
     return typeof id === 'number' ? (cheilCampaignTabs.get(id) ?? null) : null
   },
+  // plan item 5: the campaign's tabs that are still open, to carry a card change into
+  campaignTabs: (campaignId) => {
+    const tabs: Array<{
+      senderId: number
+      title: string
+      send(channel: string, payload: unknown): void
+    }> = []
+    for (const [senderId, tab] of cheilCampaignTabs) {
+      if (tab.id !== campaignId) continue
+      const contents = webContents.fromId(senderId)
+      if (!contents || contents.isDestroyed()) continue
+      tabs.push({
+        senderId,
+        title: tab.title,
+        send: (channel, payload) => contents.send(channel, payload),
+      })
+    }
+    return tabs
+  },
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */

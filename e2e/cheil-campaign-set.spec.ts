@@ -206,3 +206,78 @@ test('Cheil: a campaign opens the media plan with the card in its header cells',
     await closeAndSaveVideo(launched, 'cheil-campaign-set-sheet')
   }
 })
+
+/**
+ * Cheil fork (plan item 5): a card change carried into the campaign's open
+ * documents. With the brief and the proposal open, the budget changes on the
+ * card; both documents change (no model), the view lists where, each panel
+ * says so, and the timeline records it.
+ */
+test('Cheil: changing the budget on the card changes it in the open brief and proposal', async () => {
+  const launched = await launchShell({
+    userDataDir: await profileWithCampaign(),
+    videoDir: 'cheil-campaign-propagate',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  try {
+    await page.setViewportSize({ width: 1280, height: 1000 }).catch(() => {})
+    await openSet(page, ['cheil-brief', 'cheil-proposal'])
+    const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
+    const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
+    await expect(docs.getByText(/카드로 공통 칸 10개를 채웠습니다/)).toBeVisible({
+      timeout: 60_000,
+    })
+    await expect(slides.getByText(/카드로 공통 칸 8개를 채웠습니다/)).toBeVisible({
+      timeout: 60_000,
+    })
+
+    // the card's budget changes on the home
+    await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
+    const view = page.getByTestId('cheil-campaign-view')
+    await view.getByRole('button', { name: '카드 고치기' }).click()
+    await page.locator('form.cheil-campaign-form input[name="budget"]').fill('600000000')
+    await page.getByTestId('cheil-campaign-submit').click()
+
+    const list = page.getByTestId('cheil-propagation')
+    await expect(list).toBeVisible({ timeout: 20_000 })
+    await expect(list).toContainText(
+      '크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳',
+    )
+    await expect(list).toContainText('캠페인 제안서 — 총예산 500,000,000원 → 600,000,000원 1곳')
+    await expect(page.getByTestId('cheil-campaign-timeline')).toContainText(
+      '카드 변경 반영: 크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳',
+    )
+    await page.screenshot({ path: screenshotPath('cheil-campaign-propagate-home') })
+
+    // the brief and the deck now carry the new budget, and their panels say so
+    const docText = await docs.evaluate(
+      () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
+    )
+    expect(docText).toContain('600,000,000원')
+    expect(docText).not.toContain('500,000,000원')
+    await expect(docs.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
+    const deck = await slides.evaluate(async () => {
+      const api = (window as unknown as { slidesApi: { getRenderSlides(): Promise<unknown> } })
+        .slidesApi
+      const out: string[] = []
+      const walk = (value: unknown, key: string): void => {
+        if (typeof value === 'string') {
+          if (key === 'text') out.push(value)
+        } else if (Array.isArray(value)) {
+          for (const item of value) walk(item, key)
+        } else if (value && typeof value === 'object') {
+          for (const [k, v] of Object.entries(value)) walk(v, k)
+        }
+      }
+      walk(await api.getRenderSlides(), '')
+      return out.join('').replace(/\s+/g, '')
+    })
+    expect(deck).toContain('600,000,000원')
+    expect(deck).not.toContain('500,000,000원')
+    await expect(slides.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-campaign-propagate')
+  }
+})

@@ -25,6 +25,10 @@ import {
   type UserSkillView,
   type UserSkillsResult,
   CHEIL_RECORD_CHANNEL,
+  CHEIL_PROPAGATE_CHANNEL,
+  CHEIL_PROPAGATED_CHANNEL,
+  type CheilPropagatePair,
+  type CheilPropagateRequest,
   type CheilRecordInput,
 } from './user-skills-channels'
 
@@ -109,6 +113,11 @@ export interface UserSkillsBridge {
   onChanged(listener: () => void): () => void
   /** Cheil fork (plan item 3): a fill this tab finished, for its campaign's timeline */
   cheilRecord(input: CheilRecordInput): Promise<void>
+  /**
+   * Cheil fork (plan item 5): the campaign's card changed; `apply` replaces the
+   * pairs in this tab's document and returns how many places each changed
+   */
+  onCheilPropagate(apply: (pairs: CheilPropagatePair[]) => Promise<number[]>): () => void
 }
 
 const unavailable = { ok: false as const, reason: 'failed' as const }
@@ -203,6 +212,37 @@ export function userSkillsBridge(): UserSkillsBridge {
     focusTab: (tabId) => result(C.focusTab, String(tabId)),
     cheilRecord: async (input) => {
       await ipcRenderer.invoke(CHEIL_RECORD_CHANNEL, input).catch(() => undefined)
+    },
+    onCheilPropagate(apply) {
+      const handler = (_event: unknown, raw: unknown) => {
+        const request = raw as Partial<CheilPropagateRequest> | null
+        if (!request || typeof request.requestId !== 'string' || !Array.isArray(request.pairs)) {
+          return
+        }
+        const pairs = request.pairs.filter(
+          (p): p is CheilPropagatePair =>
+            !!p &&
+            typeof p.label === 'string' &&
+            typeof p.from === 'string' &&
+            typeof p.to === 'string' &&
+            typeof p.find === 'string' &&
+            p.find.length > 0,
+        )
+        if (pairs.length !== request.pairs.length) return
+        void apply(pairs)
+          .catch(() => pairs.map(() => 0))
+          .then((counts) =>
+            ipcRenderer.invoke(CHEIL_PROPAGATED_CHANNEL, {
+              requestId: request.requestId,
+              counts,
+            }),
+          )
+          .catch(() => undefined)
+      }
+      ipcRenderer.on(CHEIL_PROPAGATE_CHANNEL, handler)
+      return () => {
+        ipcRenderer.removeListener(CHEIL_PROPAGATE_CHANNEL, handler)
+      }
     },
     onPreviewEnded(listener) {
       const handler = (_event: unknown, raw: unknown) => {

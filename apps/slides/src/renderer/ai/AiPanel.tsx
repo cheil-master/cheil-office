@@ -38,6 +38,8 @@ import {
   cheilCardFillNote,
   cheilCardReplacements,
   cheilRecordFill,
+  cheilReplaceText,
+  useCheilPropagate,
   type CheilCardFill,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
@@ -2017,6 +2019,40 @@ export function AiPanel({
    * through the deck's own find-and-replace, with no model call, and a note
    * says how many. The other blanks wait for the quick fill.
    */
+  /**
+   * Cheil fork (plan item 5): the campaign's card changed while this tab is
+   * open: the old values are replaced through the deck's own find-and-replace
+   * (no model). The places are counted on the deck's text first, longer finds
+   * winning where two overlap.
+   */
+  useCheilPropagate({
+    lang,
+    apply: async (pairs) => {
+      const access = accessRef.current
+      if (!access) return pairs.map(() => 0)
+      const { counts } = cheilReplaceText(
+        cheilDeckText(access.getSlides()),
+        pairs.map((p) => ({ find: p.find, replace: p.to })),
+      )
+      const ops = pairs
+        .map((p, i) => ({ op: 'findReplace', find: p.find, replace: p.to, n: counts[i]! }))
+        .filter((op) => op.n > 0)
+        .sort((a, b) => b.find.length - a.find.length)
+        .map(({ op, find, replace }) => ({ op, find, replace }))
+      let deck: RenderSlide[] | null = null
+      for (let at = 0; at < ops.length; at += 50) {
+        const result = await window.slidesApi
+          .applyTxn({ ops: ops.slice(at, at + 50), isolation: 'per_op' })
+          .catch(() => null)
+        if (result?.applied && result.slides) deck = result.slides
+      }
+      if (!deck) return pairs.map(() => 0)
+      access.applyDeck(deck, Math.max(0, Math.min(access.getCurrent(), deck.length - 1)))
+      return counts
+    },
+    note: (text) => setChat((prev) => [...prev, { role: 'assistant', text }]),
+  })
+
   const fillFromCampaignCard = (card: CheilCardFill) => {
     let tries = 0
     const attempt = async () => {

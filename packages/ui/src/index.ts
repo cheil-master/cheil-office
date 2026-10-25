@@ -438,6 +438,11 @@ export {
   CHEIL_FIELDS,
   EMPTY_CHEIL_CARD,
   cheilBudgetText,
+  cheilCardChangeNote,
+  cheilCardChanges,
+  cheilChangeCounts,
+  cheilPropagatePairs,
+  cheilReplaceText,
   cheilCardFillNote,
   cheilCardFillOf,
   cheilCardReplacements,
@@ -447,7 +452,15 @@ export {
   cheilFieldValues,
   cheilToday,
 } from './cheil-fields'
-export type { CheilCampaignCard, CheilCardFill, CheilField, CheilFieldKey } from './cheil-fields'
+export type {
+  CheilCampaignCard,
+  CheilCardChange,
+  CheilCardFill,
+  CheilField,
+  CheilFieldKey,
+  CheilPropagatePair,
+} from './cheil-fields'
+export { useCheilPropagate } from './use-cheil-propagate'
 // Cheil fork: to-dos from a received mail (plan item 3)
 export { buildCheilTaskPrompt, parseCheilTasks } from './cheil-mail'
 export type { CheilMailTask } from './cheil-mail'

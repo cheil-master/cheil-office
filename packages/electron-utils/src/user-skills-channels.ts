@@ -17,6 +17,28 @@ export const USER_SKILLS_BRIDGE_KEY = 'aiOfficeUserSkills'
  */
 export const CHEIL_RECORD_CHANNEL = 'cheil:campaign-record'
 
+/**
+ * Cheil fork (plan item 5): a campaign card changed. The shell sends each tab
+ * a set opened for that campaign the old texts and their new values; the tab
+ * replaces them through its own editor operations and answers how many places
+ * each pair changed (same order).
+ */
+export const CHEIL_PROPAGATE_CHANNEL = 'cheil:campaign-propagate'
+export const CHEIL_PROPAGATED_CHANNEL = 'cheil:campaign-propagated'
+
+/** One text to replace: the field it belongs to, its old and new value, and what to look for */
+export interface CheilPropagatePair {
+  label: string
+  from: string
+  to: string
+  find: string
+}
+
+export interface CheilPropagateRequest {
+  requestId: string
+  pairs: CheilPropagatePair[]
+}
+
 /** What an editor reports: the campaign card's fill, or the one-call quick fill */
 export type CheilRecordInput =
   { kind: 'card'; filled: number } | { kind: 'fill'; total: number; filled: number; open: number }

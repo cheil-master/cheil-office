@@ -228,6 +228,143 @@ export function cheilCardSummary(card: Partial<CheilCampaignCard>): string {
   return lines.length ? ['[캠페인 카드]', ...lines].join('\n') : ''
 }
 
+// ── a card change carried to the open documents (plan item 5) ──
+
+/** One common field a card edit changed, and what to look for in a document */
+export interface CheilCardChange {
+  /** the field's name a person reads (총예산) */
+  label: string
+  from: string
+  to: string
+  /**
+   * the texts that hold the old value in a document: the old value itself, or,
+   * when the card had none, the blank (its own name and its aliases)
+   */
+  finds: string[]
+}
+
+/** shortest old value looked for: a one-letter value would match inside other words */
+const CHANGE_FIND_MIN = 2
+
+/**
+ * What a card edit changes in the documents: each common field whose value
+ * changed to a non-empty one. A field emptied on the card is listed apart:
+ * the documents keep what they have (nothing is deleted from them).
+ */
+export function cheilCardChanges(
+  before: Partial<CheilCampaignCard>,
+  after: Partial<CheilCampaignCard>,
+  today: string,
+): { changes: CheilCardChange[]; cleared: string[] } {
+  const old = cheilFieldValues(before, today)
+  const next = cheilFieldValues(after, today)
+  const changes: CheilCardChange[] = []
+  const cleared: string[] = []
+  for (const field of CHEIL_FIELDS) {
+    if (field.source !== 'card') continue
+    const from = old.get(field.placeholder) ?? ''
+    const to = next.get(field.placeholder) ?? ''
+    if (from === to) continue
+    if (!to) {
+      cleared.push(field.label)
+      continue
+    }
+    const finds = from
+      ? from.length >= CHANGE_FIND_MIN
+        ? [from]
+        : []
+      : [field.placeholder, ...field.aliases]
+    if (finds.length > 0) changes.push({ label: field.label, from, to, finds })
+  }
+  return { changes, cleared }
+}
+
+/** One text a tab replaces for a card change (the shell sends these, flattened from the changes) */
+export interface CheilPropagatePair {
+  label: string
+  from: string
+  to: string
+  find: string
+}
+
+/**
+ * Every occurrence of each `find` in a text replaced, and how many places each
+ * changed (same order). Where two finds overlap (a brand inside a campaign
+ * name), the longer one wins, so no text is replaced twice.
+ */
+export function cheilReplaceText(
+  text: string,
+  pairs: ReadonlyArray<{ find: string; replace: string }>,
+): { text: string; counts: number[] } {
+  const counts = pairs.map(() => 0)
+  const taken: Array<{ from: number; to: number; pair: number }> = []
+  const order = pairs.map((_, i) => i).sort((a, b) => pairs[b]!.find.length - pairs[a]!.find.length)
+  for (const index of order) {
+    const find = pairs[index]!.find
+    if (!find) continue
+    let at = text.indexOf(find)
+    while (at !== -1) {
+      const end = at + find.length
+      if (!taken.some((t) => at < t.to && t.from < end)) {
+        taken.push({ from: at, to: end, pair: index })
+        counts[index]!++
+      }
+      at = text.indexOf(find, end)
+    }
+  }
+  let out = ''
+  let cursor = 0
+  for (const t of taken.sort((a, b) => a.from - b.from)) {
+    out += text.slice(cursor, t.from) + pairs[t.pair]!.replace
+    cursor = t.to
+  }
+  return { text: out + text.slice(cursor), counts }
+}
+
+/** The changes as pairs a tab replaces: one per text to look for */
+export function cheilPropagatePairs(changes: readonly CheilCardChange[]): CheilPropagatePair[] {
+  return changes.flatMap((c) =>
+    c.finds.map((find) => ({ label: c.label, from: c.from, to: c.to, find })),
+  )
+}
+
+/** Places changed per field, from a tab's counts per pair (same order as the pairs) */
+export function cheilChangeCounts(
+  pairs: readonly CheilPropagatePair[],
+  counts: readonly number[],
+): Array<{ label: string; from: string; to: string; count: number }> {
+  const out: Array<{ label: string; from: string; to: string; count: number }> = []
+  pairs.forEach((pair, i) => {
+    const n = Number.isInteger(counts[i]) && counts[i]! > 0 ? counts[i]! : 0
+    const item = out.find((o) => o.label === pair.label)
+    if (item) item.count += n
+    else out.push({ label: pair.label, from: pair.from, to: pair.to, count: n })
+  })
+  return out
+}
+
+/** The panel's note after a card change was carried into this document */
+export function cheilCardChangeNote(
+  lang: string,
+  items: ReadonlyArray<{ label: string; from: string; to: string; count: number }>,
+): string {
+  const done = items.filter((i) => i.count > 0)
+  const ko = lang === 'ko'
+  if (done.length === 0) {
+    return ko
+      ? '캠페인 카드가 바뀌었지만 이 문서에는 바꿀 곳이 없었습니다.'
+      : 'The campaign card changed; nothing in this document held the old values.'
+  }
+  const parts = done.map((i) =>
+    ko
+      ? `${i.label} ${i.from || '(빈칸)'} → ${i.to} (${i.count}곳)`
+      : `${i.label} ${i.from || '(blank)'} → ${i.to} (${i.count})`,
+  )
+  return ko
+    ? `캠페인 카드가 바뀌어 이 문서를 고쳤습니다(AI 없이): ${parts.join(', ')}`
+    : `The campaign card changed; updated this document (no AI): ${parts.join(', ')}`
+}
+
 /** The panel's note after a card fill */
 export function cheilCardFillNote(
   lang: string,

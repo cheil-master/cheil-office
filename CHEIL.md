@@ -110,6 +110,15 @@
   - 열린 캠페인 보기는 3초마다 타임라인을 다시 읽어 탭이 남긴 줄을 보여 준다.
 - **받은 메일 → 할 일**: 캠페인 보기의 '받은 메일 → 할 일'에 메일을 붙여넣고 '할 일 뽑기' → AI 한 번(공용 `ai:chat`, 금지선 검사를 거친다, `json`) → 할 일·담당·마감 목록 → **사람이 고치고 고른 것만** '선택한 할 일 기록'으로 타임라인 '할 일' 줄(마감 표시)이 된다. 기록 전에는 아무것도 남지 않는다. 지시문은 "메일에 적힌 것만, 날짜가 확실하지 않으면 빈칸"(`packages/ui/src/cheil-mail.ts`의 `buildCheilTaskPrompt`), 답은 앱이 다시 검사한다(`parseCheilTasks`: 한 줄, 실재하는 날짜만, 중복 제거, 20개까지). 뒷단도 다시 검사한다(`campaignTasksOf`).
 - 메일 초안·보내기 전 점검·수정 반영(6~10번)의 기록은 그 기능과 함께 같은 길(`record`, 사건 종류 `mail check revise`)로 붙인다.
+
+## 5-5. 변경 전파 (공모전 수정 계획 5번, 10-26)
+
+- 무엇: 캠페인 카드를 고쳐 저장하면(예: 총예산 5억 → 6억) 그 캠페인의 문서 세트로 연 **열린 탭**에서 이전 값이 새 값으로 바뀐다(AI 없이, 탭마다 되돌리기 한 번). 캠페인 보기에 **'카드 변경을 열린 문서에 반영했습니다'** 목록(문서마다 어떤 칸을 몇 곳)이 뜨고, 각 탭의 AI 창에 "캠페인 카드가 바뀌어 이 문서를 고쳤습니다: …"가, 타임라인에 "카드 변경 반영: 크리에이티브 브리프 — 총예산 … → … 1곳"이 남는다.
+- 규칙(`packages/ui/src/cheil-fields.ts`의 `cheilCardChanges`): 저장된 카드의 앞뒤 값을 공통 칸 값으로 견준다(작성일은 옮기지 않음). 바뀐 칸마다 찾을 글은 이전 값, 이전에 비어 있었으면 그 칸 `[총예산]`(별칭 포함). **카드에서 비운 칸은 문서에서 지우지 않고** 목록에 따로 적는다. 두 글자 미만인 이전 값은 다른 낱말 안에서 걸리므로 찾지 않는다. 두 찾을 글이 겹치면(브랜드가 캠페인명 안에) 긴 쪽이 이긴다(`cheilReplaceText`, 워드 `replaceEverywhere`).
+- 길: 뒷단(`campaign-ipc.ts`의 `update`)이 바뀐 칸을 짝(`find → to`)으로 만들어, 그 캠페인의 열린 탭(`campaignTabs`, 문서 세트가 연 탭 지도)에 `cheil:campaign-propagate`로 보낸다. 탭은 공용 다리 `onCheilPropagate`(`useCheilPropagate`)로 받아 자기 편집 연산으로 바꾸고 짝마다 바꾼 곳 수를 `cheil:campaign-propagated`로 답한다. 뒷단은 **보낸 탭이 맞을 때만** 답을 받고, 10초 안에 답이 없으면 '응답 없음'으로 적는다.
+  - 워드: `replaceEverywhere`(표 안까지, 한 트랜잭션). PPT: 덱 글에서 곳 수를 센 뒤 `findReplace`(긴 글 먼저). 엑셀: A1:L40 의 글 칸만 다시 쓰고 계산식 칸은 건드리지 않는다(`set_cell`, 숫자로 든 예산 칸은 바뀌지 않는다).
+- 한계: **닫히거나 저장된 문서, 앱을 다시 켠 뒤의 탭에는 반영하지 않는다**(탭 지도는 메모리에만 있다). 저장 위치를 캠페인 폴더로 정하고 문서마다 넣은 값을 파일로 남기는 일과 함께 다음 단계. AI 가 다른 꼴로 쓴 값(예: "5억 원")은 찾지 못한다(목록에 0곳으로 보인다).
+- 시험: `packages/ui/tests/cheil-card-fill.test.ts`(바뀐 칸·비운 칸·짝·곳 수), `apps/shell/tests/cheil-campaign-store.test.ts`의 변경 전파 묶음(열린 탭만, 다른 캠페인 탭 제외, 남의 답 무시, 닿지 않는 탭, 탭 없음), 화면 `e2e/cheil-campaign-set.spec.ts`의 예산 변경 시험.
 - 시험: `packages/ui/tests/cheil-mail.test.ts`, `apps/shell/tests/cheil-campaign-store.test.ts`(탭 보고·다른 탭 무시·잘못된 보고·할 일 기록), 화면 `e2e/cheil-auto-record.spec.ts`(이 PC 의 가짜 OpenAI 호환 서버로 빠른 채우기와 메일 읽기), `e2e/cheil-campaign-set.spec.ts`의 타임라인 줄.
 
 ## 6. 자동 업데이트 끔

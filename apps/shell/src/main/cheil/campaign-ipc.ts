@@ -8,9 +8,20 @@
  */
 import type { IpcMain } from 'electron'
 import { CHEIL_FILL_SKILLS } from '../../../../../packages/ui/src/cheil-fill'
-import { cheilFieldValues } from '../../../../../packages/ui/src/cheil-fields'
+import {
+  cheilCardChanges,
+  cheilChangeCounts,
+  cheilFieldValues,
+  cheilPropagatePairs,
+  type CheilPropagatePair,
+} from '../../../../../packages/ui/src/cheil-fields'
+import {
+  CHEIL_PROPAGATE_CHANNEL,
+  CHEIL_PROPAGATED_CHANNEL,
+} from '../../../../../packages/electron-utils/src/user-skills-channels'
 import {
   CHEIL_CAMPAIGN_CHANNELS,
+  type CampaignPropagation,
   type CampaignResult,
   type CampaignSetItem,
   type CampaignTask,
@@ -42,6 +53,21 @@ export interface CheilCampaignIpcDeps {
    * opened (the shell keeps the map while the tab lives); null for any other
    */
   campaignOfSender(sender: unknown): { id: string; title: string } | null
+  /**
+   * Plan item 5: the tabs a set opened for this campaign that are still open:
+   * their webContents id, template title, and a way to send them a message
+   */
+  campaignTabs(
+    campaignId: string,
+  ): Array<{ senderId: number; title: string; send(channel: string, payload: unknown): void }>
+}
+
+/** how long a tab may take to answer a card change before it is listed as not answering */
+export const PROPAGATE_TIMEOUT_MS = 10_000
+
+const senderIdOf = (sender: unknown): number | null => {
+  const id = (sender as { id?: unknown } | null)?.id
+  return typeof id === 'number' ? id : null
 }
 
 const refused: CampaignResult = { ok: false, reason: 'not-found' }
@@ -116,6 +142,47 @@ export function campaignSetItemsOf(raw: unknown): CampaignSetItem[] | null {
 
 export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
   const { ipc, store } = deps
+  /** plan item 5: card changes waiting for a tab's answer, by request id */
+  const pending = new Map<
+    string,
+    { senderId: number; size: number; resolve: (counts: number[] | null) => void }
+  >()
+  let requests = 0
+
+  /** Send each open tab of the campaign the pairs; what each changed, or not answered */
+  const propagate = (campaignId: string, pairs: CheilPropagatePair[]) =>
+    Promise.all(
+      deps.campaignTabs(campaignId).map(
+        (tab) =>
+          new Promise<CampaignPropagation['tabs'][number]>((resolve) => {
+            const requestId = `p${++requests}-${tab.senderId}`
+            const done = (counts: number[] | null) =>
+              resolve({
+                title: tab.title,
+                answered: counts !== null,
+                items: cheilChangeCounts(pairs, counts ?? []),
+              })
+            const timer = setTimeout(() => {
+              if (pending.delete(requestId)) done(null)
+            }, PROPAGATE_TIMEOUT_MS)
+            pending.set(requestId, {
+              senderId: tab.senderId,
+              size: pairs.length,
+              resolve: (counts) => {
+                clearTimeout(timer)
+                done(counts)
+              },
+            })
+            try {
+              tab.send(CHEIL_PROPAGATE_CHANNEL, { requestId, pairs })
+            } catch {
+              pending.delete(requestId)
+              clearTimeout(timer)
+              done(null)
+            }
+          }),
+      ),
+    )
   const homeOnly =
     <A extends unknown[], R>(handler: (...args: A) => Promise<R>) =>
     (event: { sender: unknown }, ...args: A): Promise<R | CampaignResult> =>
@@ -135,8 +202,48 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
   )
   ipc.handle(
     CHEIL_CAMPAIGN_CHANNELS.update,
-    homeOnly((id: unknown, card: unknown) => store.update(id, card)),
+    homeOnly(async (id: unknown, card: unknown) => {
+      const before = await store.get(id)
+      const updated = await store.update(id, card)
+      if (!updated.ok || !before.ok) return updated
+      // plan item 5: the common fields that changed go into the campaign's open documents
+      const { changes, cleared } = cheilCardChanges(
+        before.campaign.card,
+        updated.campaign.card,
+        deps.today(),
+      )
+      if (changes.length === 0 && cleared.length === 0) return updated
+      const pairs = cheilPropagatePairs(changes)
+      const tabs = pairs.length > 0 ? await propagate(updated.campaign.id, pairs) : []
+      let campaign = updated.campaign
+      for (const tab of tabs) {
+        const done = tab.items.filter((item) => item.count > 0)
+        if (done.length === 0) continue
+        const recorded = await store.record(campaign.id, {
+          kind: 'document',
+          text: `카드 변경 반영: ${tab.title} — ${done
+            .map((i) => `${i.label} ${i.from || '(빈칸)'} → ${i.to} ${i.count}곳`)
+            .join(', ')}`,
+        })
+        if (recorded.ok) campaign = recorded.campaign
+      }
+      return { ok: true as const, campaign, propagation: { tabs, cleared } }
+    }),
   )
+  // plan item 5: a tab answers how many places each pair changed
+  ipc.handle(CHEIL_PROPAGATED_CHANNEL, (event: { sender: unknown }, raw: unknown) => {
+    const answer = raw as { requestId?: unknown; counts?: unknown } | null
+    const requestId = typeof answer?.requestId === 'string' ? answer.requestId : ''
+    const waiting = pending.get(requestId)
+    if (!waiting || waiting.senderId !== senderIdOf(event.sender)) return
+    pending.delete(requestId)
+    const counts = Array.isArray(answer?.counts) ? answer.counts : []
+    waiting.resolve(
+      waiting.size === counts.length
+        ? counts.map((n) => (typeof n === 'number' && Number.isInteger(n) && n >= 0 ? n : 0))
+        : null,
+    )
+  })
   ipc.handle(
     CHEIL_CAMPAIGN_CHANNELS.note,
     homeOnly((id: unknown, text: unknown) => store.note(id, text)),

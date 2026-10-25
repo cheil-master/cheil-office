@@ -29,6 +29,7 @@ import {
   type CampaignEvent,
   type CampaignEventKind,
   type CampaignFailReason,
+  type CampaignPropagation,
   type CampaignSetItem,
   type CampaignTask,
   type CampaignSummary,
@@ -101,6 +102,15 @@ const WORDS = {
     setOpen: (n: number) => `선택한 양식 열기 (${n})`,
     setOpened: (n: number) =>
       `양식 ${n}개를 새 탭으로 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
+    propTitle: '카드 변경을 열린 문서에 반영했습니다',
+    propNoTabs: '이 캠페인에서 연 문서가 지금 열려 있지 않아 문서에는 반영하지 않았습니다.',
+    propNoAnswer: '— 응답이 없어 확인하지 못했습니다',
+    propNothing: '— 바꿀 곳이 없었습니다',
+    propItem: (label: string, from: string, to: string, n: number) =>
+      `— ${label} ${from || '(빈칸)'} → ${to} ${n}곳`,
+    propCleared: (labels: string) => `${labels}: 카드에서 비웠지만 문서의 값은 그대로 두었습니다.`,
+    propClosed:
+      '닫히거나 저장된 문서에는 반영하지 않았습니다(이 캠페인에서 연 탭만). 각 탭에서 되돌리기 한 번으로 되돌릴 수 있습니다.',
     mailTitle: '받은 메일 → 할 일',
     mailPlaceholder:
       '받은 메일을 붙여넣으면 할 일·담당·마감을 뽑습니다(AI 한 번). 대외비·개인정보가 보이면 이 PC 밖 AI 로는 보내지 않습니다.',
@@ -185,6 +195,16 @@ const WORDS = {
     setOpen: (n: number) => `Open the chosen templates (${n})`,
     setOpened: (n: number) =>
       `Opened ${n} templates in new tabs; each AI panel has its request waiting.`,
+    propTitle: 'The card change went into the open documents',
+    propNoTabs: 'No document this campaign opened is open now; the documents were not changed.',
+    propNoAnswer: '— did not answer; not checked',
+    propNothing: '— nothing to change',
+    propItem: (label: string, from: string, to: string, n: number) =>
+      `— ${label} ${from || '(blank)'} → ${to}, ${n}`,
+    propCleared: (labels: string) =>
+      `${labels}: emptied on the card; the documents keep their values.`,
+    propClosed:
+      'Closed or saved documents were not changed (only tabs this campaign opened). Each tab can undo it in one step.',
     mailTitle: 'Received mail → to-dos',
     mailPlaceholder:
       'Paste a received mail to pick out to-dos, owners and due days (one AI call). Confidential or personal content is not sent to an AI outside this PC.',
@@ -298,6 +318,11 @@ export function MyCampaigns() {
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
   const [form, setForm] = useState<{ mode: 'new' } | { mode: 'edit'; id: string } | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
+  /** plan item 5: what the last card edit changed in the campaign's open documents */
+  const [propagation, setPropagation] = useState<{
+    id: string
+    result: CampaignPropagation
+  } | null>(null)
 
   const refresh = useCallback(async () => {
     if (!api) return
@@ -355,9 +380,10 @@ export function MyCampaigns() {
           w={w}
           api={api}
           editId={form.mode === 'edit' ? form.id : null}
-          onDone={(id) => {
+          onDone={(id, result) => {
             setForm(null)
             void refresh()
+            setPropagation(id && result ? { id, result } : null)
             if (id) setOpenId(id)
           }}
         />
@@ -367,9 +393,11 @@ export function MyCampaigns() {
           lang={lang === 'ko' ? 'ko' : 'en'}
           api={api}
           id={openId}
+          propagation={propagation?.id === openId ? propagation.result : undefined}
           onEdit={() => setForm({ mode: 'edit', id: openId })}
           onClose={() => {
             setOpenId(null)
+            setPropagation(null)
             void refresh()
           }}
         />
@@ -404,8 +432,8 @@ function CampaignForm({
   api: CheilCampaignApi
   /** null for a new campaign */
   editId: string | null
-  /** the campaign to show next, or null when cancelled */
-  onDone: (id: string | null) => void
+  /** the campaign to show next, or null when cancelled; a card edit's propagation (plan item 5) */
+  onDone: (id: string | null, propagation?: CampaignPropagation) => void
 }) {
   const [card, setCard] = useState<CheilCampaignCard>({ ...EMPTY_CHEIL_CARD })
   const [loaded, setLoaded] = useState(editId === null)
@@ -443,7 +471,8 @@ function CampaignForm({
     }))
     setBusy(false)
     if (!res.ok) return setError(w.fail[res.reason])
-    onDone(res.campaign.id)
+    const { propagation } = res as { propagation?: CampaignPropagation }
+    onDone(res.campaign.id, propagation)
   }
 
   const input = (key: keyof CheilCampaignCard, type: 'text' | 'date' = 'text') => (
@@ -768,11 +797,52 @@ function MailTasks({
   )
 }
 
+/** Plan item 5: what a card edit changed in the campaign's open documents */
+function PropagationList({ w, result }: { w: Words; result: CampaignPropagation }) {
+  return (
+    <section
+      className="cheil-set cheil-propagation"
+      aria-label={w.propTitle}
+      data-testid="cheil-propagation"
+    >
+      <div className="cheil-set-head">
+        <span className="section-label">{w.propTitle}</span>
+      </div>
+      {result.tabs.length === 0 ? (
+        <p className="cheil-set-desc">{w.propNoTabs}</p>
+      ) : (
+        <ul className="cheil-propagation-list">
+          {result.tabs.map((tab, i) => {
+            const done = tab.items.filter((item) => item.count > 0)
+            return (
+              <li key={i}>
+                <strong>{tab.title}</strong>{' '}
+                {!tab.answered
+                  ? w.propNoAnswer
+                  : done.length === 0
+                    ? w.propNothing
+                    : done
+                        .map((item) => w.propItem(item.label, item.from, item.to, item.count))
+                        .join(', ')}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {result.cleared.length > 0 ? (
+        <p className="cheil-set-desc">{w.propCleared(result.cleared.join(', '))}</p>
+      ) : null}
+      <p className="cheil-set-desc">{w.propClosed}</p>
+    </section>
+  )
+}
+
 function CampaignView({
   w,
   lang,
   api,
   id,
+  propagation,
   onEdit,
   onClose,
 }: {
@@ -780,6 +850,8 @@ function CampaignView({
   lang: 'ko' | 'en'
   api: CheilCampaignApi
   id: string
+  /** plan item 5: the last card edit's changes in the open documents */
+  propagation?: CampaignPropagation | undefined
   onEdit: () => void
   onClose: () => void
 }) {
@@ -871,6 +943,8 @@ function CampaignView({
             })}
           </dl>
         ) : null}
+
+        {propagation ? <PropagationList w={w} result={propagation} /> : null}
 
         {card ? (
           <DocumentSet

@@ -95,6 +95,8 @@ import {
   cheilCardFillNote,
   cheilCardSheetWrites,
   cheilRecordFill,
+  cheilReplaceText,
+  useCheilPropagate,
   type CheilCardFill,
 } from '@genoffice/ui'
 
@@ -1228,6 +1230,39 @@ export function App({
   })
   const skillTemplatesRef = useRef(skillTemplates)
   skillTemplatesRef.current = skillTemplates
+  /**
+   * Cheil fork (plan item 5): the campaign's card changed while this tab is
+   * open: text cells holding an old value are rewritten (formula cells never)
+   * through the editor's own cell operations, one undo step, no model
+   */
+  useCheilPropagate({
+    lang: getLang(),
+    apply: async (pairs) => {
+      const counts = pairs.map(() => 0)
+      const writes: Array<{ op: 'set_cell'; sheetId: string; address: string; value: string }> = []
+      for (const sheet of await readCheilSheets()) {
+        for (const [address, cell] of Object.entries(sheet.cells)) {
+          if (cell.formula || typeof cell.value !== 'string') continue
+          const next = cheilReplaceText(
+            cell.value,
+            pairs.map((p) => ({ find: p.find, replace: p.to })),
+          )
+          if (next.text === cell.value) continue
+          next.counts.forEach((n, i) => (counts[i]! += n))
+          writes.push({ op: 'set_cell', sheetId: sheet.id, address, value: next.text })
+        }
+      }
+      if (writes.length > 0) {
+        const outcome = proposeOperations(
+          writes,
+          getLang() === 'ko' ? '캠페인 카드 변경 반영' : 'Campaign card change',
+        )
+        if (!outcome.ok) return pairs.map(() => 0)
+      }
+      return counts
+    },
+    note: (text) => appendChat({ role: 'assistant', text, tools: [], streaming: false }),
+  })
   /** the skills of the last send: a retry of a message with chips sends the same skill text */
   const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)
   // ── Chat attachments (same structure as docs/slides: text types go through the

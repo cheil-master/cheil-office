@@ -2675,6 +2675,19 @@ html[dir='rtl'] .quick-title-row {
   color: var(--text-secondary);
 }
 
+/* plan item 5: what a card edit changed in the open documents */
+.cheil-propagation {
+  border-color: var(--accent);
+}
+
+.cheil-propagation-list {
+  margin: 6px 0 4px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
 /* plan item 3: to-dos out of a received mail */
 .cheil-mail-input,
 .cheil-task-row input:not([type='checkbox']) {

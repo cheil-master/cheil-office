@@ -40,6 +40,7 @@ import {
   cheilCardFillNote,
   cheilCardReplacements,
   cheilRecordFill,
+  useCheilPropagate,
   type CheilCardFill,
 } from '@genoffice/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -69,7 +70,7 @@ import { ATTACHMENT_IMAGE_EXTS } from '../../shared/ipc'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { captureRollbackSnapshot, restoreRollbackSnapshot } from './rollback-snapshot'
 import { executeOps } from './ops'
-import { replaceLeftoverBlanks } from './cheil-fill-docs'
+import { replaceEverywhere, replaceLeftoverBlanks } from './cheil-fill-docs'
 import { countWords, findNumId, type NumIds } from './protocol'
 import { DOC_NAV_SCHEME, navigateToBlock, parseDocNavHref } from './doc-nav'
 import {
@@ -1288,6 +1289,23 @@ export function AiPanel({
    * alias) in one undoable step, with no model call, and a note says how many.
    * The other blanks wait for the quick fill.
    */
+  /**
+   * Cheil fork (plan item 5): the campaign's card changed while this tab is
+   * open: the old values are replaced everywhere (one undo step, no model)
+   */
+  useCheilPropagate({
+    lang,
+    apply: (pairs) => {
+      const editor = editorRef.current
+      if (!editor) return pairs.map(() => 0)
+      return replaceEverywhere(
+        editor,
+        pairs.map((p) => ({ find: p.find, replace: p.to })),
+      )
+    },
+    note: (text) => setChat((prev) => [...prev, { role: 'assistant', text }]),
+  })
+
   const fillFromCampaignCard = (card: CheilCardFill) => {
     let tries = 0
     const attempt = () => {

@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { findCheilSlots } from '../src/cheil-fill'
 import {
   CHEIL_FIELDS,
+  cheilCardChangeNote,
+  cheilCardChanges,
   cheilCardFillNote,
   cheilCardFillOf,
+  cheilChangeCounts,
+  cheilPropagatePairs,
+  cheilReplaceText,
   cheilCardReplacements,
   cheilCardSummary,
   cheilFieldValues,
@@ -113,5 +118,66 @@ describe('Cheil fork: a document set filled from a campaign card', () => {
     // a full card gives a value for every common field
     const full = Object.fromEntries(cheilFieldValues({ ...CARD, author: '챔프리' }, '2026-10-25'))
     expect(Object.keys(full).sort()).toEqual(CHEIL_FIELDS.map((f) => f.placeholder).sort())
+  })
+})
+
+describe('Cheil fork: a card change carried to the open documents', () => {
+  it('lists the fields whose value changed, with what to look for', () => {
+    const { changes, cleared } = cheilCardChanges(
+      CARD,
+      { ...CARD, budget: '600000000', team: '', kpi: CARD.kpi, author: '홍길동' },
+      '2026-10-26',
+    )
+    expect(changes).toEqual([
+      { label: '총예산', from: '500,000,000원', to: '600,000,000원', finds: ['500,000,000원'] },
+      // the card had no author: the blank (and its aliases) is what the documents hold
+      {
+        label: '작성자',
+        from: '',
+        to: '홍길동',
+        finds: ['[작성자]', '[작성자 이름]', '[담당자]'],
+      },
+    ])
+    // an emptied field is not deleted from the documents
+    expect(cleared).toEqual(['팀명'])
+    // the day a document is made is never carried
+    expect(cheilCardChanges(CARD, CARD, '2027-01-01').changes).toEqual([])
+  })
+
+  it('flattens the changes into pairs and adds a tab’s counts back up per field', () => {
+    const { changes } = cheilCardChanges(CARD, { ...CARD, budget: '6억 원', author: '홍길동' }, 'x')
+    const pairs = cheilPropagatePairs(changes)
+    expect(pairs.map((p) => p.find)).toEqual([
+      '500,000,000원',
+      '[작성자]',
+      '[작성자 이름]',
+      '[담당자]',
+    ])
+    expect(cheilChangeCounts(pairs, [2, 1, 0, 1])).toEqual([
+      { label: '총예산', from: '500,000,000원', to: '6억 원', count: 2 },
+      { label: '작성자', from: '', to: '홍길동', count: 2 },
+    ])
+    // a missing or bad count reads as none
+    expect(cheilChangeCounts(pairs, [-1]).map((i) => i.count)).toEqual([0, 0])
+    expect(cheilCardChangeNote('ko', cheilChangeCounts(pairs, [2, 0, 0, 0]))).toBe(
+      '캠페인 카드가 바뀌어 이 문서를 고쳤습니다(AI 없이): 총예산 500,000,000원 → 6억 원 (2곳)',
+    )
+    expect(cheilCardChangeNote('ko', cheilChangeCounts(pairs, []))).toContain(
+      '바꿀 곳이 없었습니다',
+    )
+  })
+})
+
+describe('Cheil fork: replacing card values in a text', () => {
+  it('replaces every place, the longer text winning where two overlap', () => {
+    const text = '에어린 봄 런칭 — 에어린 공기청정기, 에어린 봄 런칭 예산 500,000,000원'
+    const { text: out, counts } = cheilReplaceText(text, [
+      { find: '에어린', replace: '에어린2' },
+      { find: '에어린 봄 런칭', replace: '에어린 여름 런칭' },
+      { find: '500,000,000원', replace: '600,000,000원' },
+      { find: '없는 글', replace: 'x' },
+    ])
+    expect(out).toBe('에어린 여름 런칭 — 에어린2 공기청정기, 에어린 여름 런칭 예산 600,000,000원')
+    expect(counts).toEqual([1, 2, 1, 0])
   })
 })

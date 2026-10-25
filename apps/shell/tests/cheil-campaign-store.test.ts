@@ -14,6 +14,7 @@ import {
 } from '../src/main/cheil/campaign-store'
 import { registerCheilCampaignIpc } from '../src/main/cheil/campaign-ipc'
 import { CHEIL_CAMPAIGN_CHANNELS } from '../src/shared/cheil-campaign-api'
+import { CHEIL_PROPAGATED_CHANNEL } from '../../../packages/electron-utils/src/user-skills-channels'
 
 const CARD = {
   campaign: '에어린 봄 런칭',
@@ -227,10 +228,20 @@ describe('Cheil fork: campaign channels', () => {
       openTemplate,
       today: () => '2026-10-25',
       campaignOfSender: (sender) => tabs.get((sender as { id: number }).id) ?? null,
+      // plan item 5 has its own harness below
+      campaignTabs: () => [],
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
-    return { handlers, home, call, openFolder, openDocument, openTemplate, tabs }
+    return {
+      handlers,
+      home,
+      call,
+      openFolder,
+      openDocument,
+      openTemplate,
+      tabs,
+    }
   }
 
   const SET = [
@@ -407,7 +418,9 @@ describe('Cheil fork: campaign channels', () => {
 
   it('registers every channel and answers the home only', async () => {
     const { handlers, home, call } = wire()
-    expect([...handlers.keys()].sort()).toEqual(Object.values(CHEIL_CAMPAIGN_CHANNELS).sort())
+    expect([...handlers.keys()].sort()).toEqual(
+      [...Object.values(CHEIL_CAMPAIGN_CHANNELS), CHEIL_PROPAGATED_CHANNEL].sort(),
+    )
     expect(await call({ id: 2 }, CHEIL_CAMPAIGN_CHANNELS.create, CARD)).toEqual({
       ok: false,
       reason: 'not-found',
@@ -438,5 +451,138 @@ describe('Cheil fork: campaign channels', () => {
       ok: true,
     })
     expect(openDocument).toHaveBeenCalledWith(join(root, made.campaign.id, HISTORY_FILE))
+  })
+})
+
+describe('Cheil fork: a card change carried to the open documents (plan item 5)', () => {
+  function wireP() {
+    const handlers = new Map<string, (event: { sender: unknown }, ...args: unknown[]) => unknown>()
+    const home = { id: 1 }
+    const tabs = new Map<number, { id: string; title: string }>()
+    const answers = new Map<number, (pairs: Array<{ find: string }>) => number[] | 'throw'>()
+    registerCheilCampaignIpc({
+      ipc: { handle: (channel: string, fn: never) => void handlers.set(channel, fn) } as never,
+      store: makeStore(),
+      isHome: (sender) => sender === home,
+      openFolder: async () => '',
+      openDocument: () => true,
+      openTemplate: async () => true,
+      today: () => '2026-10-25',
+      campaignOfSender: (sender) => tabs.get((sender as { id: number }).id) ?? null,
+      campaignTabs: (campaignId) =>
+        [...tabs]
+          .filter(([, tab]) => tab.id === campaignId)
+          .map(([senderId, tab]) => ({
+            senderId,
+            title: tab.title,
+            send: (_channel: string, payload: unknown) => {
+              const { requestId, pairs } = payload as {
+                requestId: string
+                pairs: Array<{ find: string }>
+              }
+              const answer = (answers.get(senderId) ?? ((p) => p.map(() => 0)))(pairs)
+              if (answer === 'throw') throw new Error('gone')
+              // a stray answer from another tab comes first and is ignored
+              void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
+                { sender: { id: senderId + 1000 } },
+                { requestId, counts: answer.map(() => 99) },
+              )
+              void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
+                { sender: { id: senderId } },
+                { requestId, counts: answer },
+              )
+            },
+          })),
+    })
+    const call = (sender: unknown, channel: string, ...args: unknown[]) =>
+      handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
+    return { home, call, tabs, answers }
+  }
+
+  async function made(w: ReturnType<typeof wireP>) {
+    const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    return res.campaign.id
+  }
+
+  it("asks the campaign's open tabs to replace the old value and lists what changed", async () => {
+    const w = wireP()
+    const id = await made(w)
+    w.tabs.set(7, { id, title: '크리에이티브 브리프' })
+    w.tabs.set(8, { id, title: '캠페인 제안서' })
+    w.tabs.set(9, { id: 'another campaign', title: '다른 문서' })
+    const seen: string[][] = []
+    w.answers.set(7, (pairs) => (seen.push(pairs.map((p) => p.find)), [1]))
+    w.answers.set(8, () => [2])
+    w.answers.set(9, () => {
+      throw new Error('another campaign’s tab is never asked')
+    })
+    const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+    })) as {
+      ok: boolean
+      propagation: { tabs: unknown[]; cleared: string[] }
+      campaign: { timeline: Array<{ text: string }> }
+    }
+    expect(res.ok).toBe(true)
+    expect(seen).toEqual([['500,000,000원']])
+    expect(res.propagation).toEqual({
+      tabs: [
+        {
+          title: '크리에이티브 브리프',
+          answered: true,
+          items: [{ label: '총예산', from: '500,000,000원', to: '600,000,000원', count: 1 }],
+        },
+        {
+          title: '캠페인 제안서',
+          answered: true,
+          items: [{ label: '총예산', from: '500,000,000원', to: '600,000,000원', count: 2 }],
+        },
+      ],
+      cleared: [],
+    })
+    expect(res.campaign.timeline.map((e) => e.text).slice(-2)).toEqual([
+      '카드 변경 반영: 크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳',
+      '카드 변경 반영: 캠페인 제안서 — 총예산 500,000,000원 → 600,000,000원 2곳',
+    ])
+  })
+
+  it('lists a tab it could not reach as not answering, and records nothing for it', async () => {
+    const w = wireP()
+    const id = await made(w)
+    w.tabs.set(7, { id, title: '크리에이티브 브리프' })
+    w.answers.set(7, () => 'throw')
+    const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+    })) as {
+      propagation: { tabs: Array<{ answered: boolean }> }
+      campaign: { timeline: unknown[] }
+    }
+    expect(res.propagation.tabs).toEqual([
+      expect.objectContaining({ title: '크리에이티브 브리프', answered: false }),
+    ])
+    // created + the card change only
+    expect(res.campaign.timeline).toHaveLength(2)
+  })
+
+  it('touches no document without open tabs, lists an emptied field, and says nothing for other edits', async () => {
+    const w = wireP()
+    const id = await made(w)
+    const none = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+      team: '',
+    })) as { propagation: unknown }
+    expect(none.propagation).toEqual({ tabs: [], cleared: ['팀명'] })
+    // the same card again: nothing changed, nothing carried
+    const same = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+      team: '',
+    })) as Record<string, unknown>
+    expect(same).not.toHaveProperty('propagation')
   })
 })
