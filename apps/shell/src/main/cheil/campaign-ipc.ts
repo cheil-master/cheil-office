@@ -13,11 +13,13 @@ import {
   cheilChangeCounts,
   cheilFieldValues,
   cheilPropagatePairs,
+  cheilReplaceText,
   type CheilPropagatePair,
 } from '../../../../../packages/ui/src/cheil-fields'
 import {
   CHEIL_PROPAGATE_CHANNEL,
   CHEIL_PROPAGATED_CHANNEL,
+  CHEIL_PROPAGATE_READY_CHANNEL,
 } from '../../../../../packages/electron-utils/src/user-skills-channels'
 import {
   CHEIL_CAMPAIGN_CHANNELS,
@@ -27,6 +29,7 @@ import {
   type CampaignTask,
 } from '../../shared/cheil-campaign-api'
 import type { CampaignStore } from './campaign-store'
+import { REOPEN_MAX } from './campaign-files'
 
 export interface CheilCampaignIpcDeps {
   ipc: Pick<IpcMain, 'handle'>
@@ -38,8 +41,9 @@ export interface CheilCampaignIpcDeps {
   /** open a document in a tab; false when nothing opened */
   openDocument(path: string): boolean
   /**
-   * Open a template's copy as a new tab, its request waiting unsent and the
-   * card's values handed to its panel; false when it did not open
+   * Write a template's copy into the campaign's folder and open it in a tab,
+   * its request waiting unsent and the card's values handed to its panel;
+   * false when it did not open
    */
   openTemplate(
     item: CampaignSetItem,
@@ -49,21 +53,33 @@ export interface CheilCampaignIpcDeps {
   /** the local day as YYYY-MM-DD (the documents' 작성일) */
   today(): string
   /**
-   * Plan item 3: the campaign and template title of an editor tab a set
-   * opened (the shell keeps the map while the tab lives); null for any other
+   * Plan item 3: the campaign and title of an editor tab whose document is in
+   * a campaign's folder (plan item 5: the folder decides); null for any other
    */
   campaignOfSender(sender: unknown): { id: string; title: string } | null
-  /**
-   * Plan item 5: the tabs a set opened for this campaign that are still open:
-   * their webContents id, template title, and a way to send them a message
-   */
-  campaignTabs(
-    campaignId: string,
-  ): Array<{ senderId: number; title: string; send(channel: string, payload: unknown): void }>
+  /** Plan item 5: the open tabs of the campaign's documents */
+  campaignTabs(campaignId: string): CampaignTab[]
+  /** Plan item 5: the campaign's documents no tab shows */
+  closedDocuments(campaignId: string): Promise<Array<{ path: string; title: string }>>
+  /** a closed document's text, to look for the old values; null when it cannot be read */
+  readText(path: string): Promise<string | null>
+  /** open a closed document in a tab again; null when it did not open */
+  reopen(path: string): Promise<CampaignTab | null>
+  /** bring the home back to the front (it lists what the change did) */
+  showHome(): void
+}
+
+/** An open tab of a campaign's document: its webContents id, title, and a way to message it */
+export interface CampaignTab {
+  senderId: number
+  title: string
+  send(channel: string, payload: unknown): void
 }
 
 /** how long a tab may take to answer a card change before it is listed as not answering */
 export const PROPAGATE_TIMEOUT_MS = 10_000
+/** the same for a closed document opened again: it reads its file first */
+export const REOPEN_TIMEOUT_MS = 30_000
 
 const senderIdOf = (sender: unknown): number | null => {
   const id = (sender as { id?: unknown } | null)?.id
@@ -148,41 +164,91 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
     { senderId: number; size: number; resolve: (counts: number[] | null) => void }
   >()
   let requests = 0
+  /** plan item 5: tabs whose editor listens for card changes, by webContents id */
+  const listening = new Set<number>()
+  const wakers = new Map<number, Set<() => void>>()
 
-  /** Send each open tab of the campaign the pairs; what each changed, or not answered */
-  const propagate = (campaignId: string, pairs: CheilPropagatePair[]) =>
-    Promise.all(
-      deps.campaignTabs(campaignId).map(
-        (tab) =>
-          new Promise<CampaignPropagation['tabs'][number]>((resolve) => {
-            const requestId = `p${++requests}-${tab.senderId}`
-            const done = (counts: number[] | null) =>
-              resolve({
-                title: tab.title,
-                answered: counts !== null,
-                items: cheilChangeCounts(pairs, counts ?? []),
-              })
-            const timer = setTimeout(() => {
-              if (pending.delete(requestId)) done(null)
-            }, PROPAGATE_TIMEOUT_MS)
-            pending.set(requestId, {
-              senderId: tab.senderId,
-              size: pairs.length,
-              resolve: (counts) => {
-                clearTimeout(timer)
-                done(counts)
-              },
-            })
-            try {
-              tab.send(CHEIL_PROPAGATE_CHANNEL, { requestId, pairs })
-            } catch {
-              pending.delete(requestId)
-              clearTimeout(timer)
-              done(null)
-            }
-          }),
+  /** true once the tab listens; false when it did not within `ms` */
+  const whenListening = (senderId: number, ms: number) =>
+    new Promise<boolean>((resolve) => {
+      if (listening.has(senderId)) return resolve(true)
+      const waiting = wakers.get(senderId) ?? new Set<() => void>()
+      wakers.set(senderId, waiting)
+      const settle = (ok: boolean) => {
+        clearTimeout(timer)
+        waiting.delete(wake)
+        if (waiting.size === 0 && wakers.get(senderId) === waiting) wakers.delete(senderId)
+        resolve(ok)
+      }
+      const wake = () => settle(true)
+      const timer = setTimeout(() => settle(false), ms)
+      waiting.add(wake)
+    })
+
+  /** Send one tab the pairs once it listens; what it changed, or not answered within `ms` */
+  const reach = (tab: CampaignTab, pairs: CheilPropagatePair[], ms: number, reopened = false) =>
+    new Promise<CampaignPropagation['tabs'][number]>((resolve) => {
+      const requestId = `p${++requests}-${tab.senderId}`
+      let settled = false
+      const done = (counts: number[] | null) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        pending.delete(requestId)
+        resolve({
+          title: tab.title,
+          answered: counts !== null,
+          ...(reopened ? { reopened: true } : {}),
+          items: cheilChangeCounts(pairs, counts ?? []),
+        })
+      }
+      const timer = setTimeout(() => done(null), ms)
+      pending.set(requestId, { senderId: tab.senderId, size: pairs.length, resolve: done })
+      void whenListening(tab.senderId, ms).then((ok) => {
+        if (!ok || settled) return done(null)
+        try {
+          tab.send(CHEIL_PROPAGATE_CHANNEL, { requestId, pairs })
+        } catch {
+          done(null)
+        }
+      })
+    })
+
+  /**
+   * The campaign's closed documents holding an old value, opened again and
+   * changed (not saved: the person checks and saves them); the ones that
+   * could not be read or opened again are left for the person
+   */
+  const reachClosed = async (campaignId: string, pairs: CheilPropagatePair[]) => {
+    const left: string[] = []
+    const holding: Array<{ path: string; title: string }> = []
+    const replacements = pairs.map((p) => ({ find: p.find, replace: p.to }))
+    for (const doc of await deps.closedDocuments(campaignId).catch(() => [])) {
+      const text = await deps.readText(doc.path).catch(() => null)
+      if (text === null) left.push(doc.title)
+      else if (cheilReplaceText(text, replacements).counts.some((n) => n > 0)) holding.push(doc)
+    }
+    const opened: CampaignTab[] = []
+    for (const [i, doc] of holding.entries()) {
+      const tab = i < REOPEN_MAX ? await deps.reopen(doc.path).catch(() => null) : null
+      if (tab) opened.push(tab)
+      else left.push(doc.title)
+    }
+    if (opened.length > 0) deps.showHome()
+    const tabs = await Promise.all(opened.map((tab) => reach(tab, pairs, REOPEN_TIMEOUT_MS, true)))
+    return { tabs, left }
+  }
+
+  /** Every document of the campaign that holds an old value: what each changed, or not answered */
+  const propagate = async (campaignId: string, pairs: CheilPropagatePair[]) => {
+    const [open, closed] = await Promise.all([
+      Promise.all(
+        deps.campaignTabs(campaignId).map((tab) => reach(tab, pairs, PROPAGATE_TIMEOUT_MS)),
       ),
-    )
+      reachClosed(campaignId, pairs),
+    ])
+    return { tabs: [...open, ...closed.tabs], left: closed.left }
+  }
   const homeOnly =
     <A extends unknown[], R>(handler: (...args: A) => Promise<R>) =>
     (event: { sender: unknown }, ...args: A): Promise<R | CampaignResult> =>
@@ -206,7 +272,7 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       const before = await store.get(id)
       const updated = await store.update(id, card)
       if (!updated.ok || !before.ok) return updated
-      // plan item 5: the common fields that changed go into the campaign's open documents
+      // plan item 5: the common fields that changed go into the campaign's documents
       const { changes, cleared } = cheilCardChanges(
         before.campaign.card,
         updated.campaign.card,
@@ -214,7 +280,10 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       )
       if (changes.length === 0 && cleared.length === 0) return updated
       const pairs = cheilPropagatePairs(changes)
-      const tabs = pairs.length > 0 ? await propagate(updated.campaign.id, pairs) : []
+      const { tabs, left } =
+        pairs.length > 0
+          ? await propagate(updated.campaign.id, pairs)
+          : { tabs: [], left: [] as string[] }
       let campaign = updated.campaign
       for (const tab of tabs) {
         const done = tab.items.filter((item) => item.count > 0)
@@ -223,13 +292,35 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
           kind: 'document',
           text: `카드 변경 반영: ${tab.title} — ${done
             .map((i) => `${i.label} ${i.from || '(빈칸)'} → ${i.to} ${i.count}곳`)
-            .join(', ')}`,
+            .join(', ')}${tab.reopened ? ' (닫혀 있던 문서를 열어 바꿈, 저장 전)' : ''}`,
         })
         if (recorded.ok) campaign = recorded.campaign
       }
-      return { ok: true as const, campaign, propagation: { tabs, cleared } }
+      if (left.length > 0) {
+        const recorded = await store.record(campaign.id, {
+          kind: 'document',
+          text: `카드 변경을 확인하지 못한 문서: ${left.join(', ')} — 직접 확인 필요`,
+        })
+        if (recorded.ok) campaign = recorded.campaign
+      }
+      return {
+        ok: true as const,
+        campaign,
+        propagation: { tabs, cleared, ...(left.length > 0 ? { left } : {}) },
+      }
     }),
   )
+  // plan item 5: a tab's editor starts or stops listening for card changes
+  ipc.handle(CHEIL_PROPAGATE_READY_CHANNEL, (event: { sender: unknown }, on: unknown) => {
+    const senderId = senderIdOf(event.sender)
+    if (senderId === null) return
+    if (on !== true) {
+      listening.delete(senderId)
+      return
+    }
+    listening.add(senderId)
+    for (const wake of [...(wakers.get(senderId) ?? [])]) wake()
+  })
   // plan item 5: a tab answers how many places each pair changed
   ipc.handle(CHEIL_PROPAGATED_CHANNEL, (event: { sender: unknown }, raw: unknown) => {
     const answer = raw as { requestId?: unknown; counts?: unknown } | null
@@ -284,7 +375,7 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       // the set's line goes first: each tab records its own card fill once it has loaded
       const started = await store.record(campaignId, {
         kind: 'document',
-        text: `문서 세트를 엽니다: ${items.map((item) => item.title).join(', ')}`,
+        text: `문서 세트를 캠페인 폴더에 만들어 엽니다: ${items.map((item) => item.title).join(', ')}`,
       })
       if (!started.ok) return started
       const failed: string[] = []

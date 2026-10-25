@@ -27,6 +27,7 @@ import {
   CHEIL_RECORD_CHANNEL,
   CHEIL_PROPAGATE_CHANNEL,
   CHEIL_PROPAGATED_CHANNEL,
+  CHEIL_PROPAGATE_READY_CHANNEL,
   type CheilPropagatePair,
   type CheilPropagateRequest,
   type CheilRecordInput,
@@ -115,7 +116,8 @@ export interface UserSkillsBridge {
   cheilRecord(input: CheilRecordInput): Promise<void>
   /**
    * Cheil fork (plan item 5): the campaign's card changed; `apply` replaces the
-   * pairs in this tab's document and returns how many places each changed
+   * pairs in this tab's document and returns how many places each changed.
+   * The shell hears that the tab listens, and that it stopped.
    */
   onCheilPropagate(apply: (pairs: CheilPropagatePair[]) => Promise<number[]>): () => void
 }
@@ -240,8 +242,10 @@ export function userSkillsBridge(): UserSkillsBridge {
           .catch(() => undefined)
       }
       ipcRenderer.on(CHEIL_PROPAGATE_CHANNEL, handler)
+      void ipcRenderer.invoke(CHEIL_PROPAGATE_READY_CHANNEL, true).catch(() => undefined)
       return () => {
         ipcRenderer.removeListener(CHEIL_PROPAGATE_CHANNEL, handler)
+        void ipcRenderer.invoke(CHEIL_PROPAGATE_READY_CHANNEL, false).catch(() => undefined)
       }
     },
     onPreviewEnded(listener) {

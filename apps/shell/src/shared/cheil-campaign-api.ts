@@ -29,18 +29,23 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
 } as const
 
 /**
- * Plan item 5: a card edit carried into the campaign's open documents. Each
- * tab a set opened for this campaign replaced the old values; `answered` is
- * false for one that did not answer in time.
+ * Plan item 5: a card edit carried into the campaign's documents, the Word,
+ * PowerPoint and Excel files in its folder. Each open one replaced the old
+ * values; a closed one that held an old value was opened again and changed
+ * (`reopened`: not saved yet). `answered` is false for one that did not
+ * answer in time.
  */
 export interface CampaignPropagation {
   tabs: Array<{
     title: string
     answered: boolean
+    reopened?: boolean
     items: Array<{ label: string; from: string; to: string; count: number }>
   }>
   /** fields emptied on the card: the documents keep what they have */
   cleared: string[]
+  /** closed documents that could not be read or opened again: the person checks them */
+  left?: string[]
 }
 
 /** A to-do read from a received mail, as the person confirmed it (plan item 3) */
@@ -161,7 +166,8 @@ export interface CheilCampaignApi {
   /**
    * Plan item 4: open each template as a new tab whose common blanks the
    * campaign's card fills (no model), with its request waiting unsent; the
-   * timeline records the set
+   * timeline records the set. Plan item 5: each is a file in the campaign's
+   * folder, saved in place.
    */
   openSet(
     id: string,

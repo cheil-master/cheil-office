@@ -25,6 +25,11 @@ export const CHEIL_RECORD_CHANNEL = 'cheil:campaign-record'
  */
 export const CHEIL_PROPAGATE_CHANNEL = 'cheil:campaign-propagate'
 export const CHEIL_PROPAGATED_CHANNEL = 'cheil:campaign-propagated'
+/**
+ * The tab says it listens (true) or stopped (false): a document the shell
+ * opens again for a card change hears it only once its editor has loaded.
+ */
+export const CHEIL_PROPAGATE_READY_CHANNEL = 'cheil:campaign-propagate-ready'
 
 /** One text to replace: the field it belongs to, its old and new value, and what to look for */
 export interface CheilPropagatePair {

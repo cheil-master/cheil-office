@@ -1262,6 +1262,7 @@ export function App({
       return counts
     },
     note: (text) => appendChat({ role: 'assistant', text, tools: [], streaming: false }),
+    loaded: () => getActiveSheetInfo().sheets.length > 0,
   })
   /** the skills of the last send: a retry of a message with chips sends the same skill text */
   const lastSkillUseRef = useRef<SkillUse>(NO_SKILL_USE)

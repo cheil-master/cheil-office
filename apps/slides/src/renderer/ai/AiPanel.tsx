@@ -2051,6 +2051,7 @@ export function AiPanel({
       return counts
     },
     note: (text) => setChat((prev) => [...prev, { role: 'assistant', text }]),
+    loaded: () => (accessRef.current?.getSlides().length ?? 0) > 0,
   })
 
   const fillFromCampaignCard = (card: CheilCardFill) => {

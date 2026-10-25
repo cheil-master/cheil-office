@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
@@ -78,8 +78,9 @@ async function openSet(page: Page, skills: string[]) {
 }
 
 test('Cheil: a campaign opens a brief and a proposal with the card in their common blanks', async () => {
+  const userDataDir = await profileWithCampaign()
   const launched = await launchShell({
-    userDataDir: await profileWithCampaign(),
+    userDataDir,
     videoDir: 'cheil-campaign-set',
     lang: 'ko',
     onboardingSeen: true,
@@ -155,10 +156,22 @@ test('Cheil: a campaign opens a brief and a proposal with the card in their comm
     // back home: the view says what opened and the timeline has the set
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     const view = page.getByTestId('cheil-campaign-view')
-    await expect(view.locator('.cheil-set-done')).toContainText('양식 2개를 새 탭으로 열었습니다')
+    await expect(view.locator('.cheil-set-done')).toContainText(
+      '양식 2개를 캠페인 폴더에 만들어 열었습니다',
+    )
+    // plan item 5: each is a file in the campaign's folder, and its tab shows that file
+    const folder = join(userDataDir, 'Cheil 캠페인', FOLDER)
+    expect(existsSync(join(folder, '크리에이티브 브리프.docx'))).toBe(true)
+    expect(existsSync(join(folder, '캠페인 제안서.pptx'))).toBe(true)
+    await expect(page.locator('.tab-bar .tab-item:not(.tab-home)')).toContainText([
+      '캠페인 제안서.pptx',
+      '크리에이티브 브리프.docx',
+    ])
     // the set's line, then each tab's own card fill (plan item 3), picked up while the view is open
     const timeline = page.getByTestId('cheil-campaign-timeline')
-    await expect(timeline).toContainText('문서 세트를 엽니다: 캠페인 제안서, 크리에이티브 브리프')
+    await expect(timeline).toContainText(
+      '문서 세트를 캠페인 폴더에 만들어 엽니다: 캠페인 제안서, 크리에이티브 브리프',
+    )
     await expect(timeline).toContainText('크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움', {
       timeout: 15_000,
     })
@@ -279,5 +292,89 @@ test('Cheil: changing the budget on the card changes it in the open brief and pr
     await expect(slides.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
   } finally {
     await closeAndSaveVideo(launched, 'cheil-campaign-propagate')
+  }
+})
+
+/**
+ * Cheil fork (plan item 5): a card change reaches a closed document, after a
+ * restart. The brief is saved in the campaign's folder and the app quits; in
+ * the next run the budget changes on the card; the brief, which holds the old
+ * budget, opens again with the new one (not saved: the person checks and
+ * saves it), and the home lists it as reopened.
+ */
+test('Cheil: after a restart, changing the budget opens the closed brief again with it', async () => {
+  const userDataDir = await profileWithCampaign()
+  const brief = join(userDataDir, 'Cheil 캠페인', FOLDER, '크리에이티브 브리프.docx')
+  const first = await launchShell({
+    userDataDir,
+    videoDir: 'cheil-campaign-reopen-1',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  try {
+    await first.app.evaluate(({ dialog }) => {
+      dialog.showSaveDialog = (async () => {
+        throw new Error('a campaign document saves in place, never through Save As')
+      }) as typeof dialog.showSaveDialog
+    })
+    await openSet(first.page, ['cheil-brief'])
+    const docs = await waitForPageWithUrl(first.app, '://docs/', 60_000)
+    await expect(docs.getByText(/카드로 공통 칸 10개를 채웠습니다/)).toBeVisible({
+      timeout: 60_000,
+    })
+    // the filled brief saves in place
+    const before = (await stat(brief)).mtimeMs
+    await first.app.evaluate(({ webContents }) => {
+      webContents
+        .getAllWebContents()
+        .find((w) => w.getURL().includes('://docs/'))
+        ?.send('menu:command', 'save')
+    })
+    await expect
+      .poll(async () => (await stat(brief)).mtimeMs, { timeout: 15_000 })
+      .toBeGreaterThan(before)
+  } finally {
+    await closeAndSaveVideo(first, 'cheil-campaign-reopen-1')
+  }
+
+  const launched = await launchShell({
+    userDataDir,
+    videoDir: 'cheil-campaign-reopen-2',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  try {
+    await page.setViewportSize({ width: 1280, height: 1000 }).catch(() => {})
+    await page.locator('[data-testid="cheil-campaign-card"]').first().click()
+    const view = page.getByTestId('cheil-campaign-view')
+    await view.getByRole('button', { name: '카드 고치기' }).click()
+    await page.locator('form.cheil-campaign-form input[name="budget"]').fill('600000000')
+    await page.getByTestId('cheil-campaign-submit').click()
+
+    const list = page.getByTestId('cheil-propagation')
+    await expect(list).toBeVisible({ timeout: 45_000 })
+    await expect(list).toContainText(
+      '크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳 — 닫혀 있던 문서를 열어 바꿨습니다. 확인하고 저장하세요',
+    )
+    await expect(page.getByTestId('cheil-campaign-timeline')).toContainText(
+      '카드 변경 반영: 크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳 (닫혀 있던 문서를 열어 바꿈, 저장 전)',
+    )
+    await expect(page.locator('.tab-bar .tab-item:not(.tab-home)')).toContainText([
+      '크리에이티브 브리프.docx',
+    ])
+    await page.screenshot({ path: screenshotPath('cheil-campaign-reopen-home') })
+
+    // the brief is open again with the new budget, and its panel says so
+    const reopened = await waitForPageWithUrl(app, '://docs/', 30_000)
+    const docText = await reopened.evaluate(
+      () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
+    )
+    expect(docText).toContain('600,000,000원')
+    expect(docText).not.toContain('500,000,000원')
+    await expect(reopened.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
+    await reopened.screenshot({ path: screenshotPath('cheil-campaign-reopen-brief') })
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-campaign-reopen-2')
   }
 })

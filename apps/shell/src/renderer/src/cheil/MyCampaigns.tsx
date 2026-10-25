@@ -98,19 +98,21 @@ const WORDS = {
     period: '캠페인 기간',
     setTitle: '문서 세트 만들기',
     setDesc:
-      '고른 양식이 새 탭으로 열리고, 카드의 광고주·캠페인명·기간·예산·타깃·KPI가 공통 칸에 바로 들어갑니다(AI 없이). 나머지 칸은 각 탭에서 자료를 붙여 보내면 채웁니다.',
+      '고른 양식이 캠페인 폴더에 파일로 만들어져 새 탭으로 열리고, 카드의 광고주·캠페인명·기간·예산·타깃·KPI가 공통 칸에 바로 들어갑니다(AI 없이). 저장하면 그 파일에 저장됩니다. 나머지 칸은 각 탭에서 자료를 붙여 보내면 채웁니다.',
     setOpen: (n: number) => `선택한 양식 열기 (${n})`,
     setOpened: (n: number) =>
-      `양식 ${n}개를 새 탭으로 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
-    propTitle: '카드 변경을 열린 문서에 반영했습니다',
-    propNoTabs: '이 캠페인에서 연 문서가 지금 열려 있지 않아 문서에는 반영하지 않았습니다.',
+      `양식 ${n}개를 캠페인 폴더에 만들어 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
+    propTitle: '카드 변경을 캠페인 문서에 반영했습니다',
+    propNoTabs: '캠페인 폴더의 문서에 바뀐 값이 들어 있지 않아 바꾼 문서가 없습니다.',
     propNoAnswer: '— 응답이 없어 확인하지 못했습니다',
     propNothing: '— 바꿀 곳이 없었습니다',
     propItem: (label: string, from: string, to: string, n: number) =>
       `— ${label} ${from || '(빈칸)'} → ${to} ${n}곳`,
+    propReopened: '— 닫혀 있던 문서를 열어 바꿨습니다. 확인하고 저장하세요',
+    propLeft: (titles: string) => `확인하지 못한 문서: ${titles} — 직접 열어 확인하세요.`,
     propCleared: (labels: string) => `${labels}: 카드에서 비웠지만 문서의 값은 그대로 두었습니다.`,
     propClosed:
-      '닫히거나 저장된 문서에는 반영하지 않았습니다(이 캠페인에서 연 탭만). 각 탭에서 되돌리기 한 번으로 되돌릴 수 있습니다.',
+      '캠페인 폴더의 워드·파워포인트·엑셀 문서를 살폈습니다. 바꾼 문서는 저장해야 파일에 남고, 각 탭에서 되돌리기 한 번으로 되돌릴 수 있습니다.',
     mailTitle: '받은 메일 → 할 일',
     mailPlaceholder:
       '받은 메일을 붙여넣으면 할 일·담당·마감을 뽑습니다(AI 한 번). 대외비·개인정보가 보이면 이 PC 밖 AI 로는 보내지 않습니다.',
@@ -191,20 +193,23 @@ const WORDS = {
     period: 'Period',
     setTitle: 'Make a document set',
     setDesc:
-      'The chosen templates open in new tabs with the card’s client, campaign, period, budget, target and KPI already in their common blanks (no AI). Send your material in each tab to fill the rest.',
+      'The chosen templates are made as files in the campaign’s folder and open in new tabs with the card’s client, campaign, period, budget, target and KPI already in their common blanks (no AI). Saving writes those files. Send your material in each tab to fill the rest.',
     setOpen: (n: number) => `Open the chosen templates (${n})`,
     setOpened: (n: number) =>
-      `Opened ${n} templates in new tabs; each AI panel has its request waiting.`,
-    propTitle: 'The card change went into the open documents',
-    propNoTabs: 'No document this campaign opened is open now; the documents were not changed.',
+      `Made ${n} templates in the campaign’s folder and opened them; each AI panel has its request waiting.`,
+    propTitle: 'The card change went into the campaign’s documents',
+    propNoTabs:
+      'No document in the campaign’s folder holds a changed value; no document was changed.',
     propNoAnswer: '— did not answer; not checked',
     propNothing: '— nothing to change',
     propItem: (label: string, from: string, to: string, n: number) =>
       `— ${label} ${from || '(blank)'} → ${to}, ${n}`,
+    propReopened: '— was closed: opened and changed. Check it and save',
+    propLeft: (titles: string) => `Not checked: ${titles} — open them and check.`,
     propCleared: (labels: string) =>
       `${labels}: emptied on the card; the documents keep their values.`,
     propClosed:
-      'Closed or saved documents were not changed (only tabs this campaign opened). Each tab can undo it in one step.',
+      'The Word, PowerPoint and Excel documents in the campaign’s folder were checked. A changed document keeps the change once saved; each tab can undo it in one step.',
     mailTitle: 'Received mail → to-dos',
     mailPlaceholder:
       'Paste a received mail to pick out to-dos, owners and due days (one AI call). Confidential or personal content is not sent to an AI outside this PC.',
@@ -553,8 +558,9 @@ function CampaignForm({
 }
 
 /**
- * Plan item 4: open several templates at once for this campaign. Each opens
- * in a new tab with the card's values already in its common blanks (the main
+ * Plan item 4: open several templates at once for this campaign. Each is a
+ * file in the campaign's folder (plan item 5) and opens in a new tab with the
+ * card's values already in its common blanks (the main
  * process works them out from the stored card) and its request, with the
  * card's lines, waiting unsent in the AI panel.
  */
@@ -797,7 +803,7 @@ function MailTasks({
   )
 }
 
-/** Plan item 5: what a card edit changed in the campaign's open documents */
+/** Plan item 5: what a card edit changed in the campaign's documents, open or opened again */
 function PropagationList({ w, result }: { w: Words; result: CampaignPropagation }) {
   return (
     <section
@@ -824,11 +830,15 @@ function PropagationList({ w, result }: { w: Words; result: CampaignPropagation 
                     : done
                         .map((item) => w.propItem(item.label, item.from, item.to, item.count))
                         .join(', ')}
+                {tab.reopened ? ` ${w.propReopened}` : null}
               </li>
             )
           })}
         </ul>
       )}
+      {result.left?.length ? (
+        <p className="cheil-set-desc">{w.propLeft(result.left.join(', '))}</p>
+      ) : null}
       {result.cleared.length > 0 ? (
         <p className="cheil-set-desc">{w.propCleared(result.cleared.join(', '))}</p>
       ) : null}

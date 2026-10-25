@@ -3,10 +3,12 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
+  type Dirent,
 } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { release } from 'node:os'
@@ -102,6 +104,11 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { createCampaignStore } from './cheil/campaign-store'
 import { registerCheilCampaignIpc } from './cheil/campaign-ipc'
+import {
+  campaignDocumentOf,
+  campaignDocumentTitle,
+  isCampaignDocumentName,
+} from './cheil/campaign-files'
 import { cheilToday } from '../../../../packages/ui/src/cheil-fields'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
@@ -7197,6 +7204,13 @@ const templateTabs = createTemplateTabs({
   removeDir: async (dir) => rmSync(dir, { recursive: true, force: true }),
   templateFileOf: (id) => userSkills.templateFile(id),
   openCopy: (copy) => openTemplateCopyTab(copy),
+  // Cheil fork (plan item 5): a campaign set's template copy is a file in the campaign's folder
+  openFile: async (path) => {
+    if (!openDocumentPath(path)) return null
+    const tab = tabManager?.findTabByPath(path) ?? findDetachedTabByPath(path)
+    return tab ? { tabId: tab.id, contents: tab.webContents } : null
+  },
+  fileExists: (path) => existsSync(path),
   focusTab: (tabId) => {
     const manager = tabManager
     if (!manager || !manager.list().some((tab) => tab.id === tabId)) return false
@@ -7222,13 +7236,40 @@ const cheilCampaignsRoot = (): string =>
     process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
     'Cheil 캠페인',
   )
-/** plan item 3: editor tabs a campaign's set opened, by webContents id */
-const cheilCampaignTabs = new Map<number, { id: string; title: string }>()
 const cheilCampaigns = createCampaignStore({
   root: cheilCampaignsRoot,
   writeFile: (path, bytes) => atomicWriteFile(path, bytes),
   now: () => new Date(),
 })
+/** plan item 5: the tab or detached window showing a file, if one does */
+const cheilTabOfPath = (path: string) =>
+  tabManager?.findTabByPath(path) ?? findDetachedTabByPath(path)
+/** plan item 5: a campaign document's tab, as the channels message it */
+const cheilCampaignTab = (contents: WebContents, title: string) => ({
+  senderId: contents.id,
+  title,
+  send: (channel: string, payload: unknown) => {
+    if (contents.isDestroyed()) throw new Error('closed')
+    contents.send(channel, payload)
+  },
+})
+/** plan item 5: the documents in a campaign's folder, each with the tab showing it if one does */
+function cheilCampaignDocuments(campaignId: string) {
+  const folder = cheilCampaigns.folderOf(campaignId)
+  if (!folder) return []
+  let entries: Dirent[]
+  try {
+    entries = readdirSync(folder, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  return entries
+    .filter((entry) => entry.isFile() && isCampaignDocumentName(entry.name))
+    .map((entry) => {
+      const path = join(folder, entry.name)
+      return { path, title: campaignDocumentTitle(entry.name), tab: cheilTabOfPath(path) }
+    })
+}
 registerCheilCampaignIpc({
   ipc: ipcMain,
   store: cheilCampaigns,
@@ -7236,51 +7277,53 @@ registerCheilCampaignIpc({
     !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
   openFolder: (path) => shell.openPath(path),
   openDocument: (path) => openDocumentPath(path),
-  // plan item 4: the same path as a home template card, with the card's values for the new tab
+  // plan item 4: the same path as a home template card, with the card's values for the new tab;
+  // plan item 5: the copy is a file in the campaign's folder, so the tab belongs to the campaign
   openTemplate: async (item, cheil, campaignId) => {
+    const dir = cheilCampaigns.folderOf(campaignId)
+    if (!dir) return false
     const skillId = `builtin:${item.skill}`
-    const opened = await templateTabs.openTemplate(
+    const opened = await templateTabs.openTemplateFile(
       {
         skillId,
         text: item.text,
         chips: [{ id: skillId, source: 'builtin', title: item.title }],
         prefill: true,
       },
+      { dir, title: item.title },
       cheil,
     )
-    if (!opened.ok) return false
-    // plan item 3: the tab reports its fills to this campaign while it lives
-    const contents = tabManager?.webContentsForTab(opened.tabId)
-    if (contents) {
-      cheilCampaignTabs.set(contents.id, { id: campaignId, title: item.title })
-      contents.once('destroyed', () => cheilCampaignTabs.delete(contents.id))
-    }
-    return true
+    return opened.ok
   },
   today: () => cheilToday(),
+  // plan item 5: the folder of the tab's file decides, so it holds after a close or a restart
   campaignOfSender: (sender) => {
     const id = (sender as { id?: unknown } | null)?.id
-    return typeof id === 'number' ? (cheilCampaignTabs.get(id) ?? null) : null
+    if (typeof id !== 'number') return null
+    const filePath =
+      tabManager?.describeWebContents(id)?.filePath ?? detachedDocumentFor(id)?.filePath
+    return filePath
+      ? campaignDocumentOf(canonicalPath(cheilCampaignsRoot())!, canonicalPath(filePath)!)
+      : null
   },
-  // plan item 5: the campaign's tabs that are still open, to carry a card change into
-  campaignTabs: (campaignId) => {
-    const tabs: Array<{
-      senderId: number
-      title: string
-      send(channel: string, payload: unknown): void
-    }> = []
-    for (const [senderId, tab] of cheilCampaignTabs) {
-      if (tab.id !== campaignId) continue
-      const contents = webContents.fromId(senderId)
-      if (!contents || contents.isDestroyed()) continue
-      tabs.push({
-        senderId,
-        title: tab.title,
-        send: (channel, payload) => contents.send(channel, payload),
-      })
-    }
-    return tabs
+  campaignTabs: (campaignId) =>
+    cheilCampaignDocuments(campaignId).flatMap(({ title, tab }) =>
+      tab ? [cheilCampaignTab(tab.webContents, title)] : [],
+    ),
+  closedDocuments: async (campaignId) =>
+    cheilCampaignDocuments(campaignId).flatMap(({ path, title, tab }) =>
+      tab ? [] : [{ path, title }],
+    ),
+  readText: async (path) => {
+    const parsed = await parseFileToText(path)
+    return parsed.ok && parsed.kind === 'text' ? (parsed.text ?? '') : null
   },
+  reopen: async (path) => {
+    if (!openDocumentPath(path)) return null
+    const tab = cheilTabOfPath(path)
+    return tab ? cheilCampaignTab(tab.webContents, campaignDocumentTitle(basename(path))) : null
+  },
+  showHome: () => tabManager?.openHomeTab(),
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */

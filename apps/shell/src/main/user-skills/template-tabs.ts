@@ -34,6 +34,7 @@ import {
   type UserSkillsFailReason,
   type UserSkillsResult,
 } from '@genoffice/electron-utils/user-skills-channels'
+import { freeFileName } from '../cheil/campaign-files'
 
 /** A byte copy of a document, ready to open in its editor */
 export interface TemplateCopy {
@@ -81,6 +82,13 @@ export interface TemplateTabsDeps {
    * could not. `ownsCopy` true when the editor removes the folder itself.
    */
   openCopy(copy: TemplateCopy): Promise<(OpenedCopyTab & { ownsCopy?: boolean }) | null>
+  /**
+   * Cheil fork (plan item 5): open a document file (not a copy) in a tab of
+   * its editor, saved in place; null when it could not
+   */
+  openFile?(path: string): Promise<OpenedCopyTab | null>
+  /** Cheil fork: whether a file of that name is in the folder already */
+  fileExists?(path: string): boolean
   /** bring a tab to the front; false when it is gone */
   focusTab(tabId: string): boolean
   newId(): string
@@ -187,6 +195,56 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
         }),
       )
       return opened.ok ? { ok: true, tabId: opened.tabId } : opened
+    },
+
+    /**
+     * Cheil fork (plan item 5): what `openTemplate` does, but the template's
+     * copy is a real file in a folder the caller names (a campaign's), under
+     * a title's name never taken there yet, and the tab opens that file: the
+     * first save writes it in place, and it stays when the tab closes.
+     */
+    async openTemplateFile(
+      input: UserSkillTemplateOpenInput,
+      place: { dir: string; title: string },
+      cheil?: SkillHandoff['cheil'],
+    ): Promise<UserSkillsResult<{ tabId: string; path: string }>> {
+      const { openFile, fileExists } = deps
+      if (!openFile || !fileExists) return fail('failed')
+      const template = await deps.templateFileOf(input.skillId)
+      if (!template.ok) return template
+      const extension = extname(template.fileName).toLowerCase()
+      const editor = handoffEditorForFile(template.fileName)
+      if (!editor) return fail('bad-template')
+      let bytes: Uint8Array
+      try {
+        bytes = await deps.readFile(template.path)
+      } catch {
+        return fail('no-template')
+      }
+      const fileName = freeFileName(copyFileNameOf(place.title, extension), (name) =>
+        fileExists(join(place.dir, name)),
+      )
+      const path = join(place.dir, fileName)
+      let opened: OpenedCopyTab | null
+      try {
+        await deps.writeFile(path, bytes)
+        opened = await openFile(path)
+      } catch {
+        opened = null
+      }
+      // a file that did not open stays in the folder: it is the person's like any other
+      if (!opened) return fail('failed')
+      queueSkillHandoffFor(opened.contents, {
+        id: deps.newId(),
+        mode: 'skill',
+        target: editor,
+        text: input.text,
+        chips: input.chips,
+        ...(input.prefill ? { prefill: true } : {}),
+        ...(cheil ? { cheil } : {}),
+        createdAt: deps.now(),
+      })
+      return { ok: true, tabId: opened.tabId, path }
     },
 
     /**

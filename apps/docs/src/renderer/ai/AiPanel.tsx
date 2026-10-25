@@ -1304,6 +1304,7 @@ export function AiPanel({
       )
     },
     note: (text) => setChat((prev) => [...prev, { role: 'assistant', text }]),
+    loaded: () => !!editorRef.current?.state.doc.textContent.trim(),
   })
 
   const fillFromCampaignCard = (card: CheilCardFill) => {

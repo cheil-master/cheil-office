@@ -14,7 +14,10 @@ import {
 } from '../src/main/cheil/campaign-store'
 import { registerCheilCampaignIpc } from '../src/main/cheil/campaign-ipc'
 import { CHEIL_CAMPAIGN_CHANNELS } from '../src/shared/cheil-campaign-api'
-import { CHEIL_PROPAGATED_CHANNEL } from '../../../packages/electron-utils/src/user-skills-channels'
+import {
+  CHEIL_PROPAGATED_CHANNEL,
+  CHEIL_PROPAGATE_READY_CHANNEL,
+} from '../../../packages/electron-utils/src/user-skills-channels'
 
 const CARD = {
   campaign: '에어린 봄 런칭',
@@ -230,6 +233,10 @@ describe('Cheil fork: campaign channels', () => {
       campaignOfSender: (sender) => tabs.get((sender as { id: number }).id) ?? null,
       // plan item 5 has its own harness below
       campaignTabs: () => [],
+      closedDocuments: async () => [],
+      readText: async () => null,
+      reopen: async () => null,
+      showHome: () => undefined,
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
@@ -279,7 +286,9 @@ describe('Cheil fork: campaign channels', () => {
     // the set's line comes first; each tab adds its own card fill once it has loaded
     const last = res.campaign.timeline.at(-1)!
     expect(last.kind).toBe('document')
-    expect(last.text).toBe('문서 세트를 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜')
+    expect(last.text).toBe(
+      '문서 세트를 캠페인 폴더에 만들어 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
+    )
     expect(openTemplate.mock.calls[0]![2]).toBe(made.campaign.id)
   })
 
@@ -326,7 +335,7 @@ describe('Cheil fork: campaign channels', () => {
       campaign: { timeline: Array<{ text: string }> }
     }
     expect(got.campaign.timeline.map((e) => e.text).slice(1)).toEqual([
-      '문서 세트를 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
+      '문서 세트를 캠페인 폴더에 만들어 엽니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
       '열지 못한 양식: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜',
     ])
   })
@@ -419,7 +428,11 @@ describe('Cheil fork: campaign channels', () => {
   it('registers every channel and answers the home only', async () => {
     const { handlers, home, call } = wire()
     expect([...handlers.keys()].sort()).toEqual(
-      [...Object.values(CHEIL_CAMPAIGN_CHANNELS), CHEIL_PROPAGATED_CHANNEL].sort(),
+      [
+        ...Object.values(CHEIL_CAMPAIGN_CHANNELS),
+        CHEIL_PROPAGATED_CHANNEL,
+        CHEIL_PROPAGATE_READY_CHANNEL,
+      ].sort(),
     )
     expect(await call({ id: 2 }, CHEIL_CAMPAIGN_CHANNELS.create, CARD)).toEqual({
       ok: false,
@@ -460,6 +473,38 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
     const home = { id: 1 }
     const tabs = new Map<number, { id: string; title: string }>()
     const answers = new Map<number, (pairs: Array<{ find: string }>) => number[] | 'throw'>()
+    // documents in a campaign's folder no tab shows: path → campaign, title, text (null: unreadable)
+    const closed = new Map<
+      string,
+      { id: string; title: string; text: string | null; opens?: boolean }
+    >()
+    const reopened: string[] = []
+    const showHome = vi.fn()
+    let nextId = 100
+    /** the tab's editor listens, as its panel does once its document has loaded */
+    const listen = (senderId: number) =>
+      handlers.get(CHEIL_PROPAGATE_READY_CHANNEL)!({ sender: { id: senderId } }, true)
+    const tabOf = (senderId: number, title: string) => ({
+      senderId,
+      title,
+      send: (_channel: string, payload: unknown) => {
+        const { requestId, pairs } = payload as {
+          requestId: string
+          pairs: Array<{ find: string }>
+        }
+        const answer = (answers.get(senderId) ?? ((p) => p.map(() => 0)))(pairs)
+        if (answer === 'throw') throw new Error('gone')
+        // a stray answer from another tab comes first and is ignored
+        void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
+          { sender: { id: senderId + 1000 } },
+          { requestId, counts: answer.map(() => 99) },
+        )
+        void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
+          { sender: { id: senderId } },
+          { requestId, counts: answer },
+        )
+      },
+    })
     registerCheilCampaignIpc({
       ipc: { handle: (channel: string, fn: never) => void handlers.set(channel, fn) } as never,
       store: makeStore(),
@@ -472,31 +517,33 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
       campaignTabs: (campaignId) =>
         [...tabs]
           .filter(([, tab]) => tab.id === campaignId)
-          .map(([senderId, tab]) => ({
-            senderId,
-            title: tab.title,
-            send: (_channel: string, payload: unknown) => {
-              const { requestId, pairs } = payload as {
-                requestId: string
-                pairs: Array<{ find: string }>
-              }
-              const answer = (answers.get(senderId) ?? ((p) => p.map(() => 0)))(pairs)
-              if (answer === 'throw') throw new Error('gone')
-              // a stray answer from another tab comes first and is ignored
-              void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
-                { sender: { id: senderId + 1000 } },
-                { requestId, counts: answer.map(() => 99) },
-              )
-              void handlers.get(CHEIL_PROPAGATED_CHANNEL)!(
-                { sender: { id: senderId } },
-                { requestId, counts: answer },
-              )
-            },
-          })),
+          .map(([senderId, tab]) => tabOf(senderId, tab.title)),
+      closedDocuments: async (campaignId) =>
+        [...closed]
+          .filter(([, doc]) => doc.id === campaignId)
+          .map(([path, doc]) => ({ path, title: doc.title })),
+      readText: async (path) => closed.get(path)?.text ?? null,
+      reopen: async (path) => {
+        const doc = closed.get(path)
+        if (!doc || doc.opens === false) return null
+        closed.delete(path)
+        const senderId = nextId++
+        tabs.set(senderId, { id: doc.id, title: doc.title })
+        reopened.push(doc.title)
+        // the editor reads its file first, then listens
+        setTimeout(() => listen(senderId), 20)
+        return tabOf(senderId, doc.title)
+      },
+      showHome,
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
-    return { home, call, tabs, answers }
+    /** an open, loaded tab of a campaign's document */
+    const open = (senderId: number, tab: { id: string; title: string }) => {
+      tabs.set(senderId, tab)
+      listen(senderId)
+    }
+    return { home, call, tabs, answers, closed, reopened, showHome, open, listen }
   }
 
   async function made(w: ReturnType<typeof wireP>) {
@@ -509,9 +556,9 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
   it("asks the campaign's open tabs to replace the old value and lists what changed", async () => {
     const w = wireP()
     const id = await made(w)
-    w.tabs.set(7, { id, title: '크리에이티브 브리프' })
-    w.tabs.set(8, { id, title: '캠페인 제안서' })
-    w.tabs.set(9, { id: 'another campaign', title: '다른 문서' })
+    w.open(7, { id, title: '크리에이티브 브리프' })
+    w.open(8, { id, title: '캠페인 제안서' })
+    w.open(9, { id: 'another campaign', title: '다른 문서' })
     const seen: string[][] = []
     w.answers.set(7, (pairs) => (seen.push(pairs.map((p) => p.find)), [1]))
     w.answers.set(8, () => [2])
@@ -552,7 +599,7 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
   it('lists a tab it could not reach as not answering, and records nothing for it', async () => {
     const w = wireP()
     const id = await made(w)
-    w.tabs.set(7, { id, title: '크리에이티브 브리프' })
+    w.open(7, { id, title: '크리에이티브 브리프' })
     w.answers.set(7, () => 'throw')
     const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
       ...CARD,
@@ -566,6 +613,80 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
     ])
     // created + the card change only
     expect(res.campaign.timeline).toHaveLength(2)
+  })
+
+  it('waits for a tab still loading to listen before asking it', async () => {
+    const w = wireP()
+    const id = await made(w)
+    w.tabs.set(7, { id, title: '크리에이티브 브리프' })
+    w.answers.set(7, () => [1])
+    setTimeout(() => w.listen(7), 30)
+    const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+    })) as { propagation: { tabs: unknown[] } }
+    expect(res.propagation.tabs).toEqual([
+      {
+        title: '크리에이티브 브리프',
+        answered: true,
+        items: [{ label: '총예산', from: '500,000,000원', to: '600,000,000원', count: 1 }],
+      },
+    ])
+  })
+
+  it('opens a closed document holding an old value and changes it, and leaves the person the rest', async () => {
+    const w = wireP()
+    const id = await made(w)
+    const folder = join(root, id)
+    w.closed.set(join(folder, '크리에이티브 브리프.docx'), {
+      id,
+      title: '크리에이티브 브리프',
+      text: '광고주 가상전자\n총예산 500,000,000원',
+    })
+    // no old value in it: it stays closed
+    w.closed.set(join(folder, '캠페인 제안서.pptx'), {
+      id,
+      title: '캠페인 제안서',
+      text: '총예산 [총예산]',
+    })
+    w.closed.set(join(folder, '미디어 플랜.xlsx'), { id, title: '미디어 플랜', text: null })
+    w.closed.set(join(folder, '보도자료.docx'), {
+      id,
+      title: '보도자료',
+      text: '500,000,000원',
+      opens: false,
+    })
+    w.closed.set('elsewhere.docx', {
+      id: 'another campaign',
+      title: '다른 문서',
+      text: '500,000,000원',
+    })
+    w.answers.set(100, () => [1])
+    const res = (await w.call(w.home, CHEIL_CAMPAIGN_CHANNELS.update, id, {
+      ...CARD,
+      budget: '600000000',
+    })) as {
+      propagation: unknown
+      campaign: { timeline: Array<{ text: string }> }
+    }
+    expect(w.reopened).toEqual(['크리에이티브 브리프'])
+    expect(w.showHome).toHaveBeenCalledTimes(1)
+    expect(res.propagation).toEqual({
+      tabs: [
+        {
+          title: '크리에이티브 브리프',
+          answered: true,
+          reopened: true,
+          items: [{ label: '총예산', from: '500,000,000원', to: '600,000,000원', count: 1 }],
+        },
+      ],
+      cleared: [],
+      left: ['미디어 플랜', '보도자료'],
+    })
+    expect(res.campaign.timeline.map((e) => e.text).slice(-2)).toEqual([
+      '카드 변경 반영: 크리에이티브 브리프 — 총예산 500,000,000원 → 600,000,000원 1곳 (닫혀 있던 문서를 열어 바꿈, 저장 전)',
+      '카드 변경을 확인하지 못한 문서: 미디어 플랜, 보도자료 — 직접 확인 필요',
+    ])
   })
 
   it('touches no document without open tabs, lists an emptied field, and says nothing for other edits', async () => {

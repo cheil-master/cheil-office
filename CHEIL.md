@@ -95,31 +95,40 @@
 
 ## 5-3. 문서 세트 채우기 (공모전 수정 계획 4번, 10-25)
 
-- 무엇: 캠페인 보기의 **'문서 세트 만들기'**에서 양식을 고르고(기본: 브리프·제안서·미디어 플랜) '선택한 양식 열기'를 누르면, 양식마다 새 탭이 열리고 카드 값이 공통 칸에 **AI 없이** 바로 들어간다. AI 창 입력란에는 요청과 `[캠페인 카드]` 줄이 보내지 않은 채 기다리고, 나머지 칸은 자료를 붙여 보내면 빠른 채우기(5-1절)가 채운다. 타임라인에 "문서 세트를 열었습니다: …" 한 줄이 남는다.
-- 흐름: 화면은 양식 이름과 요청 글만 보낸다(`cheil:campaign-open-set`, 홈 화면만). 뒷단이 **저장된 카드**에서 공통 칸 값을 다시 만들고(`cheilFieldValues`, 작성일은 오늘), 홈 양식 카드와 같은 양식 열기 길(`templateTabs.openTemplate`)에 그 값을 넘겨주기의 `cheil` 칸으로 싣는다. 화면이 값을 지어 보낼 길은 없다(넘겨주기 IPC 는 `cheil`을 받지 않는다).
+- 무엇: 캠페인 보기의 **'문서 세트 만들기'**에서 양식을 고르고(기본: 브리프·제안서·미디어 플랜) '선택한 양식 열기'를 누르면, 양식마다 **캠페인 폴더에 파일**(`크리에이티브 브리프.docx`, `캠페인 제안서.pptx` …, 같은 이름이 있으면 ` (2)`)이 만들어져 새 탭으로 열리고 카드 값이 공통 칸에 **AI 없이** 바로 들어간다. AI 창 입력란에는 요청과 `[캠페인 카드]` 줄이 보내지 않은 채 기다리고, 나머지 칸은 자료를 붙여 보내면 빠른 채우기(5-1절)가 채운다. 타임라인에 "문서 세트를 캠페인 폴더에 만들어 엽니다: …" 한 줄이 남는다.
+- 흐름: 화면은 양식 이름과 요청 글만 보낸다(`cheil:campaign-open-set`, 홈 화면만). 뒷단이 **저장된 카드**에서 공통 칸 값을 다시 만들고(`cheilFieldValues`, 작성일은 오늘), 홈 양식 카드와 같은 넘겨주기로 그 값을 `cheil` 칸에 싣는다. 다만 이름 없는 임시 사본 대신 캠페인 폴더에 쓴 파일을 연다(`templateTabs.openTemplateFile`, 10-26). 화면이 값을 지어 보낼 길은 없다(넘겨주기 IPC 는 `cheil`을 받지 않는다).
 - 편집기: 넘겨받은 패널이 문서가 열릴 때까지 기다렸다가(250ms 간격, 최대 30초) 문서의 칸 가운데 공통 칸(별칭 포함, `cheilCardReplacements`)을 바꾼다. 워드 `replaceLeftoverBlanks`(표 안까지, 되돌리기 한 번), PPT 덱 `findReplace`(50개씩), 엑셀 `cheilCardSheetWrites` → `set_cell`(되돌리기 한 번). 패널에 "캠페인 '…' 카드로 공통 칸 N개를 채웠습니다(AI 없이)"가 남는다.
 - 카드에 비어 있는 칸은 그대로 `[칸]`으로 남아 빠른 채우기가 채우거나 `[확인 필요]`로 둔다. 기간의 한쪽만 있으면 다른 쪽은 `[확인 필요]`.
 - 코드: 규칙 `packages/ui/src/cheil-fields.ts`(`cheilCardFillOf` 넘겨주기 읽기, `cheilCardReplacements`, `cheilCardSummary`, `cheilCardFillNote`)·`cheil-sheet-fill.ts`(`cheilCardSheetWrites`), 넘겨주기 `packages/electron-utils/src/generate-handoff.ts`(`SkillHandoff.cheil`)·`packages/ui/src/skill-template-model.ts`·`use-skill-templates.tsx`(`prefill`의 세 번째 인자), 편집기 `fillFromCampaignCard`(워드·PPT `AiPanel.tsx`, 엑셀 `App.tsx`), 뒷단 `campaign-ipc.ts`(`campaignSetItemsOf`), 화면 `MyCampaigns.tsx`의 `DocumentSet`, 양식 목록 `apps/shell/src/renderer/src/cheil/templates.ts`(홈 카드와 함께 씀).
 - 시험: `packages/ui/tests/cheil-card-fill.test.ts`, `skill-template-model.test.ts`의 Cheil 항목, `apps/shell/tests/cheil-campaign-store.test.ts`의 문서 세트 항목, 화면 `e2e/cheil-campaign-set.spec.ts`(브리프·제안서. 미디어 플랜은 엑셀 처리 프로그램이 있는 PC 에서만 돈다).
-- 아직: 저장 위치는 지금처럼 첫 저장 때 묻는다(캠페인 폴더로 바로 저장은 5번 '변경 전파'와 함께).
+- 저장(10-26): 탭이 캠페인 폴더의 그 파일을 보여 주므로 저장하면 그 자리에 저장된다(다른 이름으로 묻지 않음). 저장하지 않고 닫으면 폴더의 파일은 채우기 전 양식 그대로 남는다.
 
 ## 5-4. 자동 기록 (공모전 수정 계획 3번, 10-26)
 
-- **채우기 기록**: 캠페인의 문서 세트로 연 탭에서 카드 채우기·빠른 채우기가 끝나면 타임라인에 한 줄이 저절로 남는다("크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움", "…: 빠른 채우기 — 양식 칸 19개 중 17개를 자료로 채움, 2개는 [확인 필요]"). 문서 세트를 열 때는 "문서 세트를 엽니다: …"가 먼저 남고, 열지 못한 양식이 있으면 그 줄도 남는다.
-  - 길: 편집기는 끝난 채우기의 숫자만 보낸다(`cheilRecordFill` → 공용 다리 `aiOfficeUserSkills.cheilRecord` → `cheil:campaign-record`). 뒷단은 **보낸 탭의 webContents** 로 캠페인과 양식 이름을 찾는다(`index.ts`의 `cheilCampaignTabs`, 문서 세트가 연 탭만, 탭이 닫히면 지움). 탭이 캠페인을 지정할 수는 없고, 다른 탭의 보고는 무시한다. 문장은 뒷단이 만든다(`campaignRecordText`).
+- **채우기 기록**: 캠페인의 문서 세트로 연 탭에서 카드 채우기·빠른 채우기가 끝나면 타임라인에 한 줄이 저절로 남는다("크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움", "…: 빠른 채우기 — 양식 칸 19개 중 17개를 자료로 채움, 2개는 [확인 필요]"). 문서 세트를 열 때는 "문서 세트를 캠페인 폴더에 만들어 엽니다: …"가 먼저 남고, 열지 못한 양식이 있으면 그 줄도 남는다.
+  - 길: 편집기는 끝난 채우기의 숫자만 보낸다(`cheilRecordFill` → 공용 다리 `aiOfficeUserSkills.cheilRecord` → `cheil:campaign-record`). 뒷단은 **보낸 탭이 보여 주는 파일의 폴더**로 캠페인과 문서 이름을 찾는다(`apps/shell/src/main/cheil/campaign-files.ts`의 `campaignDocumentOf`: 캠페인 폴더 바로 안의 .docx·.pptx·.xlsx, 이름은 파일 이름에서 확장자를 뺀 것). 그래서 탭을 닫았다 다시 열어도, 앱을 다시 켜도, 탐색기에서 연 같은 파일도 그 캠페인의 문서다(10-26 전에는 문서 세트가 연 탭을 메모리에만 적었다). 탭이 캠페인을 지정할 수는 없고, 다른 탭의 보고는 무시한다. 문장은 뒷단이 만든다(`campaignRecordText`).
   - 열린 캠페인 보기는 3초마다 타임라인을 다시 읽어 탭이 남긴 줄을 보여 준다.
 - **받은 메일 → 할 일**: 캠페인 보기의 '받은 메일 → 할 일'에 메일을 붙여넣고 '할 일 뽑기' → AI 한 번(공용 `ai:chat`, 금지선 검사를 거친다, `json`) → 할 일·담당·마감 목록 → **사람이 고치고 고른 것만** '선택한 할 일 기록'으로 타임라인 '할 일' 줄(마감 표시)이 된다. 기록 전에는 아무것도 남지 않는다. 지시문은 "메일에 적힌 것만, 날짜가 확실하지 않으면 빈칸"(`packages/ui/src/cheil-mail.ts`의 `buildCheilTaskPrompt`), 답은 앱이 다시 검사한다(`parseCheilTasks`: 한 줄, 실재하는 날짜만, 중복 제거, 20개까지). 뒷단도 다시 검사한다(`campaignTasksOf`).
 - 메일 초안·보내기 전 점검·수정 반영(6~10번)의 기록은 그 기능과 함께 같은 길(`record`, 사건 종류 `mail check revise`)로 붙인다.
+- 시험: `packages/ui/tests/cheil-mail.test.ts`, `apps/shell/tests/cheil-campaign-store.test.ts`(탭 보고·다른 탭 무시·잘못된 보고·할 일 기록), 화면 `e2e/cheil-auto-record.spec.ts`(이 PC 의 가짜 OpenAI 호환 서버로 빠른 채우기와 메일 읽기), `e2e/cheil-campaign-set.spec.ts`의 타임라인 줄.
 
 ## 5-5. 변경 전파 (공모전 수정 계획 5번, 10-26)
 
-- 무엇: 캠페인 카드를 고쳐 저장하면(예: 총예산 5억 → 6억) 그 캠페인의 문서 세트로 연 **열린 탭**에서 이전 값이 새 값으로 바뀐다(AI 없이, 탭마다 되돌리기 한 번). 캠페인 보기에 **'카드 변경을 열린 문서에 반영했습니다'** 목록(문서마다 어떤 칸을 몇 곳)이 뜨고, 각 탭의 AI 창에 "캠페인 카드가 바뀌어 이 문서를 고쳤습니다: …"가, 타임라인에 "카드 변경 반영: 크리에이티브 브리프 — 총예산 … → … 1곳"이 남는다.
+- 무엇: 캠페인 카드를 고쳐 저장하면(예: 총예산 5억 → 6억) **그 캠페인 폴더의 워드·PPT·엑셀 문서**에서 이전 값이 새 값으로 바뀐다(AI 없이, 문서마다 되돌리기 한 번).
+  - 열린 탭은 바로 바뀐다.
+  - 닫힌 파일은 이전 값이 들어 있을 때만 앱이 다시 열어 바꾸고, **저장은 하지 않는다**(사람이 보고 저장). 홈이 앞으로 돌아와 목록을 보인다.
+  - 캠페인 보기에 **'카드 변경을 캠페인 문서에 반영했습니다'** 목록(문서마다 어떤 칸을 몇 곳, 다시 연 문서는 "— 닫혀 있던 문서를 열어 바꿨습니다. 확인하고 저장하세요"), 각 탭의 AI 창에 "캠페인 카드가 바뀌어 이 문서를 고쳤습니다: …", 타임라인에 "카드 변경 반영: 크리에이티브 브리프 — 총예산 … → … 1곳"(다시 연 문서는 끝에 "(닫혀 있던 문서를 열어 바꿈, 저장 전)")이 남는다.
+  - 읽지 못했거나(암호·깨진 파일) 다시 열지 못한 문서는 "확인하지 못한 문서: …"로 목록과 타임라인에 남는다.
 - 규칙(`packages/ui/src/cheil-fields.ts`의 `cheilCardChanges`): 저장된 카드의 앞뒤 값을 공통 칸 값으로 견준다(작성일은 옮기지 않음). 바뀐 칸마다 찾을 글은 이전 값, 이전에 비어 있었으면 그 칸 `[총예산]`(별칭 포함). **카드에서 비운 칸은 문서에서 지우지 않고** 목록에 따로 적는다. 두 글자 미만인 이전 값은 다른 낱말 안에서 걸리므로 찾지 않는다. 두 찾을 글이 겹치면(브랜드가 캠페인명 안에) 긴 쪽이 이긴다(`cheilReplaceText`, 워드 `replaceEverywhere`).
-- 길: 뒷단(`campaign-ipc.ts`의 `update`)이 바뀐 칸을 짝(`find → to`)으로 만들어, 그 캠페인의 열린 탭(`campaignTabs`, 문서 세트가 연 탭 지도)에 `cheil:campaign-propagate`로 보낸다. 탭은 공용 다리 `onCheilPropagate`(`useCheilPropagate`)로 받아 자기 편집 연산으로 바꾸고 짝마다 바꾼 곳 수를 `cheil:campaign-propagated`로 답한다. 뒷단은 **보낸 탭이 맞을 때만** 답을 받고, 10초 안에 답이 없으면 '응답 없음'으로 적는다.
+- 길: 뒷단(`campaign-ipc.ts`의 `update`)이 바뀐 칸을 짝(`find → to`)으로 만든다. 캠페인 폴더 바로 안의 문서(`index.ts`의 `cheilCampaignDocuments`) 가운데:
+  - 탭에 열린 것(`campaignTabs`, 떨어진 창 포함)에는 짝을 `cheil:campaign-propagate`로 보낸다.
+  - 닫힌 것(`closedDocuments`)은 `parseFileToText`로 글을 읽어 이전 값이 있는 것만 `openDocumentPath`로 다시 열고(한 번에 12개까지, 넘으면 '확인하지 못한 문서'), 열린 탭과 같이 보낸다.
+  - 탭은 공용 다리 `onCheilPropagate`(`useCheilPropagate`)로 받아 자기 편집 연산으로 바꾸고 짝마다 바꾼 곳 수를 `cheil:campaign-propagated`로 답한다. 뒷단은 **보낸 탭이 맞을 때만** 답을 받는다.
+  - 준비 신호: 편집기가 듣기 시작하면 `cheil:campaign-propagate-ready`로 알리고(그만두면 false), 뒷단은 그 신호를 받은 뒤에 보낸다. 받은 편집기는 문서가 다 열릴 때까지 기다렸다 바꾼다(워드는 글이 생길 때, PPT 는 슬라이드가, 엑셀은 시트가 생길 때, 최대 25초). 답을 기다리는 한도: 열린 탭 10초, 다시 연 문서 30초. 넘으면 '응답이 없어 확인하지 못했습니다'.
   - 워드: `replaceEverywhere`(표 안까지, 한 트랜잭션). PPT: 덱 글에서 곳 수를 센 뒤 `findReplace`(긴 글 먼저). 엑셀: A1:L40 의 글 칸만 다시 쓰고 계산식 칸은 건드리지 않는다(`set_cell`, 숫자로 든 예산 칸은 바뀌지 않는다).
-- 한계: **닫히거나 저장된 문서, 앱을 다시 켠 뒤의 탭에는 반영하지 않는다**(탭 지도는 메모리에만 있다). 저장 위치를 캠페인 폴더로 정하고 문서마다 넣은 값을 파일로 남기는 일과 함께 다음 단계. AI 가 다른 꼴로 쓴 값(예: "5억 원")은 찾지 못한다(목록에 0곳으로 보인다).
-- 시험: `packages/ui/tests/cheil-card-fill.test.ts`(바뀐 칸·비운 칸·짝·곳 수), `apps/shell/tests/cheil-campaign-store.test.ts`의 변경 전파 묶음(열린 탭만, 다른 캠페인 탭 제외, 남의 답 무시, 닿지 않는 탭, 탭 없음), 화면 `e2e/cheil-campaign-set.spec.ts`의 예산 변경 시험.
-- 시험: `packages/ui/tests/cheil-mail.test.ts`, `apps/shell/tests/cheil-campaign-store.test.ts`(탭 보고·다른 탭 무시·잘못된 보고·할 일 기록), 화면 `e2e/cheil-auto-record.spec.ts`(이 PC 의 가짜 OpenAI 호환 서버로 빠른 채우기와 메일 읽기), `e2e/cheil-campaign-set.spec.ts`의 타임라인 줄.
+- 한계: 캠페인 폴더 안의 하위 폴더는 보지 않는다. 저장하지 않고 닫은 문서는 파일에 남은 값으로 다음 변경을 찾는다. AI 가 다른 꼴로 쓴 값(예: "5억 원")은 찾지 못한다(목록에 0곳 또는 빠짐). 닫힌 파일을 미리 읽는 글(`parseFileToText`)과 편집기가 바꾸는 글의 범위가 다르면 다시 열고도 0곳일 수 있다. 엑셀 문서의 다시 열기는 이 PC 에 엑셀 처리 프로그램이 없어 시험하지 못했다.
+- 시험: `packages/ui/tests/cheil-card-fill.test.ts`(바뀐 칸·비운 칸·짝·곳 수), `apps/shell/tests/cheil-campaign-store.test.ts`의 변경 전파 묶음(열린 탭만, 다른 캠페인 탭 제외, 남의 답 무시, 닿지 않는 탭, 탭 없음, 준비 신호를 기다림, 닫힌 문서 다시 열기·이전 값 없는 문서는 그대로·읽지 못한 문서와 열지 못한 문서는 '확인하지 못한 문서'), `apps/shell/tests/cheil-campaign-files.test.ts`(폴더로 캠페인 찾기, 겹치지 않는 파일 이름, 문서 세트가 폴더에 파일을 쓰고 그 파일을 엶), 화면 `e2e/cheil-campaign-set.spec.ts`(폴더에 파일이 생기고 탭이 그 파일을 보임, 열린 브리프·제안서의 예산 변경, 브리프를 저장하고 앱을 끈 뒤 다시 켜서 예산을 바꾸면 닫혀 있던 브리프가 다시 열려 바뀜).
+  - 같은 실행 안에서 탭을 닫은 뒤의 변경: 시험 도구(Playwright)가 저장한 워드 탭이 닫힌 뒤 연결이 끊겨("Assertion error") 화면 시험으로 남기지 못했다. 앱 안 함수로 직접 확인한 한 번(10-26)은 닫힌 브리프가 다시 열려 1곳 바뀌었다(`reopened: true`).
 
 ## 6. 자동 업데이트 끔
 
