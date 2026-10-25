@@ -2301,6 +2301,142 @@ html[dir='rtl'] .quick-title-row {
   color: var(--text-secondary);
 }
 
+/* Cheil fork: "내 API 키로 연결" — Settings → AI and the first-run guide */
+.cheil-api-keys {
+  margin-bottom: 18px;
+}
+
+/* the first-run guide: full width, one row per AI */
+.cheil-api-keys.is-compact {
+  width: 100%;
+  margin: 10px 0 4px;
+}
+
+.is-compact .cheil-api-cards {
+  gap: 6px;
+  margin-top: 0;
+}
+
+.is-compact .cheil-api-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 12px;
+}
+
+.is-compact .cheil-api-head {
+  flex: 0 0 76px;
+}
+
+.is-compact .cheil-api-vendor {
+  display: none;
+}
+
+.is-compact .cheil-api-body {
+  flex: 1;
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+
+.is-compact .cheil-api-badge {
+  margin-left: 0;
+}
+
+.cheil-api-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cheil-api-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.cheil-api-card.is-in-use {
+  border-color: var(--accent);
+}
+
+.cheil-api-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cheil-api-mark {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.cheil-api-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cheil-api-vendor {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.cheil-api-badge {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.cheil-api-badge.is-in-use {
+  background: var(--badge-bg);
+  color: var(--accent);
+}
+
+.cheil-api-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cheil-api-input.set-input {
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 0;
+}
+
+.cheil-api-saved {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cheil-api-model {
+  flex: 0 0 auto;
+}
+
+.cheil-api-actions {
+  margin-left: auto;
+}
+
+.cheil-api-failed {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.set-sub-title.cheil-after-api {
+  margin-top: 6px;
+}
+
 /* Cheil fork: "내 캠페인" — campaign cards, the card form and the campaign view */
 .cheil-campaigns {
   margin-top: 22px;

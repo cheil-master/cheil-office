@@ -392,7 +392,7 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: 'API Key',
     needsBaseUrl: true,
   },
-  // Cheil fork: the default engine. No key; the base URL is this PC's Ollama.
+  // Cheil fork: a model on this PC. No key; the base URL is this PC's Ollama.
   {
     id: 'ollama',
     label: 'Ollama',
@@ -401,10 +401,26 @@ export const AI_PROVIDERS: AiProviderMeta[] = [
     keyPlaceholder: '',
     needsBaseUrl: true,
   },
+  // Cheil fork: Upstage Solar on the person's own key (OpenAI-compatible
+  // api.upstage.ai/v1). Ids as Upstage serves them (2026-08): solar-pro3 is the
+  // newest (128K context), solar-pro2 64K, solar-mini 32K. Reasoning is off
+  // unless asked for, which suits the one-call template fill.
+  {
+    id: 'upstage',
+    label: 'Solar',
+    models: ['solar-pro3', 'solar-pro2', 'solar-mini'],
+    defaultModel: 'solar-pro3',
+    keyPlaceholder: 'up_...',
+  },
 ]
 
-/** Cheil fork: the provider fresh settings start on, and where it is served */
-export const CHEIL_DEFAULT_PROVIDER = 'ollama' as const
+/**
+ * Cheil fork: fresh settings start on no engine of their own: the person
+ * connects their own API key (Claude, GPT, Solar) or a subscription, the
+ * upstream's `auto`. This PC's Ollama stays a choice for later (2026-10-25:
+ * the deployed app runs on the person's own API; a local model comes later).
+ */
+export const CHEIL_DEFAULT_PROVIDER = 'auto' as const
 export const CHEIL_OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
 
 /**
@@ -421,7 +437,9 @@ export function defaultAiSettings(
     providers[meta.id] = {
       apiKey: defaultApiKeys?.[meta.id] ?? '',
       model: meta.defaultModel,
-      baseUrl: meta.needsBaseUrl ? (meta.id === 'ollama' ? CHEIL_OLLAMA_BASE_URL : '') : undefined,
+      // Cheil fork: Ollama too starts without an address, so a PC without it
+      // is not offered it; the person fills in CHEIL_OLLAMA_BASE_URL to use it
+      baseUrl: meta.needsBaseUrl ? '' : undefined,
       cliPath: meta.needsCliPath ? '' : undefined,
     }
   }

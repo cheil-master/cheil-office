@@ -891,7 +891,7 @@ function AccountEntry({
   // one connection shows its own state line (plan, or charged by usage); two just read "Connected"
   const only = summary.connected.length === 1 ? summary.connected[0] : undefined
   const onlyView = only ? aiSubscriptionCardView(connection.statuses[only]) : null
-  // Cheil fork: a chosen Ollama is the engine in use, whatever the subscriptions say
+  // Cheil fork: a chosen API key or Ollama is the engine in use, whatever the subscriptions say
   const local = localEngineView(aiSettings, lang)
   const stateText = local
     ? local.model

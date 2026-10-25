@@ -52,9 +52,9 @@ describe('claude-code provider', () => {
 })
 
 describe('defaults', () => {
-  it('new settings default to Ollama (Cheil fork) with the subscription settings off', () => {
+  it('new settings default to auto with the subscription settings off', () => {
     const settings = defaultAiSettings()
-    expect(settings.provider).toBe('ollama')
+    expect(settings.provider).toBe('auto')
     expect(settings.meteredAccepted).toEqual({ 'claude-code': false, codex: false })
     expect(settings.headlessSubscriptionEnabled).toBe(false)
     expect(settings.subscriptionNoticeSeen).toBe(false)

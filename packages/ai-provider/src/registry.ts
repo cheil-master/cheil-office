@@ -380,6 +380,12 @@ export const AI_PROVIDER_ADAPTERS: Record<AiProviderId, ProviderAdapter> = {
       }
     },
   },
+  // Cheil fork: Upstage Solar, text only
+  upstage: {
+    meta: metaOf('upstage'),
+    capabilities: { auth: 'api-key', vision: false },
+    resolveEndpoint: fixedEndpoint('openai-compatible', 'https://api.upstage.ai/v1'),
+  },
   // Cheil fork: native /api/chat, so the request can set the context size.
   // A pasted OpenAI-style `/v1` base is tolerated.
   ollama: {

@@ -34,6 +34,8 @@ export type AiProviderId =
   | 'custom'
   /** Cheil fork: a model served by Ollama on this PC (native /api/chat) */
   | 'ollama'
+  /** Cheil fork: Upstage Solar, by the person's own API key */
+  | 'upstage'
 
 /** Providers reached through the locally installed, already signed-in vendor CLI (a subscription, not a key) */
 export type AiSubscriptionProviderId = 'claude-code' | 'codex'

@@ -32,15 +32,25 @@ function collector() {
 const config = { apiKey: '', model: 'gemma4:e4b', baseUrl: CHEIL_OLLAMA_BASE_URL }
 
 describe('Cheil fork: Ollama provider', () => {
-  it('is the default engine of fresh settings, configured without a key', () => {
+  // Cheil fork (2026-10-25): fresh settings start on auto (the person's own API or a
+  // subscription); Ollama is a choice for later, ready once its address is filled in
+  it('is not offered by fresh settings, and needs no key once it has an address', () => {
     const settings = defaultAiSettings()
-    expect(settings.provider).toBe('ollama')
+    expect(settings.provider).toBe('auto')
     expect(settings.providers.ollama).toMatchObject({
       apiKey: '',
       model: 'gemma4:e4b',
-      baseUrl: 'http://127.0.0.1:11434',
+      baseUrl: '',
     })
-    expect(isKeyProviderConfigured(settings, 'ollama')).toBe(true)
+    expect(isKeyProviderConfigured(settings, 'ollama')).toBe(false)
+    const local = {
+      ...settings,
+      providers: {
+        ...settings.providers,
+        ollama: { ...settings.providers.ollama, baseUrl: CHEIL_OLLAMA_BASE_URL },
+      },
+    }
+    expect(isKeyProviderConfigured(local, 'ollama')).toBe(true)
   })
 
   it('routes to the native chat API, tolerating a pasted /v1 base', () => {

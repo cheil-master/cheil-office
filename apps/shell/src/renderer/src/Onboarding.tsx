@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  AiConnectGuide,
-  AiMark,
-  aiSubscriptionProviderName,
-  aiSubscriptionText,
-} from '@genoffice/ui'
+import { AiConnectGuide, AiMark, aiSubscriptionProviderName } from '@genoffice/ui'
 import { FREE_AI_PROVIDERS, freeAiConnected } from '@genoffice/ai-provider/browser'
 import appIcon from './assets/app-icon.png'
 import { FirstConnectionDialog } from './FirstConnectionNotice'
 import { FreeAiCards, useAiSettings as useFreeAiSettings } from './FreeAiCards'
+import { ApiKeyCards, apiConnectLead } from './cheil/ApiKeyCards'
+import { apiEngineView } from './cheil/api-keys'
 import { FREE_AI_PROVIDER_NAMES } from './free-ai-cards'
 import { useI18n } from './locale'
 import {
@@ -81,7 +78,10 @@ export function Onboarding({
   const freeConnected = FREE_AI_PROVIDERS.some(
     (provider) => freeSettings !== null && freeAiConnected(freeSettings, provider),
   )
+  // Cheil fork: the person's own API key, when one is saved and chosen
+  const apiEngine = apiEngineView(freeSettings)
   const connected = [
+    ...(apiEngine ? [apiEngine.name] : []),
     ...usableSubscriptionProviders(connection.statuses).map(aiSubscriptionProviderName),
     ...FREE_AI_PROVIDERS.filter(
       (provider) => freeSettings && freeAiConnected(freeSettings, provider),
@@ -184,7 +184,9 @@ export function Onboarding({
     if (step === 'connect') {
       return (
         <>
-          <p className="onb-body onb-body-lead">{aiSubscriptionText(lang, 'connectBody')}</p>
+          {/* Cheil fork: the person's own API key first; subscriptions and free below */}
+          <p className="onb-body onb-body-lead">{apiConnectLead(lang)}</p>
+          <ApiKeyCards lang={lang} compact />
           <div className="onb-connect">
             <AiConnectGuide
               statuses={connection.statuses}

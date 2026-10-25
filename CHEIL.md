@@ -17,13 +17,25 @@
 - 회사 로고는 쓰거나 흉내 내지 않았다. 회사 공식 로고·색으로 바꾸려면 위 SVG 세 개만 바꾸고 생성기를 돌린다.
 - 그대로 둔 이름: 내부 이름(`@genoffice/*`, `GENOFFICE_*`), 터미널 명령어 `ieumoffice`와 `~/.ieumoffice`(도움말 925곳이 그 이름을 쓴다. 바꾸려면 따로 작업), 저장소 좌표·문의 메일(설정 → 정보, 도움말 메뉴가 원본을 가리킨다 — 배포 전에 정할 것).
 
-## 2. AI 엔진: 이 PC 의 Ollama 가 기본
+## 2. AI 엔진: 사용자 자신의 API 키가 기본, 이 PC 의 Ollama 는 나중
+
+### 2-0. 내 API 키로 연결 (2026-10-25, 배포 기준)
+
+- 사용자 결정(10-25): **배포판은 사용자가 자기 Claude·GPT·Solar API 키를 넣어 쓴다. 로컬 LLM 은 나중 일.**
+- 새 설정의 기본은 원본과 같은 `auto`(구독이 있으면 그것, 없으면 '연결 필요')다. Ollama 도 주소 칸을 비운 채 시작해서, Ollama 가 없는 PC 에 선택지로 뜨지 않는다. 쓰려면 고급 → Ollama 에 `http://127.0.0.1:11434`를 넣는다. 이미 Ollama 를 고른 설정 파일은 그대로 Ollama 다.
+- 설정 → AI 맨 위와 첫 실행 안내의 연결 단계에 **'내 API 키로 연결'** 카드 3장: Claude(`anthropic`), GPT(`openai`), Solar(`upstage`, 새 제공자). 키를 넣고 '저장하고 쓰기'를 누르면 그 제공자가 쓰는 AI 가 된다(사용자가 고른 것 — 원본 규칙 '요금 경로는 사용자가 고를 때만'과 같다). '키 지우기'는 그 AI 를 쓰던 중이면 `auto`로 돌린다(다른 유료 키로 넘어가지 않음). 키는 원본처럼 설정 파일(`ai-settings.json`)에 저장되고 화면에는 앞뒤만 보인다(`up_…1234`). 홈 왼쪽 아래에 "Solar API · solar-pro3"처럼 보인다.
+- Solar(`upstage`): OpenAI 호환 `https://api.upstage.ai/v1`, 모델 `solar-pro3`(기본)·`solar-pro2`·`solar-mini`, 그림 입력 없음. 모델 id 는 Upstage 가 내는 이름(Hermes Agent 의 Upstage 설정, 2026-08 기준) — 실제 키로는 아직 시험하지 않았다.
+- 코드: 규칙 `apps/shell/src/renderer/src/cheil/api-keys.ts`, 화면 `ApiKeyCards.tsx`, 홈 표시 `local-engine.ts`, 제공자 `packages/ai-provider/src/{types,providers,registry}.ts`의 `upstage`. 시험 `apps/shell/tests/cheil-api-keys.test.ts`, `e2e/cheil-api-keys.spec.ts`(설정 카드·첫 실행 안내·OpenAI 호환 API 로 양식 채우기 — 이 PC 의 가짜 API 서버로, 실제 키 없이).
+- 금지선(3절)은 그대로다: API 서버는 이 PC 밖이므로 광고주 기밀·개인정보가 보이는 요청은 보내지 않는다. **Hermes Agent 같은 이 PC 의 중계 서버를 거치지 말 것**(HANDOVER 8절 11번).
+- 빠른 채우기는 API 모델에서도 같은 한 번 호출로 돈다(`ai:chat`). `json` 옵션은 Ollama 만 쓰고(`format: json`), API 모델은 지시문("JSON 객체 하나로만")과 답에서 `{…}`를 꺼내는 해석으로 받는다. 답 길이 상한: Claude 8,192토큰, OpenAI 호환(GPT·Solar)은 서비스 기본값.
+
+### 2-1. 이 PC 의 Ollama (나중에 쓸 엔진)
 
 - 새 제공자 `ollama`: `packages/ai-provider/src/protocols/ollama.ts`. Ollama 의 네이티브 `/api/chat`을 쓴다. OpenAI 호환 `/v1`은 문맥 길이 지정을 무시해 4,096 토큰으로 잘렸기 때문이다(직접 시험).
   - `num_ctx` 16,384, 모델 30분 유지(`keep_alive`), qwen3 류는 생각 끔(`think: false`).
   - 첫 응답까지 최대 10분 기다린다. 이 PC(i5-1135G7, 외장 GPU 없음)는 지시문을 초당 약 35토큰으로 읽는다(측정: 4,107토큰 126초, 12,267토큰 325초).
   - 요청이 열려 있는 동안 15초마다 '일하는 중' 신호를 화면에 보낸다(화면 쪽 4분 무응답 감시가 끊지 않게). 진짜로 멈추면 뒷단 감시(첫 응답 10분, 이후 3분)가 끊는다.
-- 새 설정의 기본 제공자는 `ollama`(주소 `http://127.0.0.1:11434`, 모델 `gemma4:e4b`). 이미 있는 설정 파일은 그 값을 따른다. 알 수 없는 값은 원본처럼 '자동'.
+- (10-25 까지) 새 설정의 기본 제공자는 `ollama`(주소 `http://127.0.0.1:11434`, 모델 `gemma4:e4b`)였다. 지금은 2-0 절처럼 `auto`이고 Ollama 는 주소를 넣어야 쓴다. 이미 있는 설정 파일은 그 값을 따른다. 알 수 없는 값은 원본처럼 '자동'.
 - 등록: `types.ts`(AiProviderId), `providers.ts`(목록·기본값), `registry.ts`(프로토콜 `ollama`), `stream.ts`·`chat.ts`(분기).
 
 ## 3. 금지선: 기밀은 이 PC 밖으로 안 나간다

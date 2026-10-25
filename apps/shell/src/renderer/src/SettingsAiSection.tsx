@@ -15,6 +15,7 @@ import type { Lang } from '@genoffice/i18n'
 import { AI_SUBSCRIPTION_PROVIDERS, selectAiProvider } from '@genoffice/ai-provider/browser'
 import type { AiSettings, AiSubscriptionProviderId } from '@genoffice/ai-provider/browser'
 import { FreeAiCards } from './FreeAiCards'
+import { ApiKeyCards } from './cheil/ApiKeyCards'
 import type { TFunc } from './locale'
 import type { SubscriptionConnection } from './subscription-client'
 import {
@@ -254,7 +255,9 @@ export function AiSection({
   return (
     <>
       <h3 className="set-pane-title">{t('setSecAi')}</h3>
-      <h4 className="set-pane-subtitle set-sub-title">{t('setSubTitle')}</h4>
+      {/* Cheil fork: the person's own API key comes first */}
+      <ApiKeyCards lang={lang} />
+      <h4 className="set-pane-subtitle set-sub-title cheil-after-api">{t('setSubTitle')}</h4>
       <div className="set-field-desc set-ai-note">{aiSubscriptionText(lang, 'connectBody')}</div>
       <div className="set-sub-cards">
         {AI_SUBSCRIPTION_PROVIDERS.map((provider) => (

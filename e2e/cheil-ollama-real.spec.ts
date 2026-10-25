@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
-import { writeFile, mkdir } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { writeFile, mkdir, mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import {
   ARTIFACTS_DIR,
   closeAndSaveVideo,
@@ -28,13 +29,35 @@ const NOTES = [
   '- 마감: 카드뉴스 11/21, 영상 11/28',
 ].join('\n')
 
+/**
+ * A scratch profile that chooses this PC's Ollama: fresh settings start on
+ * `auto` since 2026-10-25 (the deployed app runs on the person's own API key).
+ */
+async function ollamaProfile(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'cheil-ollama-'))
+  await writeFile(
+    join(dir, 'ai-settings.json'),
+    JSON.stringify({
+      provider: 'ollama',
+      providers: { ollama: { apiKey: '', model: 'gemma4:e4b', baseUrl: 'http://127.0.0.1:11434' } },
+      subscriptionNoticeSeen: true,
+    }),
+  )
+  return dir
+}
+
 /** a money amount ("3,000만 원", "5억", "50,000,000원"): the notes hold none, so any is made up */
 const MONEY_RE = /\d[\d,.]*\s*(억|만\s*원|원)/
 
 test('Cheil: the local model fills a brief template', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
-  const launched = await launchShell({ videoDir: 'cheil-ollama', lang: 'ko', onboardingSeen: true })
+  const launched = await launchShell({
+    userDataDir: await ollamaProfile(),
+    videoDir: 'cheil-ollama',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
   const { app, page } = launched
   const started = Date.now()
   try {
@@ -84,6 +107,7 @@ test('Cheil: the local model fills a proposal deck in one call', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
   const launched = await launchShell({
+    userDataDir: await ollamaProfile(),
     videoDir: 'cheil-ollama-deck',
     lang: 'ko',
     onboardingSeen: true,
@@ -169,6 +193,7 @@ test('Cheil: the local model fills the media plan workbook in one call', async (
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
   const launched = await launchShell({
+    userDataDir: await ollamaProfile(),
     videoDir: 'cheil-ollama-sheet',
     lang: 'ko',
     onboardingSeen: true,

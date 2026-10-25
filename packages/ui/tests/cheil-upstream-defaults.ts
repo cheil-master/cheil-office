@@ -1,9 +1,10 @@
 import { defaultAiSettings, type AiSettings } from '@genoffice/ai-provider'
 
 /**
- * Cheil fork: fresh settings start on this PC's Ollama. The upstream tests
- * below describe the `auto` selection with nothing filled in, so they build
- * their settings from this instead of the fork's defaults.
+ * Cheil fork: until 2026-10-25 fresh settings started on this PC's Ollama, and
+ * the upstream tests that import this built the upstream `auto` defaults from
+ * it. Fresh settings are those defaults again; this stays so the tests keep
+ * saying which settings they assume.
  */
 export function upstreamAiSettings(): AiSettings {
   const s = defaultAiSettings()

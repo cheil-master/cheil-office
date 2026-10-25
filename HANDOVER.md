@@ -5,7 +5,7 @@
 ## 1. 무엇을 만드는가
 
 - 광고대행사(제일기획) 기획 AE 가 쓰는 데스크톱 오피스. 오픈소스 **이음오피스**(https://github.com/pblsketch/openoffice, Apache-2.0, GenOffice 포크, Electron)를 고친 사본이다.
-- 사용자가 원하는 것: **목적에 맞는 서식(양식)을 고르면, 그 서식대로 AI 가 문서를 채워 주는 오케스트레이터.** 문서는 실제 워드·PPT·엑셀 파일이고, AI 는 이 PC 의 sLLM(Ollama)이 기본이다.
+- 사용자가 원하는 것: **목적에 맞는 서식(양식)을 고르면, 그 서식대로 AI 가 문서를 채워 주는 오케스트레이터.** 문서는 실제 워드·PPT·엑셀 파일이다. **AI 는 사용자가 자기 Claude·GPT·Solar API 키를 넣어 쓰는 것이 배포 기준이다(2026-10-25 사용자 결정, "로컬 LLM 은 나중 일").** 이 PC 의 sLLM(Ollama)은 나중에 쓸 선택지로 남아 있다.
 - 이 폴더의 위쪽(`../src`, `../dist`, `../site` = v0.5.0, `../platform` = Next.js PRD 판)은 **멈춘 이전 시도**다. 지우지 말고 건드리지 않는다.
 
 ## 2. 사용자(요청하는 사람)
@@ -24,7 +24,8 @@
 | 항목                                                                                                                                                                                                            | 확인 방법                                                   |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 'Cheil 기획 오피스'로 이름·아이콘·색 바꿈, 이음오피스와 데이터 폴더·설치 ID·파일 연결이 안 겹침                                                                                                                 | `apps/shell/tests/product-identity.test.ts` 등 통과         |
-| 기본 AI = 이 PC 의 Ollama(새 제공자 `ollama`)                                                                                                                                                                   | `packages/ai-provider/tests/cheil-ollama.test.ts`           |
+| (10-25 까지) 기본 AI = 이 PC 의 Ollama(새 제공자 `ollama`). 지금은 다음 줄처럼 바뀌었고 Ollama 는 주소를 넣으면 쓰는 선택지                                                                                   | `packages/ai-provider/tests/cheil-ollama.test.ts`           |
+| (10-25 저녁) **내 API 키로 연결**: 설정 → AI 맨 위와 첫 실행 안내에 Claude·GPT·Solar 카드, 새 제공자 `upstage`(Solar), 새 설정의 기본은 `auto`. 저장한 키가 쓰는 AI 가 되고 홈에 "Solar API · solar-pro3"처럼 보인다. OpenAI 호환 API 로 양식 빠른 채우기(이 PC 의 가짜 API 서버로 시험) | `apps/shell/tests/cheil-api-keys.test.ts`, `e2e/cheil-api-keys.spec.ts`, 원본 시험 `settings-ai-section`·`onboarding`·`free-ai-cards` |
 | 이 PC 밖 AI(구독 포함)로 광고주 기밀·개인정보가 나가면 막음                                                                                                                                                     | `cheil-grade.test.ts`                                       |
 | 홈 '광고 문서 양식' 카드 6장 → 양식 사본이 새 탭으로 열리고 AI 창에 요청이 **보내지 않은 채** 채워짐                                                                                                            | `e2e/cheil-office.spec.ts`                                  |
 | **양식 빠른 채우기**(sLLM 한 번 호출) — 워드 브리프 5분 27초(25칸 중 18칸 + 7칸 `[확인 필요]`), PPT 제안서 13분 43초(68칸 중 44칸 + 24칸), 엑셀 미디어 플랜 3분 57초~5분 51초(견적 3줄 → 표 3줄, 계산식 그대로) | `e2e/cheil-ollama-real.spec.ts`(실제 Ollama, 3개 모두 통과) |
@@ -55,7 +56,13 @@
 
 ## 4. 핵심 설계 (어디를 보면 되나)
 
-### 4-1. AI 엔진: Ollama
+### 4-0. AI 엔진: 사용자 자신의 API 키 (배포 기준, 10-25)
+
+- `CHEIL.md` 2-0절. 규칙은 `apps/shell/src/renderer/src/cheil/api-keys.ts`(키 저장 = 그 AI 를 고름, 키 지우기 = `auto`로 돌아감, 다른 유료 키로 넘어가지 않음), 화면 `ApiKeyCards.tsx`. Solar 는 `packages/ai-provider`의 `upstage`(OpenAI 호환 `https://api.upstage.ai/v1`).
+- **실제 키로는 아직 한 번도 돌리지 않았다**(Claude·GPT·Solar 모두). 가짜 API 서버로 요청 모양(키 헤더, 모델, 한 번 호출, JSON 답 해석)만 확인했다. 사용자가 키를 넣고 브리프·제안서를 한 번씩 채워 봐야 한다. Solar 모델 id(`solar-pro3` 등)도 실제 키로 확인 필요.
+- 금지선은 API 에도 그대로 걸린다(받는 곳이 이 PC 밖). 대외비 표지가 있는 자료는 API 로 안 나간다. 실제 업무 자료에서 얼마나 자주 막히는지는 확인 필요(자주 막히면 8절 11번 "막기 → 고르기" 논의).
+
+### 4-1. AI 엔진: Ollama (나중에 쓸 엔진)
 
 - `packages/ai-provider/src/protocols/ollama.ts` — 네이티브 `/api/chat`. OpenAI 호환 `/v1`은 `num_ctx`를 무시해 4,096 토큰으로 잘렸다(직접 시험). `num_ctx` 16384, `keep_alive` 30m, qwen3 류는 `think:false`. 첫 응답까지 최대 10분 대기, 열려 있는 동안 15초마다 `onActivity`(화면 쪽 4분 무응답 감시 대응). 단발 호출(`chatOllama`)은 내부적으로 흘려받고 `json:true`면 `format:'json'`.
 - 등록: `types.ts`(AiProviderId), `providers.ts`(기본 제공자 `ollama`, 주소 `http://127.0.0.1:11434`, 모델 `gemma4:e4b`), `registry.ts`, `stream.ts`, `chat.ts`(6번째 인자 `{ json }`).

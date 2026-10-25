@@ -114,6 +114,8 @@ describe('provider registry', () => {
       ['opper', 'claude-sonnet-4-6', 'https://api.opper.ai/v3/compat'],
       ['cheaperinference', 'claude-sonnet-5', 'https://api.cheaperinference.com/v1'],
       ['atlascloud', 'deepseek-ai/deepseek-v4-pro', 'https://api.atlascloud.ai/v1'],
+      // Cheil fork: Upstage Solar
+      ['upstage', 'solar-pro3', 'https://api.upstage.ai/v1'],
     ]
     for (const [id, model, baseUrl] of cases) {
       expect(AI_PROVIDER_ADAPTERS[id].resolveEndpoint(config(model))).toEqual({

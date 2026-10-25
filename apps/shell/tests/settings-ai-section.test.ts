@@ -274,7 +274,9 @@ describe('the default view', () => {
     expect(labels).toEqual(['Account', 'AI', 'Skills', 'General', 'Integrations', 'About'])
   })
 
-  it('shows both subscription cards, the free cards, and no paid key input', async () => {
+  // Cheil fork (2026-10-25): the deployed app runs on the person's own API key, so the
+  // Claude, GPT and Solar key cards lead the default view; every other key field stays under Advanced
+  it('shows the own-key cards, both subscription cards, the free cards, and no other key input', async () => {
     installHome(upstreamAiSettings())
     installSubscription(statusMap('ready', 'signed-out'))
     await openModal()
@@ -286,9 +288,15 @@ describe('the default view', () => {
     // the free connections sit outside Advanced (decision 0009); Gemini's key field is theirs
     expect(host.querySelectorAll('.free-ai-card')).toHaveLength(2)
 
-    expect(host.querySelector('input[type="password"]:not(.free-ai-key)')).toBeNull()
+    expect(
+      [...host.querySelectorAll('.cheil-api-card')].map((c) => (c as HTMLElement).dataset.provider),
+    ).toEqual(['anthropic', 'openai', 'upstage'])
+    expect(host.querySelectorAll('input.cheil-api-input')).toHaveLength(3)
+    expect(
+      host.querySelector('input[type="password"]:not(.free-ai-key):not(.cheil-api-input)'),
+    ).toBeNull()
     expect(host.querySelector('#set-ai-key')).toBeNull()
-    expect(host.querySelector('.set-input:not(.free-ai-key)')).toBeNull()
+    expect(host.querySelector('.set-input:not(.free-ai-key):not(.cheil-api-input)')).toBeNull()
     expect(host.textContent).not.toContain('API Key')
     expect(host.querySelector('.set-adv-toggle')?.getAttribute('aria-expanded')).toBe('false')
   })
@@ -312,9 +320,12 @@ describe('the default view', () => {
     expect(host.textContent).toContain('Image generation')
     expect(host.textContent).toContain('Video analysis')
 
-    // closing Advanced takes every key field out again (the free Gemini card's own field stays)
+    // closing Advanced takes every key field out again (the free Gemini card's own field
+    // and, in the Cheil fork, the own-key cards stay)
     await openAdvanced()
-    expect(host.querySelector('input[type="password"]:not(.free-ai-key)')).toBeNull()
+    expect(
+      host.querySelector('input[type="password"]:not(.free-ai-key):not(.cheil-api-input)'),
+    ).toBeNull()
   })
 
   it('does not offer Claude in the key pane', async () => {
