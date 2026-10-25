@@ -237,6 +237,7 @@ describe('Cheil fork: campaign channels', () => {
       readText: async () => null,
       reopen: async () => null,
       showHome: () => undefined,
+      documentNames: async () => ['크리에이티브 브리프.docx', '캠페인 제안서.pptx'],
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
@@ -446,6 +447,44 @@ describe('Cheil fork: campaign channels', () => {
     expect(made.ok).toBe(true)
   })
 
+  it('records a mail draft the person copied, and lists the folder documents', async () => {
+    const { home, call } = wire()
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    const id = made.campaign.id
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.documents, id)).toEqual({
+      ok: true,
+      names: ['크리에이티브 브리프.docx', '캠페인 제안서.pptx'],
+    })
+    const res = (await call(home, CHEIL_CAMPAIGN_CHANNELS.mailDrafted, id, {
+      situation: 'send',
+      audience: 'client',
+      strength: 'firm',
+      subject: '[에어린 봄 런칭] 제안서 송부',
+    })) as { ok: boolean; campaign: { timeline: Array<{ kind: string; text: string }> } }
+    expect(res.campaign.timeline.at(-1)).toMatchObject({
+      kind: 'mail',
+      text: '메일 초안(광고주용 · 자료 송부 · 단호하게): [에어린 봄 런칭] 제안서 송부',
+    })
+    for (const bad of [
+      { situation: 'gossip', audience: 'client', strength: 'firm', subject: 'x' },
+      { situation: 'send', audience: 'everyone', strength: 'firm', subject: 'x' },
+      { situation: 'send', audience: 'client', strength: 'loud', subject: 'x' },
+      { situation: 'send', audience: 'client', strength: 'firm', subject: 'x'.repeat(201) },
+      null,
+    ]) {
+      expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.mailDrafted, id, bad)).toEqual({
+        ok: false,
+        reason: 'invalid',
+      })
+    }
+    expect(await call({ id: 2 }, CHEIL_CAMPAIGN_CHANNELS.documents, id)).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+  })
+
   it("opens the campaign's own folder and its history document, nothing else", async () => {
     const { home, call, openFolder, openDocument } = wire()
     const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
@@ -535,6 +574,7 @@ describe('Cheil fork: a card change carried to the open documents (plan item 5)'
         return tabOf(senderId, doc.title)
       },
       showHome,
+      documentNames: async () => [],
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>

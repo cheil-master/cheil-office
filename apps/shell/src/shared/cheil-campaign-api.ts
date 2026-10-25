@@ -24,6 +24,9 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   openHistory: 'cheil:campaign-open-history',
   openSet: 'cheil:campaign-open-set',
   addTasks: 'cheil:campaign-add-tasks',
+  /** plan items 6, 7: the folder's document names, and a mail draft the person took */
+  documents: 'cheil:campaign-documents',
+  mailDrafted: 'cheil:campaign-mail-drafted',
   /** from an editor tab (plan item 3); the same name as electron-utils' CHEIL_RECORD_CHANNEL */
   record: 'cheil:campaign-record',
 } as const
@@ -46,6 +49,15 @@ export interface CampaignPropagation {
   cleared: string[]
   /** closed documents that could not be read or opened again: the person checks them */
   left?: string[]
+}
+
+/** A mail draft the person copied (plan items 6, 7), for its timeline line */
+export interface CampaignMailDraft {
+  /** situation, audience and strength codes (`send`, `client`, `firm`, ...) */
+  situation: string
+  audience: string
+  strength: string
+  subject: string
 }
 
 /** A to-do read from a received mail, as the person confirmed it (plan item 3) */
@@ -178,9 +190,17 @@ export interface CheilCampaignApi {
     id: string,
     tasks: CampaignTask[],
   ): Promise<CampaignResult<{ added: number; campaign: CampaignDetail }>>
+  /** Plan items 6, 7: the Word, PowerPoint and Excel files in the campaign's folder */
+  documents(id: string): Promise<CampaignResult<{ names: string[] }>>
+  /** Plan items 6, 7: a mail draft the person copied goes into the timeline */
+  mailDrafted(
+    id: string,
+    draft: CampaignMailDraft,
+  ): Promise<CampaignResult<{ campaign: CampaignDetail }>>
   /**
    * One model call (the shared `ai:chat`: the stored provider, the
-   * confidentiality line), for reading to-dos out of a pasted mail
+   * confidentiality line), for reading to-dos out of a pasted mail and for
+   * mail drafts
    */
   aiChat(request: {
     settings: unknown

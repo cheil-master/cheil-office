@@ -9,6 +9,17 @@
 import type { IpcMain } from 'electron'
 import { CHEIL_FILL_SKILLS } from '../../../../../packages/ui/src/cheil-fill'
 import {
+  CHEIL_MAIL_AUDIENCES,
+  CHEIL_MAIL_SITUATIONS,
+  CHEIL_MAIL_STRENGTHS,
+  cheilMailAudienceName,
+  cheilMailSituationName,
+  cheilMailStrengthName,
+  type CheilMailAudience,
+  type CheilMailSituation,
+  type CheilMailStrength,
+} from '../../../../../packages/ui/src/cheil-mail-draft'
+import {
   cheilCardChanges,
   cheilChangeCounts,
   cheilFieldValues,
@@ -67,6 +78,8 @@ export interface CheilCampaignIpcDeps {
   reopen(path: string): Promise<CampaignTab | null>
   /** bring the home back to the front (it lists what the change did) */
   showHome(): void
+  /** Plan items 6, 7: the file names of the campaign's documents, open or not */
+  documentNames(campaignId: string): Promise<string[]>
 }
 
 /** An open tab of a campaign's document: its webContents id, title, and a way to message it */
@@ -133,6 +146,25 @@ export function campaignRecordText(title: string, raw: unknown): string | null {
     return `${title}: 빠른 채우기 — 양식 칸 ${total}개 중 ${filled}개를 자료로 채움${left}`
   }
   return null
+}
+
+const SUBJECT_MAX = 200
+
+/** The timeline line for a mail draft the person copied; null for one that is not */
+export function campaignMailText(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object') return null
+  const { situation, audience, strength, subject } = raw as Record<string, unknown>
+  if (!CHEIL_MAIL_SITUATIONS.includes(situation as CheilMailSituation)) return null
+  if (!CHEIL_MAIL_AUDIENCES.includes(audience as CheilMailAudience)) return null
+  if (!CHEIL_MAIL_STRENGTHS.includes(strength as CheilMailStrength)) return null
+  if (typeof subject !== 'string' || subject.length > SUBJECT_MAX) return null
+  const kind = [
+    `${cheilMailAudienceName(audience as CheilMailAudience)}용`,
+    cheilMailSituationName(situation as CheilMailSituation),
+    cheilMailStrengthName(strength as CheilMailStrength),
+  ].join(' · ')
+  const title = subject.replace(/\s+/g, ' ').trim()
+  return `메일 초안(${kind})${title ? `: ${title}` : ''}`
 }
 
 /** most templates one set opens, and the longest title and request taken */
@@ -412,6 +444,24 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       return last?.ok
         ? { ok: true as const, added: tasks.length, campaign: last.campaign }
         : { ok: false as const, reason: 'failed' as const }
+    }),
+  )
+  // plan items 6, 7: what a mail draft may name as attached, and the draft the person took
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.documents,
+    homeOnly(async (id: unknown): Promise<CampaignResult<{ names: string[] }>> => {
+      const found = await store.get(id)
+      if (!found.ok) return found
+      const names = await deps.documentNames(found.campaign.id).catch(() => [])
+      return { ok: true, names }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.mailDrafted,
+    homeOnly(async (id: unknown, raw: unknown) => {
+      const text = campaignMailText(raw)
+      if (!text) return { ok: false as const, reason: 'invalid' as const }
+      return store.record(id as string, { kind: 'mail', text })
     }),
   )
   // plan item 3: an editor tab a set opened reports a fill it finished; any other tab is ignored

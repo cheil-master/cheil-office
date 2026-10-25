@@ -7267,7 +7267,12 @@ function cheilCampaignDocuments(campaignId: string) {
     .filter((entry) => entry.isFile() && isCampaignDocumentName(entry.name))
     .map((entry) => {
       const path = join(folder, entry.name)
-      return { path, title: campaignDocumentTitle(entry.name), tab: cheilTabOfPath(path) }
+      return {
+        path,
+        name: entry.name,
+        title: campaignDocumentTitle(entry.name),
+        tab: cheilTabOfPath(path),
+      }
     })
 }
 registerCheilCampaignIpc({
@@ -7324,6 +7329,7 @@ registerCheilCampaignIpc({
     return tab ? cheilCampaignTab(tab.webContents, campaignDocumentTitle(basename(path))) : null
   },
   showHome: () => tabManager?.openHomeTab(),
+  documentNames: async (campaignId) => cheilCampaignDocuments(campaignId).map((doc) => doc.name),
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */

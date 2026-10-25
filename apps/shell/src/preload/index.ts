@@ -889,6 +889,8 @@ const cheilCampaignApi: CheilCampaignApi = {
   openHistory: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openHistory, id),
   openSet: (id, items) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openSet, id, items),
   addTasks: (id, tasks) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.addTasks, id, tasks),
+  documents: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.documents, id),
+  mailDrafted: (id, draft) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.mailDrafted, id, draft),
   async aiChat(request) {
     const raw = ((await ipcRenderer.invoke('ai:chat', request).catch((e: unknown) => ({
       ok: false,

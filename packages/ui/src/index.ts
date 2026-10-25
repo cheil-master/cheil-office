@@ -464,6 +464,26 @@ export { useCheilPropagate } from './use-cheil-propagate'
 // Cheil fork: to-dos from a received mail (plan item 3)
 export { buildCheilTaskPrompt, parseCheilTasks } from './cheil-mail'
 export type { CheilMailTask } from './cheil-mail'
+// Cheil fork: mail drafts from a campaign (plan items 6, 7)
+export {
+  CHEIL_MAIL_AUDIENCES,
+  CHEIL_MAIL_SITUATIONS,
+  CHEIL_MAIL_STRENGTHS,
+  buildCheilMailPrompt,
+  cheilMailAudienceName,
+  cheilMailSituationName,
+  cheilMailStrengthName,
+  maskCheilValues,
+  parseCheilMailDraft,
+  suggestCheilMailSituation,
+} from './cheil-mail-draft'
+export type {
+  CheilMailAudience,
+  CheilMailDraft,
+  CheilMailFact,
+  CheilMailSituation,
+  CheilMailStrength,
+} from './cheil-mail-draft'
 // Cheil fork: one-call workbook template fill
 export {
   SHEET_SCAN_COLUMNS,

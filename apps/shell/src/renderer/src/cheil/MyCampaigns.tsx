@@ -14,12 +14,23 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import type { Lang } from '@genoffice/i18n'
 import {
+  CHEIL_MAIL_AUDIENCES,
+  CHEIL_MAIL_SITUATIONS,
+  CHEIL_MAIL_STRENGTHS,
   EMPTY_CHEIL_CARD,
+  buildCheilMailPrompt,
   buildCheilTaskPrompt,
   cheilBudgetText,
   cheilCardSummary,
   cheilToday,
+  parseCheilMailDraft,
   parseCheilTasks,
+  suggestCheilMailSituation,
+  type CheilMailAudience,
+  type CheilMailDraft,
+  type CheilMailFact,
+  type CheilMailSituation,
+  type CheilMailStrength,
 } from '@genoffice/ui'
 import { useI18n } from '../locale'
 import { readAiSettings } from '../settings-ai'
@@ -127,6 +138,36 @@ const WORDS = {
     tasksAdded: (n: number) => `할 일 ${n}개를 타임라인에 기록했습니다.`,
     tasksNone: '메일에서 할 일을 찾지 못했습니다.',
     tasksFailed: (why: string) => `할 일을 뽑지 못했습니다${why ? `: ${why}` : '.'}`,
+    draftTitle: '메일 초안',
+    draftDesc:
+      '상황·받는 사람·강도를 고르면 캠페인 이력을 바탕으로 초안을 씁니다(AI 한 번). 금액·날짜 같은 사실은 AI 에 보내지 않고 앱이 넣습니다.',
+    draftSituation: '상황',
+    draftAudience: '받는 사람',
+    draftStrength: '강도',
+    situations: {
+      send: '자료 송부',
+      reply: '회신',
+      request: '자료·확인 요청',
+      schedule: '일정 조율·리마인드',
+      revision: '수정 반영 회신',
+      issue: '이슈 대응',
+    } satisfies Record<CheilMailSituation, string>,
+    audiences: { client: '광고주', internal: '내부' } satisfies Record<CheilMailAudience, string>,
+    strengths: { soft: '부드럽게', normal: '보통', firm: '단호하게' } satisfies Record<
+      CheilMailStrength,
+      string
+    >,
+    draftRecipient: '받는 분 (예: 김가상 프로님)',
+    draftPoints: '꼭 넣을 말 (선택): 예) 수정안은 금요일까지 회신 부탁',
+    draftWrite: '초안 쓰기',
+    draftWriting: 'AI 가 초안을 쓰는 중…',
+    draftRewrite: '다시 쓰기',
+    draftCopy: '복사하고 기록',
+    draftSubject: '제목',
+    draftCopied: '복사했습니다. 타임라인에 남겼습니다.',
+    draftUnknown: (n: number) => `[확인 필요] ${n}곳 — 보내기 전에 채우세요.`,
+    draftFailed: (why: string) => `초안을 쓰지 못했습니다${why ? `: ${why}` : '.'}`,
+    draftBroken: 'AI 의 답을 초안으로 읽지 못했습니다. 다시 써 보세요.',
     emptyValue: '(비어 있음)',
     due: (d: string) => `마감 ${d}`,
     fail: {
@@ -223,6 +264,33 @@ const WORDS = {
     tasksAdded: (n: number) => `Recorded ${n} to-dos in the timeline.`,
     tasksNone: 'No to-dos found in the mail.',
     tasksFailed: (why: string) => `Could not pick out to-dos${why ? `: ${why}` : '.'}`,
+    draftTitle: 'Mail draft',
+    draftDesc:
+      'Pick the situation, the reader and the tone; a draft is written from the campaign’s history (one AI call). Facts such as amounts and dates are not sent to the AI; the app puts them in.',
+    draftSituation: 'Situation',
+    draftAudience: 'To',
+    draftStrength: 'Tone',
+    situations: {
+      send: 'Sending material',
+      reply: 'Reply',
+      request: 'Request',
+      schedule: 'Schedule / reminder',
+      revision: 'Revision done',
+      issue: 'Issue',
+    },
+    audiences: { client: 'Client', internal: 'Team' },
+    strengths: { soft: 'Soft', normal: 'Normal', firm: 'Firm' },
+    draftRecipient: 'Recipient (e.g. Ms. Kim)',
+    draftPoints: 'Points to include (optional)',
+    draftWrite: 'Write a draft',
+    draftWriting: 'The AI is writing…',
+    draftRewrite: 'Write again',
+    draftCopy: 'Copy and record',
+    draftSubject: 'Subject',
+    draftCopied: 'Copied, and recorded in the timeline.',
+    draftUnknown: (n: number) => `[확인 필요] in ${n} places — fill them before sending.`,
+    draftFailed: (why: string) => `Could not write a draft${why ? `: ${why}` : '.'}`,
+    draftBroken: 'The AI’s answer was not a draft. Try again.',
     emptyValue: '(empty)',
     due: (d: string) => `due ${d}`,
     fail: {
@@ -803,6 +871,263 @@ function MailTasks({
   )
 }
 
+/** copy to the clipboard; false when the page may not */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = text
+    document.body.appendChild(area)
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    return ok
+  }
+}
+
+/** One row of choices (situation, reader, tone) */
+function Choices<T extends string>({
+  label,
+  name,
+  options,
+  value,
+  names,
+  onChange,
+}: {
+  label: string
+  name: string
+  options: readonly T[]
+  value: T
+  names: Record<T, string>
+  onChange: (value: T) => void
+}) {
+  return (
+    <div className="cheil-mail-row" role="radiogroup" aria-label={label}>
+      <span className="cheil-mail-row-label">{label}</span>
+      <div className="cheil-set-options">
+        {options.map((option) => (
+          <label key={option} className={`cheil-set-option${option === value ? ' is-on' : ''}`}>
+            <input
+              type="radio"
+              name={name}
+              value={option}
+              checked={option === value}
+              data-choice={option}
+              onChange={() => onChange(option)}
+            />
+            {names[option]}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Plan items 6 and 7: a mail draft from the campaign. The person picks the
+ * situation (suggested by the last thing in the timeline), the reader and the
+ * tone; one model call (the shared `ai:chat`) writes it from the names of
+ * the card's facts and the recent history with its numbers and dates taken
+ * out, and the app puts the values back. The person edits it, copies it, and
+ * the timeline records that a draft was made.
+ */
+function MailDraft({
+  w,
+  api,
+  id,
+  campaign,
+  onRecorded,
+}: {
+  w: Words
+  api: CheilCampaignApi
+  id: string
+  campaign: CampaignDetail
+  onRecorded: (campaign: CampaignDetail) => void
+}) {
+  const lastKind = campaign.timeline.at(-1)?.kind
+  const [situation, setSituation] = useState<CheilMailSituation>(() =>
+    suggestCheilMailSituation(lastKind),
+  )
+  const [audience, setAudience] = useState<CheilMailAudience>('client')
+  const [strength, setStrength] = useState<CheilMailStrength>('normal')
+  const [recipient, setRecipient] = useState('')
+  const [points, setPoints] = useState('')
+  const [writing, setWriting] = useState(false)
+  const [draft, setDraft] = useState<CheilMailDraft | null>(null)
+  const [message, setMessage] = useState('')
+
+  const write = async () => {
+    if (writing) return
+    setWriting(true)
+    setMessage('')
+    const { card } = campaign
+    const docs = await api.documents(id).catch(() => null)
+    const facts: CheilMailFact[] = [
+      { name: '캠페인명', label: '캠페인 이름', value: card.campaign },
+      { name: '광고주', label: '광고주 회사', value: card.client },
+      { name: '브랜드', label: '브랜드·제품', value: card.brand },
+      { name: '캠페인기간', label: '캠페인 기간', value: period(card) },
+      { name: '총예산', label: '총예산', value: card.budget ? cheilBudgetText(card.budget) : '' },
+      { name: '타깃', label: '타깃', value: card.target },
+      { name: 'KPI', label: '목표 지표(KPI)', value: card.kpi },
+      { name: '팀명', label: '보내는 팀', value: card.team },
+      { name: '작성자', label: '보내는 사람', value: card.author },
+      { name: '받는분', label: '받는 사람 호칭', value: recipient },
+      { name: '오늘', label: '오늘 날짜', value: cheilToday() },
+      {
+        name: '첨부문서',
+        label: '캠페인 폴더의 문서 이름들',
+        value: docs?.ok ? docs.names.join(', ') : '',
+      },
+    ]
+    const history = campaign.timeline
+      .filter((e) => e.kind !== 'created')
+      .map((e) => (e.due ? `${e.text} (마감 ${e.due})` : e.text))
+    const prompt = buildCheilMailPrompt({ situation, audience, strength, facts, history, points })
+    const settings = await readAiSettings()
+    const reply = await api
+      .aiChat({ settings, system: prompt.system, user: prompt.user, json: true })
+      .catch((e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }))
+    setWriting(false)
+    if (!reply.ok || !('content' in reply) || !reply.content) {
+      setMessage(w.draftFailed(('error' in reply && reply.error) || ''))
+      return
+    }
+    const parsed = parseCheilMailDraft(reply.content, prompt.values)
+    if (!parsed) {
+      setMessage(w.draftBroken)
+      return
+    }
+    setDraft(parsed)
+  }
+
+  const copy = async () => {
+    if (!draft) return
+    setMessage('')
+    const copied = await copyText(draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body)
+    if (!copied) return
+    const res = await api
+      .mailDrafted(id, { situation, audience, strength, subject: draft.subject })
+      .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+    if (!res.ok) {
+      setMessage(w.fail[res.reason])
+      return
+    }
+    onRecorded(res.campaign)
+    setMessage(w.draftCopied)
+  }
+
+  return (
+    <section
+      className="cheil-set cheil-mail-draft"
+      aria-label={w.draftTitle}
+      data-testid="cheil-mail-draft"
+    >
+      <div className="cheil-set-head">
+        <span className="section-label">{w.draftTitle}</span>
+      </div>
+      <p className="cheil-set-desc">{w.draftDesc}</p>
+      <Choices
+        label={w.draftSituation}
+        name="cheil-mail-situation"
+        options={CHEIL_MAIL_SITUATIONS}
+        value={situation}
+        names={w.situations}
+        onChange={setSituation}
+      />
+      <Choices
+        label={w.draftAudience}
+        name="cheil-mail-audience"
+        options={CHEIL_MAIL_AUDIENCES}
+        value={audience}
+        names={w.audiences}
+        onChange={setAudience}
+      />
+      <Choices
+        label={w.draftStrength}
+        name="cheil-mail-strength"
+        options={CHEIL_MAIL_STRENGTHS}
+        value={strength}
+        names={w.strengths}
+        onChange={setStrength}
+      />
+      <input
+        className="cheil-mail-input"
+        value={recipient}
+        placeholder={w.draftRecipient}
+        aria-label={w.draftRecipient}
+        data-testid="cheil-mail-recipient"
+        onChange={(e) => setRecipient(e.target.value)}
+      />
+      <textarea
+        className="cheil-mail-input"
+        rows={2}
+        value={points}
+        placeholder={w.draftPoints}
+        aria-label={w.draftPoints}
+        data-testid="cheil-mail-points"
+        onChange={(e) => setPoints(e.target.value)}
+      />
+      {draft ? (
+        <div className="cheil-mail-result" data-testid="cheil-mail-result">
+          <input
+            className="cheil-mail-input"
+            value={draft.subject}
+            aria-label={w.draftSubject}
+            data-testid="cheil-mail-subject"
+            onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+          />
+          <textarea
+            className="cheil-mail-input"
+            rows={12}
+            value={draft.body}
+            aria-label={w.draftTitle}
+            data-testid="cheil-mail-body"
+            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+          />
+          {draft.unknown > 0 || draft.body.includes('[확인 필요]') ? (
+            <p className="cheil-set-desc cheil-mail-warn">
+              {w.draftUnknown(
+                Math.max(
+                  draft.unknown,
+                  (draft.subject + draft.body).split('[확인 필요]').length - 1,
+                ),
+              )}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="cheil-set-foot">
+        <button
+          className={`btn ${draft ? 'btn-secondary' : 'btn-primary'}`}
+          data-testid="cheil-mail-write"
+          disabled={writing}
+          onClick={() => void write()}
+        >
+          {writing ? w.draftWriting : draft ? w.draftRewrite : w.draftWrite}
+        </button>
+        {draft ? (
+          <button
+            className="btn btn-primary"
+            data-testid="cheil-mail-copy"
+            disabled={writing}
+            onClick={() => void copy()}
+          >
+            {w.draftCopy}
+          </button>
+        ) : null}
+        {message ? (
+          <span className="cheil-set-done" role="status">
+            {message}
+          </span>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 /** Plan item 5: what a card edit changed in the campaign's documents, open or opened again */
 function PropagationList({ w, result }: { w: Words; result: CampaignPropagation }) {
   return (
@@ -974,6 +1299,10 @@ function CampaignView({
               return res.opened
             }}
           />
+        ) : null}
+
+        {campaign ? (
+          <MailDraft w={w} api={api} id={id} campaign={campaign} onRecorded={setCampaign} />
         ) : null}
 
         {card ? (
