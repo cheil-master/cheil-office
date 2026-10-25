@@ -4,13 +4,14 @@
  * The same information (client, campaign name, period, budget, ...) used to go
  * by a different blank in each template ([광고주] in one, [광고주명] in
  * another). `cheil-fields.json` names each once; `tools/cheil/make_templates.py`
- * builds the templates with those names only, and the app reads them here:
+ * builds the templates with those names only, and the app reads them here: a
+ * campaign card's values go straight into the common blanks, with no model
+ * call (`cheilFieldValues`, `cheilFieldValueFor`). Aliases are read too, so a
+ * person's own template with [광고주명] is filled the same way.
  *
- * - the one-call fill tells the model what a common blank means (its hint),
- *   since a short name like [타깃] says less than the long blanks did;
- * - a campaign card's values go straight into the common blanks, with no model
- *   call (`cheilFieldValues`, `cheilFieldValueFor`). Aliases are read too, so
- *   a person's own template with [광고주명] is filled the same way.
+ * The one-call fill sends the blanks as they are, without their `hint`: on
+ * gemma4:e4b the added meaning left the message and concept blanks open
+ * (cheil-fill.ts).
  *
  * Pure functions only.
  */
@@ -36,7 +37,7 @@ export interface CheilField {
   label: string
   /** where the value comes from: the campaign card, or the day the document is made */
   source: 'card' | 'today'
-  /** what the blank means, for the model */
+  /** what the blank means, for a person reading the dictionary */
   hint: string
   /** other blanks that mean the same; the templates never use them */
   aliases: readonly string[]
@@ -61,11 +62,6 @@ function normalize(placeholder: string): string {
 /** The common field a blank names, by its own name or an alias; null for any other blank */
 export function cheilFieldOf(placeholder: string): CheilField | null {
   return byPlaceholder.get(normalize(placeholder)) ?? null
-}
-
-/** What a common blank means; null for any other blank */
-export function cheilFieldHint(placeholder: string): string | null {
-  return cheilFieldOf(placeholder)?.hint ?? null
 }
 
 /** A campaign card: what a person types once for the whole campaign */

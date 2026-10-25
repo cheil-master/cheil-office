@@ -437,7 +437,6 @@ export {
   CHEIL_FIELDS,
   EMPTY_CHEIL_CARD,
   cheilBudgetText,
-  cheilFieldHint,
   cheilFieldOf,
   cheilFieldValueFor,
   cheilFieldValues,

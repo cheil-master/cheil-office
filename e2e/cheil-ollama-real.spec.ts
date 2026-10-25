@@ -28,6 +28,9 @@ const NOTES = [
   '- 마감: 카드뉴스 11/21, 영상 11/28',
 ].join('\n')
 
+/** a money amount ("3,000만 원", "5억", "50,000,000원"): the notes hold none, so any is made up */
+const MONEY_RE = /\d[\d,.]*\s*(억|만\s*원|원)/
+
 test('Cheil: the local model fills a brief template', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
@@ -70,6 +73,8 @@ test('Cheil: the local model fills a brief template', async () => {
     // the client named in the notes reaches the header table
     expect(docText).toContain('가상전자')
     expect(docText).not.toContain('[광고주]')
+    // no budget is invented
+    expect(docText).not.toMatch(MONEY_RE)
   } finally {
     await closeAndSaveVideo(launched, 'cheil-ollama')
   }
@@ -118,14 +123,34 @@ test('Cheil: the local model fills a proposal deck in one call', async () => {
       .toBe(true)
     await slides.screenshot({ path: screenshotPath('cheil-ollama-deck-done') })
     const bodyText = await slides.evaluate(() => document.body.innerText)
+    // the slides are drawn on a canvas: read the deck's text runs from the editor
+    const deckText = await slides.evaluate(async () => {
+      const api = (window as unknown as { slidesApi: { getRenderSlides(): Promise<unknown> } })
+        .slidesApi
+      const out: string[] = []
+      const walk = (value: unknown, key: string): void => {
+        if (typeof value === 'string') {
+          if (key === 'text' && value.trim()) out.push(value)
+        } else if (Array.isArray(value)) {
+          for (const item of value) walk(item, key)
+        } else if (value && typeof value === 'object') {
+          for (const [k, v] of Object.entries(value)) walk(v, k)
+        }
+      }
+      walk(await api.getRenderSlides(), '')
+      return out.join('\n')
+    })
     const out = `${ARTIFACTS_DIR}/cheil-ollama-deck-result.txt`
     await mkdir(dirname(out), { recursive: true })
     await writeFile(
       out,
-      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n${bodyText}`,
+      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n--- deck ---\n${deckText}\n\n--- window ---\n${bodyText}`,
       'utf8',
     )
     expect(bodyText).toMatch(/양식 칸 \d+개 중 [1-9]\d*개를 자료로 채웠습니다/)
+    expect(deckText).toContain('가상전자')
+    // no budget is invented
+    expect(deckText).not.toMatch(MONEY_RE)
   } finally {
     await mkdir(ARTIFACTS_DIR, { recursive: true }).catch(() => undefined)
     await dumpEventsRef.current?.()

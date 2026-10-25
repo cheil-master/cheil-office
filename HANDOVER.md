@@ -31,12 +31,16 @@
 | 엑셀 처리 프로그램(Rust `xlsx-sidecar`) 빌드, 엑셀 양식 열기                                                                                                                                                    | 엑셀 처리 프로그램 시험 32개, `e2e/cheil-office.spec.ts`    |
 | Windows 설치 파일 `apps/shell/release/CheilOffice-Setup-0.12.3.exe`(188MB, 서명 없음)                                                                                                                           | `e2e/cheil-packaged.spec.ts`(설치본 내용물로 홈·엑셀 열기)  |
 | 자동 업데이트 끔(원본 릴리스로 바뀌는 것을 막음)                                                                                                                                                                | `apps/shell/tests/updater.test.ts`의 "Cheil fork" 묶음      |
-| (10-25 오후, 계획 1번) 공통 칸 사전 10개, 양식 6종을 그 이름으로 다시 만듦(브리프 29칸, 제안서 70칸, 월간 64, 회의록 26, 경쟁 PT 33, 미디어 플랜 9), 빠른 채우기가 공통 칸의 뜻을 함께 보냄                                  | `packages/ui/tests/cheil-fields.test.ts`, 생성기의 자체 확인 |
+| (10-25 오후, 계획 1번) 공통 칸 사전 10개, 양식 6종을 그 이름으로 다시 만듦(브리프 29칸, 제안서 70칸, 월간 64, 회의록 26, 경쟁 PT 33, 미디어 플랜 9)                                                                              | `packages/ui/tests/cheil-fields.test.ts`, 생성기의 자체 확인 |
 | (10-25 오후, 계획 2번) 캠페인 이력: 홈 '내 캠페인'에서 카드를 만들고 열면 타임라인이 보임, 메모·카드 수정이 남음, 이력 문서(.md) 탭                                                                              | `apps/shell/tests/cheil-campaign-store.test.ts`, `e2e/cheil-office.spec.ts` 캠페인 시험 |
 
 ### 안 된 것·주의
 
-- (10-25 오후) **양식 칸 이름이 바뀌어 실제 Ollama 시험(`e2e/cheil-ollama-real.spec.ts`)을 다시 돌려야 한다.** 두 번째 PC 에는 Ollama 가 없어 못 돌렸다. 위 표의 채우기 시간·칸 수(브리프 25칸 등)는 바뀌기 전 양식의 기록이다.
+- (10-25 오후) **빠른 채우기는 같은 입력에도 실행마다 크게 흔들린다.** 두 번째 PC(Core Ultra 5 125H, gemma4:e4b, CPU)에서 제안서(70칸)를 같은 OT 메모로 채운 칸 수: 지금 코드의 앱 안 실행 61칸(11분)·16칸(6분), 직접 호출 4번 15·24·28·35칸. 브리프(29칸)는 21칸·18칸(4~6분). 첫 PC 의 44칸(68칸 중)은 한 번 돌린 기록이다. 숫자 하나로 품질을 말하지 말고 여러 번 돌려 범위로 적는다.
+  - 실제 Ollama 시험(`e2e/cheil-ollama-real.spec.ts`)은 이제 채운 슬라이드 글을 `slidesApi.getRenderSlides()`로 꺼내 결과 파일에 남기고, OT 메모에 없는 금액(`원`, `억`)이 문서에 나오면 실패한다(지어낸 예산 잡기). 61칸 실행은 이 확인을 넣기 전이라 무엇을 채웠는지 못 봤다. 넣은 뒤의 16칸 실행과 직접 호출 3번에서는 예산·기간·KPI 목표 칸이 모두 `[확인 필요]`였다.
+  - 공통 칸에 뜻을 붙여 보내는 것을 시험했다가 뺐다: 붙인 실행 2번 모두 핵심 메시지·컨셉 문구·컨셉 설명·핵심 장면·맺음 칸을 `[확인 필요]`로 두었고, 안 붙인 2번은 모두 채웠다. 광고주 칸은 4번 모두 '가상전자'로 맞았다(제안서). 시험 대본은 남기지 않았다(같은 입력, `format:json`, temperature 0.3, num_ctx 16384, 시드 1·2).
+  - 브리프(29칸)는 앱 안 실행에서 21칸을 채웠지만 '가상전자'를 브랜드·제품 칸에 넣고 광고주 칸을 `[확인 필요]`로 두었다(첫 PC 와 같은 흠). 남긴 8칸 중 6칸(광고주·캠페인명·기간·예산·작성자·팀명)은 4번(캠페인 카드 값으로 AI 없이 채우기)이 해결할 칸이다.
+  - 모델 답 길이: 제안서 70칸 답이 2,700~3,300토큰. 단발 호출의 상한은 4,096토큰(`ollama.ts`의 `chatOllama`)이라 칸이 더 많은 양식이면 답이 잘려 JSON 이 깨질 수 있다(그러면 한 칸도 못 채운다). 칸을 더 늘리면 상한을 올리거나 나눠 부를 것.
 - (10-25 오후) 두 번째 PC 에서 `e2e/cheil-office.spec.ts`의 미디어 플랜 시험은 실패한다 — 엑셀 처리 프로그램(`xlsx-sidecar.exe`)이 없어서(ENOENT). Rust 가 있는 PC 에서는 통과해야 한다(확인 필요).
 
 - **설치 파일이 낡았다.** 10-23 04:25 에 만든 것이라 엑셀 미디어 플랜 빠른 채우기(10-23 오전)가 **없다.** 다시 만들기(`npm run dist:win -- -- --publish never`)를 돌리다 세션이 끊겼다. 그 여파로 워드 편집기 빌드가 깨졌던 것은 10-25 에 다시 빌드해 고쳤다.
@@ -143,6 +147,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 - preload 를 고치면 그 앱을, 편집기 뒷단을 고치면 껍데기까지 다시 빌드해야 반영된다(원본 `docs/engineering-notes.md`).
 - 엑셀 화면은 격자와 수식 입력줄이 캔버스라 글자로 읽을 수 없다. 화면 시험은 이름 상자(`input[class*="univer"]`)에 범위를 넣고 Ctrl+C → `app.evaluate(({clipboard}) => clipboard.readText())`로 셀을 읽는다.
 - 설치본은 `GENOFFICE_USER_DATA`를 무시한다 → 시험할 때 `--user-data-dir=<임시 폴더>`.
+- (두 번째 PC, 10-25) **Ollama 가 켜져 있는데 앱이 'AI 응답 없음'처럼 멈추면** 포트 11434 를 누가 잡았는지 본다: `Get-NetTCPConnection -LocalPort 11434 -State Listen`. Ollama 데스크톱 창(`ollama app.exe`)이 포트를 잡은 채 답하지 않고, 진짜 서버(`ollama.exe serve`)는 `%LOCALAPPDATA%\Ollama\server.log`에 "bind: Only one usage of each socket address"를 되풀이한 적이 있다. 두 프로세스를 끝내고 `ollama app.exe`를 다시 켜니 서버가 포트를 잡고 답했다.
 - 셸 명령 안에 파이썬·heredoc 으로 TS 코드를 넣으면 `'\n'` 같은 이스케이프가 실제 줄바꿈으로 바뀐 적이 여러 번 있다. 코드 수정은 편집 도구로 직접 하는 편이 안전하다.
 - 원본 규칙: 내부 이름(`@genoffice/*`, `GENOFFICE_*`)을 바꾸지 않는다. 문서 엔진 패키지(`docx-engine`, `pptx-*`, `xlsx-gateway`, `xlsx-engine` 등)는 고치지 않는다(필요하면 사람에게 먼저 묻기). LICENSE·NOTICE·"GenOffice/이음오피스를 바탕으로" 고지를 지우지 않는다. NOTICE 에 Cheil 고지를 더해 두었다.
 - 구독(Claude Code·Codex)으로 가는 시험은 사용자 한도를 쓴다. 화면 시험은 기본이 Ollama 라 괜찮지만, 구독을 고르는 시험을 만들면 `e2e/helpers.ts`의 `stubAiReady`를 쓴다.
@@ -171,7 +176,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 | 8 | 보내기 전 점검 | 할 일 | 규칙(코드): 남은 칸·`[확인 필요]`·자료에 없는 숫자·다른 광고주 이름·AI 흔적, 위치 목록 |
 | 9 | 광고주 이름 사전 | 할 일 | 점검과 `cheil-grade.ts`가 함께 씀 |
 | 10 | 수정 요청 반영 | 할 일 | 가장 어려움, 맨 끝. 변경 추적 켜고 반영 → 바뀐 곳 목록 → 회신 메일(7번) |
-| 11 | 기밀 판정 '막기 → 고르기' | 할 일 | 회사 정책 확인 뒤에만. 그 전에는 로컬 AI 만 |
+| 11 | 기밀 판정 '막기 → 고르기' | 할 일 | 회사 정책 확인 뒤에만. 그 전에는 로컬 AI 만. 사용자가 Upstage **Solar Pro**(클라우드 `api.upstage.ai/v1`, OpenAI 호환)를 원함(10-25). 붙인다면 앱의 `custom` 제공자로 직접 — 그래야 `cheil-grade.ts` 금지선이 검사한다. **Hermes Agent 를 거치지 말 것**: Hermes 의 API 서버(`localhost:8642/v1`)를 가리키면 금지선은 '이 PC'로 보고 검사하지 않는데 Hermes 는 그대로 클라우드로 보낸다(금지선 우회). Hermes 는 대화·기억을 자기 폴더에 남기는 에이전트이기도 하다 |
 | 12 | 에이전트 창 막기 | 할 일 | 기밀 표지가 있는 폴더에서는 안 열리게 |
 | 13 | 내 양식 등록 | 할 일 | 예전 문서 → `[칸]` 양식. 공통 칸은 사전 이름으로(별칭 목록이 이미 있음) |
 | 14 | 인수인계 남은 일 | 할 일 | 아래 '그 밖에 남은 일' |
@@ -183,7 +188,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 1. **설치 파일 다시 만들기**(엑셀 빠른 채우기·공통 칸·캠페인 포함) → `CHEIL_PACKAGED=1` 시험 → 동료 PC 한 대에 깔아 회사 보안 정책에 막히는지 확인(사용자 몫). Rust 가 있는 PC 에서.
 2. (끝남, 10-25) 기준선 커밋. 앞으로의 변경은 작게 나눠 커밋하고, 푸시는 사용자에게 묻는다.
 3. 이름 마무리: 명령어 `ieumoffice`→`cheiloffice`(+`~/.cheiloffice`, 도움말 925곳, 설치 PATH), 설정 → 정보의 저장소·문의 메일, `README.md`.
-4. 빠른 채우기 품질: 칸 이름을 값에 붙이지 않기, 광고주/브랜드 구분(공통 칸에 뜻을 붙여 보내기 시작함, 10-25), 날짜 추정 금지. 실행마다 흔들리는 정도를 2~3번 돌려 비교.
+4. 빠른 채우기 품질: 칸 이름을 값에 붙이지 않기, 광고주/브랜드 구분(공통 칸에 뜻을 붙이는 것은 효과가 없고 오히려 창작 칸을 비워서 뺐다, 10-25 — 3절), 날짜 추정 금지. 실행마다 흔들리는 폭이 크니(제안서 15~35칸) 고칠 때마다 3번 이상 돌려 범위로 비교.
 5. 빠른 채우기 '중지'(AbortSignal 을 `ai:chat`까지).
 6. 속도: 지시문 줄이기(스킬 본문 길이), 다른 모델 비교, GPU PC 에서 측정.
 7. PPT 화면이 닫힌 일 재현 감시(`e2e/cheil-ollama-real.spec.ts`에 닫힘·충돌 기록을 남기게 해 둠).

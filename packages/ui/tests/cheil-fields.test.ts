@@ -6,7 +6,6 @@ import { buildCheilFillPrompt, findCheilSlots } from '../src/cheil-fill'
 import {
   CHEIL_FIELDS,
   cheilBudgetText,
-  cheilFieldHint,
   cheilFieldOf,
   cheilFieldValueFor,
   cheilFieldValues,
@@ -55,7 +54,6 @@ describe('Cheil fork: common template blanks', () => {
     expect(cheilFieldOf('[ 광고주 ]')?.key).toBe('client')
     expect(cheilFieldOf('[예산 합계]')?.placeholder).toBe('[총예산]')
     expect(cheilFieldOf('[이 광고로 해결할 문제 한 문장]')).toBeNull()
-    expect(cheilFieldHint('[타깃]')).toContain('나이·생활·구매 맥락')
   })
 
   it('turns a card into the common blanks it fills', () => {
@@ -90,7 +88,9 @@ describe('Cheil fork: common template blanks', () => {
     expect(cheilToday(new Date(2027, 0, 5, 23, 59))).toBe('2027-01-05')
   })
 
-  it("tells the model what a common blank means, and leaves other blanks' lines as they were", () => {
+  it('sends a common blank to the model as it is, without its meaning', () => {
+    // a "(뜻: ...)" after the common blanks left the message and concept blanks
+    // open on gemma4:e4b (2026-10-25); see cheil-fill.ts
     const slots = findCheilSlots('핵심 타깃: [타깃]\n[이 광고로 해결할 문제 한 문장]')
     const { user } = buildCheilFillPrompt({
       request: '채워 줘',
@@ -98,10 +98,8 @@ describe('Cheil fork: common template blanks', () => {
       materials: '',
       slots,
     })
-    expect(user).toContain(
-      'S1: [타깃] (뜻: 누구에게 — 나이·생활·구매 맥락) — 문맥: 핵심 타깃: [타깃]',
-    )
-    expect(user).toContain('S2: [이 광고로 해결할 문제 한 문장] — 문맥:')
+    expect(user).toContain('S1: [타깃] — 문맥: 핵심 타깃: [타깃]')
+    expect(user).not.toContain('(뜻:')
   })
 
   it('builds every shipped template with the common names only, other blanks once each', async () => {
