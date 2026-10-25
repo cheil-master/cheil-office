@@ -437,17 +437,22 @@ export {
   CHEIL_FIELDS,
   EMPTY_CHEIL_CARD,
   cheilBudgetText,
+  cheilCardFillNote,
+  cheilCardFillOf,
+  cheilCardReplacements,
+  cheilCardSummary,
   cheilFieldOf,
   cheilFieldValueFor,
   cheilFieldValues,
   cheilToday,
 } from './cheil-fields'
-export type { CheilCampaignCard, CheilField, CheilFieldKey } from './cheil-fields'
+export type { CheilCampaignCard, CheilCardFill, CheilField, CheilFieldKey } from './cheil-fields'
 // Cheil fork: one-call workbook template fill
 export {
   SHEET_SCAN_COLUMNS,
   SHEET_SCAN_ROWS,
   buildCheilSheetFillPrompt,
+  cheilCardSheetWrites,
   cheilCellValue,
   cheilSheetWrites,
   findCheilSheetBlanks,

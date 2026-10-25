@@ -92,6 +92,9 @@ import {
   findCheilSheetBlanks,
   sheetScanAddresses,
   type SheetSnapshot,
+  cheilCardFillNote,
+  cheilCardSheetWrites,
+  type CheilCardFill,
 } from '@genoffice/ui'
 
 import {
@@ -585,6 +588,9 @@ function dateTextKind(value: string): 'date-like' | 'text' {
   dateTextKinds.set(value, kind)
   return kind
 }
+
+/** Cheil fork: how long (×250ms) a campaign card fill waits for the template's cells to load */
+const CHEIL_CARD_FILL_TRIES = 120
 
 /** where the AI settings are stored: the send gate writes its changes onto the stored copy */
 const AI_SETTINGS_STORE = {
@@ -1211,10 +1217,12 @@ export function App({
     },
     onTaken: () => setOpenAiRequest((n) => n + 1),
     setComposer: setPrompt,
-    // Cheil fork: a home template card fills the composer and waits for the person
-    prefill: (text, chips) => {
+    // Cheil fork: a home template card fills the composer and waits for the person;
+    // one opened from a campaign also brings its card's values for the common blanks
+    prefill: (text, chips, cheil) => {
       setPrompt(text)
       prefillChipsRef.current?.(chips)
+      if (cheil) void fillFromCampaignCard(cheil)
     },
   })
   const skillTemplatesRef = useRef(skillTemplates)
@@ -1770,21 +1778,8 @@ export function App({
       })
   }
 
-  /**
-   * Cheil fork: fill the open Cheil workbook template with one model call
-   * (packages/ui/src/cheil-sheet-fill.ts): the app reads the cells, lists the
-   * `[blanks]` and the empty input tables, the model answers one JSON object,
-   * and the values go in through the editor's own cell operations (one undo
-   * step). Formula columns are never written. A workbook without blanks runs
-   * the request through the tool loop as usual.
-   */
-  async function runCheilSheetFill(
-    instruction: string,
-    skillUse: SkillUse,
-    sentAttachments: readonly AttachmentMeta[],
-  ): Promise<void> {
-    if (aiBusy || runStartingRef.current) return
-    const ko = getLang() === 'ko'
+  /** Cheil fork: the cells the template fills read (A1:L40 of every sheet), loaded first */
+  async function readCheilSheets(): Promise<SheetSnapshot[]> {
     const scan = parseRange(`A1:${SHEET_SCAN_COLUMNS.at(-1)}${SHEET_SCAN_ROWS}`)
     const addresses = sheetScanAddresses()
     const sheets: SheetSnapshot[] = []
@@ -1801,6 +1796,61 @@ export function App({
       }
       sheets.push({ id: sheet.id, name: sheet.name, cells })
     }
+    return sheets
+  }
+
+  /**
+   * Cheil fork (plan item 4): a workbook template opened from a campaign. Once
+   * its cells can be read, the card's values go into the cells holding common
+   * blanks (by name or alias) through the editor's own cell operations, one
+   * undo step, no model call; a note says how many. Input tables and the other
+   * blanks wait for the quick fill.
+   */
+  async function fillFromCampaignCard(card: CheilCardFill, tries = 0): Promise<void> {
+    const sheets = getActiveSheetInfo().sheets.length > 0 ? await readCheilSheets() : []
+    const { writes, filled } = cheilCardSheetWrites(sheets, card.values)
+    if (filled === 0 && tries < CHEIL_CARD_FILL_TRIES) {
+      // the workbook is still loading
+      window.setTimeout(() => void fillFromCampaignCard(card, tries + 1), 250)
+      return
+    }
+    let done = filled
+    if (writes.length > 0) {
+      const outcome = proposeOperations(
+        writes.map((w) => ({
+          op: 'set_cell' as const,
+          sheetId: w.sheetId,
+          address: w.address,
+          value: w.value,
+        })),
+        getLang() === 'ko' ? '캠페인 카드로 채우기' : 'Campaign card fill',
+      )
+      if (!outcome.ok) done = 0
+    }
+    appendChat({
+      role: 'assistant',
+      text: cheilCardFillNote(getLang(), { campaign: card.campaign, filled: done }),
+      tools: [],
+      streaming: false,
+    })
+  }
+
+  /**
+   * Cheil fork: fill the open Cheil workbook template with one model call
+   * (packages/ui/src/cheil-sheet-fill.ts): the app reads the cells, lists the
+   * `[blanks]` and the empty input tables, the model answers one JSON object,
+   * and the values go in through the editor's own cell operations (one undo
+   * step). Formula columns are never written. A workbook without blanks runs
+   * the request through the tool loop as usual.
+   */
+  async function runCheilSheetFill(
+    instruction: string,
+    skillUse: SkillUse,
+    sentAttachments: readonly AttachmentMeta[],
+  ): Promise<void> {
+    if (aiBusy || runStartingRef.current) return
+    const ko = getLang() === 'ko'
+    const sheets = await readCheilSheets()
     const plan = findCheilSheetBlanks(sheets)
     if (plan.slots.length === 0 && plan.tables.length === 0) {
       runAgent(instruction + skillUse.text, sentAttachments)

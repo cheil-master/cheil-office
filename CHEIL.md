@@ -90,7 +90,17 @@
 - 코드: 저장 `apps/shell/src/main/cheil/campaign-store.ts`(Electron 없음, 캠페인 하나에 쓰기는 차례로), 창구 `campaign-ipc.ts`(홈 화면만 부를 수 있음, 화면은 폴더 이름만 넘기고 경로는 받지 않음), 약속 `apps/shell/src/shared/cheil-campaign-api.ts`, preload `window.aiOfficeCheilCampaigns`, 화면 `apps/shell/src/renderer/src/cheil/MyCampaigns.tsx`(목록·카드 입력·캠페인 보기: 카드, 메모 남기기, 타임라인 최신순). 문구는 한국어 + 영어.
 - 카드를 고치면 바뀐 칸만 타임라인에 남는다("카드 수정: 총예산 500,000,000원 → 600,000,000원"). 예산이 숫자만이면 쉼표와 '원'을 붙여 보인다(저장은 입력 그대로).
 - 시험: `apps/shell/tests/cheil-campaign-store.test.ts`(만들기·다시 읽기·바뀐 칸만 기록·잘못된 카드·경로 거절·같은 이름·목록 순서·깨진 줄·동시 쓰기 순서·이력 문서·홈만 응답), 화면 `e2e/cheil-office.spec.ts`의 캠페인 시험(만들기 → 타임라인 → 메모 → 카드 수정 → 폴더 파일 → 이력 문서 탭).
-- 아직 없는 것: 문서·채우기·메일이 끝날 때 저절로 남기기(3번), 캠페인에서 양식 열기와 공통 칸 바로 채우기(4번), 캠페인 폴더 위치 바꾸기.
+- 아직 없는 것: 문서·채우기·메일이 끝날 때 저절로 남기기(3번), 캠페인 폴더 위치 바꾸기.
+
+## 5-3. 문서 세트 채우기 (공모전 수정 계획 4번, 10-25)
+
+- 무엇: 캠페인 보기의 **'문서 세트 만들기'**에서 양식을 고르고(기본: 브리프·제안서·미디어 플랜) '선택한 양식 열기'를 누르면, 양식마다 새 탭이 열리고 카드 값이 공통 칸에 **AI 없이** 바로 들어간다. AI 창 입력란에는 요청과 `[캠페인 카드]` 줄이 보내지 않은 채 기다리고, 나머지 칸은 자료를 붙여 보내면 빠른 채우기(5-1절)가 채운다. 타임라인에 "문서 세트를 열었습니다: …" 한 줄이 남는다.
+- 흐름: 화면은 양식 이름과 요청 글만 보낸다(`cheil:campaign-open-set`, 홈 화면만). 뒷단이 **저장된 카드**에서 공통 칸 값을 다시 만들고(`cheilFieldValues`, 작성일은 오늘), 홈 양식 카드와 같은 양식 열기 길(`templateTabs.openTemplate`)에 그 값을 넘겨주기의 `cheil` 칸으로 싣는다. 화면이 값을 지어 보낼 길은 없다(넘겨주기 IPC 는 `cheil`을 받지 않는다).
+- 편집기: 넘겨받은 패널이 문서가 열릴 때까지 기다렸다가(250ms 간격, 최대 30초) 문서의 칸 가운데 공통 칸(별칭 포함, `cheilCardReplacements`)을 바꾼다. 워드 `replaceLeftoverBlanks`(표 안까지, 되돌리기 한 번), PPT 덱 `findReplace`(50개씩), 엑셀 `cheilCardSheetWrites` → `set_cell`(되돌리기 한 번). 패널에 "캠페인 '…' 카드로 공통 칸 N개를 채웠습니다(AI 없이)"가 남는다.
+- 카드에 비어 있는 칸은 그대로 `[칸]`으로 남아 빠른 채우기가 채우거나 `[확인 필요]`로 둔다. 기간의 한쪽만 있으면 다른 쪽은 `[확인 필요]`.
+- 코드: 규칙 `packages/ui/src/cheil-fields.ts`(`cheilCardFillOf` 넘겨주기 읽기, `cheilCardReplacements`, `cheilCardSummary`, `cheilCardFillNote`)·`cheil-sheet-fill.ts`(`cheilCardSheetWrites`), 넘겨주기 `packages/electron-utils/src/generate-handoff.ts`(`SkillHandoff.cheil`)·`packages/ui/src/skill-template-model.ts`·`use-skill-templates.tsx`(`prefill`의 세 번째 인자), 편집기 `fillFromCampaignCard`(워드·PPT `AiPanel.tsx`, 엑셀 `App.tsx`), 뒷단 `campaign-ipc.ts`(`campaignSetItemsOf`), 화면 `MyCampaigns.tsx`의 `DocumentSet`, 양식 목록 `apps/shell/src/renderer/src/cheil/templates.ts`(홈 카드와 함께 씀).
+- 시험: `packages/ui/tests/cheil-card-fill.test.ts`, `skill-template-model.test.ts`의 Cheil 항목, `apps/shell/tests/cheil-campaign-store.test.ts`의 문서 세트 항목, 화면 `e2e/cheil-campaign-set.spec.ts`(브리프·제안서. 미디어 플랜은 엑셀 처리 프로그램이 있는 PC 에서만 돈다).
+- 아직: 저장 위치는 지금처럼 첫 저장 때 묻는다(캠페인 폴더로 바로 저장은 5번 '변경 전파'와 함께). 채운 칸 수를 타임라인에 남기는 일은 3번.
 
 ## 6. 자동 업데이트 끔
 

@@ -7,7 +7,13 @@
  * the folder opener and the document opener.
  */
 import type { IpcMain } from 'electron'
-import { CHEIL_CAMPAIGN_CHANNELS, type CampaignResult } from '../../shared/cheil-campaign-api'
+import { CHEIL_FILL_SKILLS } from '../../../../../packages/ui/src/cheil-fill'
+import { cheilFieldValues } from '../../../../../packages/ui/src/cheil-fields'
+import {
+  CHEIL_CAMPAIGN_CHANNELS,
+  type CampaignResult,
+  type CampaignSetItem,
+} from '../../shared/cheil-campaign-api'
 import type { CampaignStore } from './campaign-store'
 
 export interface CheilCampaignIpcDeps {
@@ -19,9 +25,40 @@ export interface CheilCampaignIpcDeps {
   openFolder(path: string): Promise<string>
   /** open a document in a tab; false when nothing opened */
   openDocument(path: string): boolean
+  /**
+   * Open a template's copy as a new tab, its request waiting unsent and the
+   * card's values handed to its panel; false when it did not open
+   */
+  openTemplate(
+    item: CampaignSetItem,
+    cheil: { campaign: string; values: Record<string, string> },
+  ): Promise<boolean>
+  /** the local day as YYYY-MM-DD (the documents' 작성일) */
+  today(): string
 }
 
 const refused: CampaignResult = { ok: false, reason: 'not-found' }
+
+/** most templates one set opens, and the longest title and request taken */
+const SET_MAX = 6
+const TITLE_MAX = 100
+const TEXT_MAX = 4_000
+
+/** The set the screen asked for, checked: known Cheil templates, each once; null when unusable */
+export function campaignSetItemsOf(raw: unknown): CampaignSetItem[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > SET_MAX) return null
+  const items: CampaignSetItem[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') return null
+    const { skill, title, text } = entry as Record<string, unknown>
+    if (typeof skill !== 'string' || !CHEIL_FILL_SKILLS.has(skill)) return null
+    if (typeof title !== 'string' || !title.trim() || title.length > TITLE_MAX) return null
+    if (typeof text !== 'string' || text.length > TEXT_MAX) return null
+    if (items.some((item) => item.skill === skill)) return null
+    items.push({ skill, title: title.trim(), text })
+  }
+  return items
+}
 
 export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
   const { ipc, store } = deps
@@ -67,6 +104,33 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
       const written = await store.writeHistory(id)
       if (!written.ok) return written
       return deps.openDocument(written.path) ? { ok: true } : { ok: false, reason: 'failed' }
+    }),
+  )
+  // plan item 4: the card's values are worked out here from the stored card, never taken from the page
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.openSet,
+    homeOnly(async (id: unknown, rawItems: unknown) => {
+      const items = campaignSetItemsOf(rawItems)
+      if (!items) return { ok: false as const, reason: 'invalid' as const }
+      const found = await store.get(id)
+      if (!found.ok) return found
+      const { card } = found.campaign
+      const cheil = {
+        campaign: card.campaign,
+        values: Object.fromEntries(cheilFieldValues(card, deps.today())),
+      }
+      const opened: string[] = []
+      for (const item of items) {
+        if (await deps.openTemplate(item, cheil).catch(() => false)) opened.push(item.title)
+      }
+      if (opened.length === 0) return { ok: false as const, reason: 'failed' as const }
+      const recorded = await store.record(found.campaign.id, {
+        kind: 'fill',
+        text: `문서 세트를 열었습니다: ${opened.join(', ')} — 캠페인 카드로 공통 칸을 채움`,
+      })
+      return recorded.ok
+        ? { ok: true as const, opened: opened.length, campaign: recorded.campaign }
+        : recorded
     }),
   )
 }

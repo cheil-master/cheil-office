@@ -37,6 +37,9 @@ import {
   cheilFillSummary,
   findCheilSlots,
   parseCheilFillAnswer,
+  cheilCardFillNote,
+  cheilCardReplacements,
+  type CheilCardFill,
 } from '@genoffice/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
@@ -153,6 +156,9 @@ const CHIP_UPDATE_MS = 400
 
 /** Cap on tool args/output persisted in the transcript (the store layer has another 16k truncation fallback) */
 const PERSIST_TOOL_FIELD_MAX = 16_000
+
+/** Cheil fork: how long (×250ms) a campaign card fill waits for the template's copy to load */
+const CHEIL_CARD_FILL_TRIES = 120
 
 /** Tool args → JSON string (truncated; returns undefined on serialization failure, doesn't block persistence) */
 function safeJsonInput(input: unknown): string | undefined {
@@ -491,10 +497,12 @@ export function AiPanel({
       if (!open) onExpand?.()
     },
     setComposer: setInput,
-    // Cheil fork: a home template card fills the composer and waits for the person
-    prefill: (text, chips) => {
+    // Cheil fork: a home template card fills the composer and waits for the person;
+    // one opened from a campaign also brings its card's values for the common blanks
+    prefill: (text, chips, cheil) => {
       setInput(text)
       skillsRef.current.prefill(chips)
+      if (cheil) fillFromCampaignCard(cheil)
     },
   })
   const skillTemplatesRef = useRef(skillTemplates)
@@ -1271,6 +1279,42 @@ export function AiPanel({
       window.setTimeout(() => setAttachNotice(null), 5000)
     }
     return images
+  }
+
+  /**
+   * Cheil fork (plan item 4): a template opened from a campaign. Once its copy
+   * is in the editor, the card's values go into the common blanks (by name or
+   * alias) in one undoable step, with no model call, and a note says how many.
+   * The other blanks wait for the quick fill.
+   */
+  const fillFromCampaignCard = (card: CheilCardFill) => {
+    let tries = 0
+    const attempt = () => {
+      const editor = editorRef.current
+      const doc = editor?.state.doc
+      const slots = doc ? findCheilSlots(doc.textBetween(0, doc.content.size, '\n', '\n')) : []
+      if (!editor || slots.length === 0) {
+        // the copy is still loading
+        if (++tries < CHEIL_CARD_FILL_TRIES) window.setTimeout(attempt, 250)
+        return
+      }
+      const pairs = cheilCardReplacements(
+        slots.map((s) => s.placeholder),
+        card.values,
+      )
+      if (pairs.length > 0) replaceLeftoverBlanks(editor, pairs)
+      setChat((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: cheilCardFillNote(langRef.current, {
+            campaign: card.campaign,
+            filled: pairs.length,
+          }),
+        },
+      ])
+    }
+    attempt()
   }
 
   /**

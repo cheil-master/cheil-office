@@ -172,6 +172,12 @@ export interface SkillHandoff {
   preview?: SkillHandoffPreview | undefined
   /** Cheil fork: fill the composer with the request and chips, and send nothing */
   prefill?: boolean | undefined
+  /**
+   * Cheil fork (plan item 4): a template opened from a campaign. The panel
+   * writes these values into the common blanks once the document is open, no
+   * model involved (canonical placeholder → value).
+   */
+  cheil?: { campaign: string; values: Record<string, string> } | undefined
   /** ms since epoch */
   createdAt: number
 }

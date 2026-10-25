@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import type { Lang } from '@genoffice/i18n'
-import { EMPTY_CHEIL_CARD, cheilBudgetText } from '@genoffice/ui'
+import { EMPTY_CHEIL_CARD, cheilBudgetText, cheilCardSummary } from '@genoffice/ui'
 import { useI18n } from '../locale'
 import {
   CHEIL_CAMPAIGN_BRIDGE_KEY,
@@ -21,10 +21,12 @@ import {
   type CampaignEvent,
   type CampaignEventKind,
   type CampaignFailReason,
+  type CampaignSetItem,
   type CampaignSummary,
   type CheilCampaignApi,
   type CheilCampaignCard,
 } from '../../../shared/cheil-campaign-api'
+import { AGENCY_TEMPLATES, DEFAULT_SET } from './templates'
 
 const WORDS = {
   ko: {
@@ -84,6 +86,12 @@ const WORDS = {
     } satisfies Record<CampaignEventKind, string>,
     changed: '카드 수정',
     period: '캠페인 기간',
+    setTitle: '문서 세트 만들기',
+    setDesc:
+      '고른 양식이 새 탭으로 열리고, 카드의 광고주·캠페인명·기간·예산·타깃·KPI가 공통 칸에 바로 들어갑니다(AI 없이). 나머지 칸은 각 탭에서 자료를 붙여 보내면 채웁니다.',
+    setOpen: (n: number) => `선택한 양식 열기 (${n})`,
+    setOpened: (n: number) =>
+      `양식 ${n}개를 새 탭으로 열었습니다. 각 탭의 AI 창에 요청이 기다리고 있습니다.`,
     emptyValue: '(비어 있음)',
     due: (d: string) => `마감 ${d}`,
     fail: {
@@ -148,6 +156,12 @@ const WORDS = {
     } satisfies Record<CampaignEventKind, string>,
     changed: 'Card changed',
     period: 'Period',
+    setTitle: 'Make a document set',
+    setDesc:
+      'The chosen templates open in new tabs with the card’s client, campaign, period, budget, target and KPI already in their common blanks (no AI). Send your material in each tab to fill the rest.',
+    setOpen: (n: number) => `Open the chosen templates (${n})`,
+    setOpened: (n: number) =>
+      `Opened ${n} templates in new tabs; each AI panel has its request waiting.`,
     emptyValue: '(empty)',
     due: (d: string) => `due ${d}`,
     fail: {
@@ -311,6 +325,7 @@ export function MyCampaigns() {
       ) : openId ? (
         <CampaignView
           w={w}
+          lang={lang === 'ko' ? 'ko' : 'en'}
           api={api}
           id={openId}
           onEdit={() => setForm({ mode: 'edit', id: openId })}
@@ -469,14 +484,102 @@ function CampaignForm({
   )
 }
 
+/**
+ * Plan item 4: open several templates at once for this campaign. Each opens
+ * in a new tab with the card's values already in its common blanks (the main
+ * process works them out from the stored card) and its request, with the
+ * card's lines, waiting unsent in the AI panel.
+ */
+function DocumentSet({
+  w,
+  lang,
+  card,
+  onOpen,
+}: {
+  w: Words
+  lang: 'ko' | 'en'
+  card: CheilCampaignCard
+  /** the number of tabs opened, or null when it failed (the view says why) */
+  onOpen: (items: CampaignSetItem[]) => Promise<number | null>
+}) {
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(DEFAULT_SET))
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<number | null>(null)
+
+  const toggle = (skill: string) =>
+    setChosen((prev) => {
+      const next = new Set(prev)
+      if (next.has(skill)) next.delete(skill)
+      else next.add(skill)
+      return next
+    })
+
+  const open = async () => {
+    if (busy || chosen.size === 0) return
+    const summary = cheilCardSummary(card)
+    const items = AGENCY_TEMPLATES.filter((tpl) => chosen.has(tpl.skill)).map((tpl) => ({
+      skill: tpl.skill,
+      title: tpl.ko.title,
+      text: summary ? `${tpl[lang].request.trimEnd()}\n\n${summary}` : tpl[lang].request,
+    }))
+    setBusy(true)
+    setDone(null)
+    const opened = await onOpen(items)
+    setBusy(false)
+    if (opened !== null) setDone(opened)
+  }
+
+  return (
+    <section className="cheil-set" aria-label={w.setTitle} data-testid="cheil-campaign-set">
+      <div className="cheil-set-head">
+        <span className="section-label">{w.setTitle}</span>
+      </div>
+      <p className="cheil-set-desc">{w.setDesc}</p>
+      <div className="cheil-set-options">
+        {AGENCY_TEMPLATES.map((tpl) => (
+          <label
+            key={tpl.skill}
+            className={`cheil-set-option${chosen.has(tpl.skill) ? ' is-on' : ''}`}
+          >
+            <input
+              type="checkbox"
+              checked={chosen.has(tpl.skill)}
+              data-skill={tpl.skill}
+              onChange={() => toggle(tpl.skill)}
+            />
+            {tpl[lang].title}
+          </label>
+        ))}
+      </div>
+      <div className="cheil-set-foot">
+        <button
+          className="btn btn-primary"
+          data-testid="cheil-campaign-open-set"
+          disabled={busy || chosen.size === 0}
+          onClick={() => void open()}
+        >
+          {w.setOpen(chosen.size)}
+        </button>
+        {done !== null ? (
+          <span className="cheil-set-done" role="status">
+            {w.setOpened(done)}
+          </span>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 function CampaignView({
   w,
+  lang,
   api,
   id,
   onEdit,
   onClose,
 }: {
   w: Words
+  lang: 'ko' | 'en'
   api: CheilCampaignApi
   id: string
   onEdit: () => void
@@ -557,6 +660,26 @@ function CampaignView({
               )
             })}
           </dl>
+        ) : null}
+
+        {card ? (
+          <DocumentSet
+            w={w}
+            lang={lang}
+            card={card}
+            onOpen={async (items) => {
+              setError('')
+              const res = await api
+                .openSet(id, items)
+                .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+              if (!res.ok) {
+                setError(w.fail[res.reason])
+                return null
+              }
+              setCampaign(res.campaign)
+              return res.opened
+            }}
+          />
         ) : null}
 
         <div className="cheil-campaign-actions">

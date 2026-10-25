@@ -1,4 +1,5 @@
 import type { SkillProposal } from '@genoffice/agent-core'
+import { cheilCardFillOf, type CheilCardFill } from './cheil-fields'
 import type { SkillCardDraft } from './skill-card-model'
 import type { SkillChipRef, SkillChipView } from './skill-picker-model'
 
@@ -246,6 +247,8 @@ export interface HandedRequest {
   preview?: HandedPreview | undefined
   /** Cheil fork: put the request and chips in the composer instead of sending */
   prefill?: boolean | undefined
+  /** Cheil fork (plan item 4): a campaign card's values for the common blanks */
+  cheil?: CheilCardFill | undefined
 }
 
 /** A taken hand-off as the panel reads it; null for none or a malformed one */
@@ -293,7 +296,14 @@ export function handedRequestOf(raw: unknown, target: TemplateEditor): HandedReq
     chips,
     ...(preview ? { preview } : {}),
     ...(raw.prefill === true ? { prefill: true } : {}),
+    ...cheilOf(raw.cheil),
   }
+}
+
+/** Cheil fork: the card fill, when the hand-off carries a readable one */
+function cheilOf(raw: unknown): { cheil: CheilCardFill } | Record<string, never> {
+  const cheil = cheilCardFillOf(raw)
+  return cheil ? { cheil } : {}
 }
 
 /**

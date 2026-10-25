@@ -160,6 +160,8 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
      */
     async openTemplate(
       input: UserSkillTemplateOpenInput,
+      /** Cheil fork (plan item 4): a campaign card's values for the new tab (never from a page) */
+      cheil?: SkillHandoff['cheil'],
     ): Promise<UserSkillsResult<{ tabId: string }>> {
       const template = await deps.templateFileOf(input.skillId)
       if (!template.ok) return template
@@ -180,6 +182,7 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
           text: input.text,
           chips: input.chips,
           ...(input.prefill ? { prefill: true } : {}),
+          ...(cheil ? { cheil } : {}),
           createdAt: deps.now(),
         }),
       )

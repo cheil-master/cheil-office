@@ -18,6 +18,7 @@ import {
   type TemplateEditor,
 } from './skill-template-model'
 import type { SkillChipRef } from './skill-picker-model'
+import type { CheilCardFill } from './cheil-fields'
 
 /** How long a handed-over request may wait to start before the preview's card shows anyway */
 const UNSTARTED_RUN_MS = 5000
@@ -66,9 +67,10 @@ export interface SkillTemplatesOptions {
   /**
    * Cheil fork: a hand-off marked `prefill` (the home's template cards) puts
    * its request and chips into the composer and sends nothing; the chips run
-   * on this document, which is the template's copy.
+   * on this document, which is the template's copy. A template opened from a
+   * campaign also carries the card's values for the common blanks (`cheil`).
    */
-  prefill?: ((text: string, chips: SkillChipRef[]) => void) | undefined
+  prefill?: ((text: string, chips: SkillChipRef[], cheil?: CheilCardFill) => void) | undefined
   /** tests inject one; the default is the window's `aiOfficeUserSkills` */
   bridge?: SkillTemplateBridge | null | undefined
 }
@@ -214,7 +216,7 @@ export function useSkillTemplates(options: SkillTemplatesOptions): SkillTemplate
       optionsRef.current.onTaken?.()
       if (taken.prefill) {
         const fill = optionsRef.current.prefill
-        if (fill) fill(taken.text, taken.chips)
+        if (fill) fill(taken.text, taken.chips, taken.cheil)
         else optionsRef.current.setComposer?.(taken.text)
         setRunPhase('done')
         return

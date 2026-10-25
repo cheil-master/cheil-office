@@ -25,7 +25,7 @@ const CARD = {
   target: '30대 1인 가구 직장인',
   kpi: '인지도 30%',
   team: '비즈니스13팀',
-  author: '챔프리',
+  author: '홍길동',
 }
 
 let root: string
@@ -209,17 +209,109 @@ describe('Cheil fork: campaign channels', () => {
     const home = { id: 1 }
     const openFolder = vi.fn(async () => '')
     const openDocument = vi.fn(() => true)
+    const openTemplate = vi.fn(
+      async (
+        _item: { skill: string; title: string; text: string },
+        _cheil: { campaign: string; values: Record<string, string> },
+      ) => true,
+    )
     registerCheilCampaignIpc({
       ipc: { handle: (channel: string, fn: never) => void handlers.set(channel, fn) } as never,
       store: makeStore(),
       isHome: (sender) => sender === home,
       openFolder,
       openDocument,
+      openTemplate,
+      today: () => '2026-10-25',
     })
     const call = (sender: unknown, channel: string, ...args: unknown[]) =>
       handlers.get(channel)!({ sender }, ...args) as Promise<Record<string, unknown>>
-    return { handlers, home, call, openFolder, openDocument }
+    return { handlers, home, call, openFolder, openDocument, openTemplate }
   }
+
+  const SET = [
+    { skill: 'cheil-brief', title: '크리에이티브 브리프', text: '브리프를 채워 줘.' },
+    { skill: 'cheil-proposal', title: '캠페인 제안서', text: '제안서를 채워 줘.' },
+    { skill: 'cheil-media-plan', title: '미디어 플랜', text: '미디어 플랜을 채워 줘.' },
+  ]
+
+  it("opens a document set with the stored card's values and records it", async () => {
+    const { home, call, openTemplate } = wire()
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    const res = (await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, made.campaign.id, SET)) as {
+      ok: boolean
+      opened: number
+      campaign: { timeline: Array<{ kind: string; text: string }> }
+    }
+    expect(res.ok).toBe(true)
+    expect(res.opened).toBe(3)
+    expect(openTemplate.mock.calls.map(([item]) => item.skill)).toEqual([
+      'cheil-brief',
+      'cheil-proposal',
+      'cheil-media-plan',
+    ])
+    const [, cheil] = openTemplate.mock.calls[0]!
+    expect(cheil.campaign).toBe('에어린 봄 런칭')
+    expect(cheil.values).toMatchObject({
+      '[광고주]': '가상전자',
+      '[캠페인 기간]': '2027-03-01 ~ 2027-04-30',
+      '[총예산]': '500,000,000원',
+      '[작성자]': '홍길동',
+      '[작성일]': '2026-10-25',
+    })
+    const last = res.campaign.timeline.at(-1)!
+    expect(last.kind).toBe('fill')
+    expect(last.text).toBe(
+      '문서 세트를 열었습니다: 크리에이티브 브리프, 캠페인 제안서, 미디어 플랜 — 캠페인 카드로 공통 칸을 채움',
+    )
+  })
+
+  it('takes only known templates, each once, and never values from the page', async () => {
+    const { home, call, openTemplate } = wire()
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    const id = made.campaign.id
+    const invalid = { ok: false, reason: 'invalid' }
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, id, [])).toEqual(invalid)
+    expect(
+      await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, id, [
+        { skill: 'meeting-minutes', title: 'x', text: '' },
+      ]),
+    ).toEqual(invalid)
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, id, [SET[0], SET[0]])).toEqual(invalid)
+    // a page's own "values" field is not read
+    await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, id, [
+      { ...SET[0], values: { '[광고주]': '다른 광고주' } },
+    ])
+    expect(openTemplate.mock.calls.at(-1)![1].values['[광고주]']).toBe('가상전자')
+    expect(await call({ id: 2 }, CHEIL_CAMPAIGN_CHANNELS.openSet, id, SET)).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, '..', SET)).toEqual({
+      ok: false,
+      reason: 'not-found',
+    })
+  })
+
+  it('says it failed when no template opened, and records nothing', async () => {
+    const { home, call, openTemplate } = wire()
+    openTemplate.mockResolvedValue(false)
+    const made = (await call(home, CHEIL_CAMPAIGN_CHANNELS.create, CARD)) as {
+      campaign: { id: string }
+    }
+    expect(await call(home, CHEIL_CAMPAIGN_CHANNELS.openSet, made.campaign.id, SET)).toEqual({
+      ok: false,
+      reason: 'failed',
+    })
+    const got = (await call(home, CHEIL_CAMPAIGN_CHANNELS.get, made.campaign.id)) as {
+      campaign: { timeline: unknown[] }
+    }
+    expect(got.campaign.timeline).toHaveLength(1)
+  })
 
   it('registers every channel and answers the home only', async () => {
     const { handlers, home, call } = wire()

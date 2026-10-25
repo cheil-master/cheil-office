@@ -22,7 +22,17 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   note: 'cheil:campaign-note',
   openFolder: 'cheil:campaign-open-folder',
   openHistory: 'cheil:campaign-open-history',
+  openSet: 'cheil:campaign-open-set',
 } as const
+
+/** One template of a document set: its builtin skill, the chip's title, the waiting request */
+export interface CampaignSetItem {
+  /** a Cheil template skill (`cheil-brief`, ...) */
+  skill: string
+  title: string
+  /** the request left in the new tab's composer (not sent) */
+  text: string
+}
 
 /** What happened, for the timeline's mark and wording */
 export type CampaignEventKind =
@@ -115,6 +125,15 @@ export interface CheilCampaignApi {
   openFolder(id: string): Promise<CampaignResult>
   /** write "캠페인 이력.md" (card and timeline) into the folder and open it in a tab */
   openHistory(id: string): Promise<CampaignResult>
+  /**
+   * Plan item 4: open each template as a new tab whose common blanks the
+   * campaign's card fills (no model), with its request waiting unsent; the
+   * timeline records the set
+   */
+  openSet(
+    id: string,
+    items: CampaignSetItem[],
+  ): Promise<CampaignResult<{ opened: number; campaign: CampaignDetail }>>
 }
 
 export const CHEIL_CAMPAIGN_BRIDGE_KEY = 'aiOfficeCheilCampaigns'

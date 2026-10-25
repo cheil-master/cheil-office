@@ -154,3 +154,91 @@ export function cheilFieldValueFor(
   if (!field) return null
   return values.get(field.placeholder) ?? null
 }
+
+// ── a document set opened from a campaign (plan item 4) ──
+
+/** What a template tab is handed with: the campaign's name and its card's values by blank */
+export interface CheilCardFill {
+  campaign: string
+  /** canonical placeholder → value (`cheilFieldValues`, as a plain object for the hand-off) */
+  values: Record<string, string>
+}
+
+/** most values a hand-off carries, and the longest one */
+const CARD_FILL_MAX_VALUES = 40
+const CARD_FILL_VALUE_MAX = 1_000
+
+/** A hand-off's card fill as read in a renderer; null when it is missing or malformed */
+export function cheilCardFillOf(raw: unknown): CheilCardFill | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.campaign !== 'string' || !r.values || typeof r.values !== 'object') return null
+  const values: Record<string, string> = {}
+  for (const [key, value] of Object.entries(r.values as Record<string, unknown>).slice(
+    0,
+    CARD_FILL_MAX_VALUES,
+  )) {
+    if (!/^\[[^[\]\n]{1,80}\]$/.test(key) || typeof value !== 'string') continue
+    if (!value.trim() || value.length > CARD_FILL_VALUE_MAX) continue
+    values[key] = value
+  }
+  return { campaign: r.campaign.slice(0, 200), values }
+}
+
+/**
+ * The replacements a card makes in a document: every blank found there that
+ * names a common field (by its own name or an alias) the card has a value for.
+ * Other blanks stay for the quick fill or a person.
+ */
+export function cheilCardReplacements(
+  placeholders: readonly string[],
+  values: Readonly<Record<string, string>>,
+): Array<{ find: string; replace: string }> {
+  const map = new Map(Object.entries(values))
+  const out: Array<{ find: string; replace: string }> = []
+  const seen = new Set<string>()
+  for (const placeholder of placeholders) {
+    if (seen.has(placeholder)) continue
+    seen.add(placeholder)
+    const value = cheilFieldValueFor(placeholder, map)
+    if (value) out.push({ find: placeholder, replace: value })
+  }
+  return out
+}
+
+/** The card as lines for a request ("[캠페인 카드]", then "광고주: 가상전자", ...): empty fields left out */
+export function cheilCardSummary(card: Partial<CheilCampaignCard>): string {
+  const text = (v: string | undefined) => (v ?? '').replace(/\s*\n\s*/g, ' ').trim()
+  const period =
+    text(card.start) || text(card.end)
+      ? `${text(card.start) || '?'} ~ ${text(card.end) || '?'}`
+      : ''
+  const rows: Array<[string, string]> = [
+    ['캠페인명', text(card.campaign)],
+    ['광고주', text(card.client)],
+    ['브랜드·제품', text(card.brand)],
+    ['캠페인 기간', period],
+    ['총예산', cheilBudgetText(text(card.budget))],
+    ['타깃', text(card.target)],
+    ['KPI', text(card.kpi)],
+    ['팀명', text(card.team)],
+    ['작성자', text(card.author)],
+  ]
+  const lines = rows.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`)
+  return lines.length ? ['[캠페인 카드]', ...lines].join('\n') : ''
+}
+
+/** The panel's note after a card fill */
+export function cheilCardFillNote(
+  lang: string,
+  input: { campaign: string; filled: number },
+): string {
+  if (lang === 'ko') {
+    return input.filled > 0
+      ? `캠페인 '${input.campaign}' 카드로 공통 칸 ${input.filled}개를 채웠습니다(AI 없이). 나머지 칸은 자료를 붙여 보내면 채웁니다.`
+      : `캠페인 '${input.campaign}' 카드에 이 양식의 공통 칸에 넣을 값이 없습니다. 자료를 붙여 보내면 채웁니다.`
+  }
+  return input.filled > 0
+    ? `Filled ${input.filled} common blanks from the '${input.campaign}' campaign card (no AI). Send your material to fill the rest.`
+    : `The '${input.campaign}' campaign card has no values for this template's common blanks. Send your material to fill it.`
+}

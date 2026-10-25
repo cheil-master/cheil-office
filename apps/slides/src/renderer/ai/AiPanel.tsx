@@ -35,6 +35,9 @@ import {
   cheilFillSummary,
   findCheilSlots,
   parseCheilFillAnswer,
+  cheilCardFillNote,
+  cheilCardReplacements,
+  type CheilCardFill,
 } from '@genoffice/ui'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -281,6 +284,23 @@ function safeJsonInput(input: unknown): string | undefined {
   }
 }
 
+/** Cheil fork: how long (×250ms) a campaign card fill waits for the template's deck to load */
+const CHEIL_CARD_FILL_TRIES = 120
+
+/** Cheil fork: the deck's text the template fills read their `[blanks]` from, slide by slide */
+function cheilDeckText(slides: readonly RenderSlide[]): string {
+  return slides
+    .map((slide, i) =>
+      [
+        `슬라이드 ${i + 1}`,
+        ...formatSlideDump(slide)
+          .split('\n')
+          .filter((line) => !/ \| pos\(/.test(line)),
+      ].join('\n'),
+    )
+    .join('\n')
+}
+
 interface ChatEntry {
   role: 'user' | 'assistant'
   text: string
@@ -522,10 +542,12 @@ export function AiPanel({
       if (!open) onExpand?.()
     },
     setComposer: setInput,
-    // Cheil fork: a home template card fills the composer and waits for the person
-    prefill: (text, chips) => {
+    // Cheil fork: a home template card fills the composer and waits for the person;
+    // one opened from a campaign also brings its card's values for the common blanks
+    prefill: (text, chips, cheil) => {
       setInput(text)
       skillsRef.current.prefill(chips)
+      if (cheil) fillFromCampaignCard(cheil)
     },
   })
   const skillTemplatesRef = useRef(skillTemplates)
@@ -1989,6 +2011,50 @@ export function AiPanel({
   }
 
   /**
+   * Cheil fork (plan item 4): a template opened from a campaign. Once its deck
+   * is open, the card's values go into the common blanks (by name or alias)
+   * through the deck's own find-and-replace, with no model call, and a note
+   * says how many. The other blanks wait for the quick fill.
+   */
+  const fillFromCampaignCard = (card: CheilCardFill) => {
+    let tries = 0
+    const attempt = async () => {
+      const access = accessRef.current
+      const slots = findCheilSlots(cheilDeckText(access?.getSlides() ?? []))
+      if (!access || slots.length === 0) {
+        // the copy is still loading
+        if (++tries < CHEIL_CARD_FILL_TRIES) window.setTimeout(() => void attempt(), 250)
+        return
+      }
+      const pairs = cheilCardReplacements(
+        slots.map((s) => s.placeholder),
+        card.values,
+      )
+      const ops = pairs.map((r) => ({ op: 'findReplace', find: r.find, replace: r.replace }))
+      let deck: RenderSlide[] | null = null
+      // one transaction takes at most 50 ops (applySessionTxn)
+      for (let at = 0; at < ops.length; at += 50) {
+        const result = await window.slidesApi
+          .applyTxn({ ops: ops.slice(at, at + 50), isolation: 'per_op' })
+          .catch(() => null)
+        if (result?.applied && result.slides) deck = result.slides
+      }
+      if (deck) access.applyDeck(deck, Math.max(0, Math.min(access.getCurrent(), deck.length - 1)))
+      setChat((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: cheilCardFillNote(langRef.current, {
+            campaign: card.campaign,
+            filled: deck ? pairs.length : 0,
+          }),
+        },
+      ])
+    }
+    void attempt()
+  }
+
+  /**
    * Cheil fork: fill the open Cheil template's `[blanks]` with one model call
    * (packages/ui/src/cheil-fill.ts, as in the docs panel): the app lists the
    * blanks of every slide, the model answers one JSON object, and the deck's
@@ -2005,18 +2071,7 @@ export function AiPanel({
       patchLastAssistant((last) => ({ streaming: false, tools: last.tools, ...patch }))
       void finishHistoryBatch().finally(() => setBusy(false))
     }
-    const slides = access?.getSlides() ?? []
-    const deckText = slides
-      .map((slide, i) =>
-        [
-          `슬라이드 ${i + 1}`,
-          ...formatSlideDump(slide)
-            .split('\n')
-            .filter((line) => !/ \| pos\(/.test(line)),
-        ].join('\n'),
-      )
-      .join('\n')
-    const slots = findCheilSlots(deckText)
+    const slots = findCheilSlots(cheilDeckText(access?.getSlides() ?? []))
     if (!access || slots.length === 0) {
       loopRef.current?.run(instruction + skillUse.text)
       return

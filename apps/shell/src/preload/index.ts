@@ -887,6 +887,7 @@ const cheilCampaignApi: CheilCampaignApi = {
   note: (id, text) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.note, id, text),
   openFolder: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openFolder, id),
   openHistory: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openHistory, id),
+  openSet: (id, items) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openSet, id, items),
 }
 contextBridge.exposeInMainWorld(CHEIL_CAMPAIGN_BRIDGE_KEY, cheilCampaignApi)
 

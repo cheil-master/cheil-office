@@ -102,6 +102,24 @@ describe('what a new tab takes over', () => {
     expect(handedRequestOf(null, 'hwp')).toBeNull()
   })
 
+  it("Cheil fork: carries a campaign card's values for the common blanks, and drops a broken one", () => {
+    const raw = {
+      id: 'h3',
+      mode: 'skill',
+      target: 'docs',
+      text: '브리프를 채워 줘.',
+      chips: [],
+      prefill: true,
+      cheil: { campaign: '에어린 봄 런칭', values: { '[광고주]': '가상전자', bad: 'x' } },
+    }
+    expect(handedRequestOf(raw, 'docs')?.cheil).toEqual({
+      campaign: '에어린 봄 런칭',
+      values: { '[광고주]': '가상전자' },
+    })
+    expect(handedRequestOf({ ...raw, cheil: { values: 'x' } }, 'docs')).not.toHaveProperty('cheil')
+    expect(handedRequestOf({ ...raw, cheil: undefined }, 'docs')).not.toHaveProperty('cheil')
+  })
+
   it('carries the pending proposal of a preview, wanting its template', () => {
     const taken = handedRequestOf(
       { id: 'h2', mode: 'skill', target: 'docs', text: 'clear', chips: [], preview },

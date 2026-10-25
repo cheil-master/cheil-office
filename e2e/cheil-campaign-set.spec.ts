@@ -1,0 +1,202 @@
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { test, expect, type Page } from '@playwright/test'
+import { closeAndSaveVideo, launchShell, screenshotPath, waitForPageWithUrl } from './helpers'
+
+/**
+ * Cheil fork (plan item 4): a document set opened from a campaign. The
+ * chosen templates open in new tabs with the card's values already in their
+ * common blanks (no model is called: no AI connection is set up here), the
+ * request with the card's lines waits unsent, and the timeline records it.
+ */
+const CARD = {
+  campaign: '에어린 봄 런칭',
+  client: '가상전자',
+  brand: '에어린',
+  start: '2027-03-01',
+  end: '2027-04-30',
+  budget: '500000000',
+  target: '25~34세 1인 가구 직장인',
+  kpi: '브랜드 인지도 30%',
+  team: '비즈니스13팀',
+  author: '홍길동',
+}
+const FOLDER = '가상전자 - 에어린 봄 런칭'
+const SIDECAR = resolve(
+  __dirname,
+  '..',
+  'apps',
+  'sheets',
+  'native',
+  'xlsx-engine',
+  'target',
+  'release',
+  process.platform === 'win32' ? 'xlsx-sidecar.exe' : 'xlsx-sidecar',
+)
+
+function today(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** a scratch profile holding one campaign */
+async function profileWithCampaign(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'cheil-set-'))
+  const folder = join(dir, 'Cheil 캠페인', FOLDER)
+  await mkdir(folder, { recursive: true })
+  const at = new Date().toISOString()
+  await writeFile(
+    join(folder, 'campaign.json'),
+    JSON.stringify({
+      format: 'cheil-campaign',
+      version: 1,
+      card: CARD,
+      createdAt: at,
+      updatedAt: at,
+    }),
+  )
+  await writeFile(
+    join(folder, 'timeline.jsonl'),
+    `${JSON.stringify({ at, kind: 'created', text: '캠페인을 만들었습니다: 에어린 봄 런칭' })}\n`,
+  )
+  return dir
+}
+
+/** open the campaign and its set with exactly these templates */
+async function openSet(page: Page, skills: string[]) {
+  await page.locator('[data-testid="cheil-campaign-card"]').first().click()
+  const set = page.getByTestId('cheil-campaign-set')
+  await expect(set).toBeVisible()
+  for (const box of await set.locator('input[type="checkbox"]').all()) {
+    const want = skills.includes((await box.getAttribute('data-skill')) ?? '')
+    if ((await box.isChecked()) !== want) await box.click()
+  }
+  await page.getByTestId('cheil-campaign-open-set').click()
+}
+
+test('Cheil: a campaign opens a brief and a proposal with the card in their common blanks', async () => {
+  const launched = await launchShell({
+    userDataDir: await profileWithCampaign(),
+    videoDir: 'cheil-campaign-set',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  try {
+    await page.setViewportSize({ width: 1280, height: 900 }).catch(() => {})
+    await openSet(page, ['cheil-brief', 'cheil-proposal'])
+
+    // the brief: header table and sections carry the card, no common blank is left
+    const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
+    const docText = () =>
+      docs.evaluate(
+        () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
+      )
+    await expect.poll(docText, { timeout: 60_000 }).toContain('가상전자')
+    const brief = await docText()
+    for (const value of [
+      '에어린 봄 런칭',
+      '2027-03-01 ~ 2027-04-30',
+      '500,000,000원',
+      '25~34세 1인 가구 직장인',
+      '브랜드 인지도 30%',
+      '홍길동 · 비즈니스13팀',
+      today(),
+    ]) {
+      expect(brief).toContain(value)
+    }
+    expect(brief).not.toMatch(
+      /\[(광고주|캠페인명|캠페인 기간|총예산|타깃|KPI|팀명|작성자|작성일)\]/,
+    )
+    // the other blanks wait for the quick fill
+    expect(brief).toContain('[이 광고로 해결할 문제 한 문장]')
+    await expect(docs.getByText(/카드로 공통 칸 10개를 채웠습니다/)).toBeVisible()
+    await expect(docs.locator('.ai-input-box textarea').first()).toHaveValue(/\[캠페인 카드\]/)
+    await expect(docs.locator('.ai-message.user, .msg-user')).toHaveCount(0)
+    await docs.screenshot({ path: screenshotPath('cheil-campaign-set-brief') })
+
+    // the proposal: the deck's text runs carry the card too
+    const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
+    const deckText = () =>
+      slides.evaluate(async () => {
+        const api = (window as unknown as { slidesApi: { getRenderSlides(): Promise<unknown> } })
+          .slidesApi
+        const out: string[] = []
+        const walk = (value: unknown, key: string): void => {
+          if (typeof value === 'string') {
+            if (key === 'text') out.push(value)
+          } else if (Array.isArray(value)) {
+            for (const item of value) walk(item, key)
+          } else if (value && typeof value === 'object') {
+            for (const [k, v] of Object.entries(value)) walk(v, k)
+          }
+        }
+        walk(await api.getRenderSlides(), '')
+        return out.join('')
+      })
+    await expect.poll(deckText, { timeout: 60_000 }).toContain('가상전자')
+    // the runs come a word at a time: compare without whitespace
+    const deck = (await deckText()).replace(/\s+/g, '')
+    for (const value of [
+      '에어린봄런칭',
+      '2027-03-01~2027-04-30',
+      '500,000,000원',
+      '비즈니스13팀',
+    ]) {
+      expect(deck).toContain(value)
+    }
+    expect(deck).not.toMatch(/\[(광고주|캠페인명|캠페인기간|총예산|타깃|KPI|팀명|작성일)\]/)
+    await expect(slides.getByText(/카드로 공통 칸 8개를 채웠습니다/)).toBeVisible()
+    await slides.screenshot({ path: screenshotPath('cheil-campaign-set-proposal') })
+
+    // back home: the view says what opened and the timeline has the set
+    await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
+    const view = page.getByTestId('cheil-campaign-view')
+    await expect(view.locator('.cheil-set-done')).toContainText('양식 2개를 새 탭으로 열었습니다')
+    await expect(page.getByTestId('cheil-campaign-timeline').locator('li').first()).toContainText(
+      '문서 세트를 열었습니다: 캠페인 제안서, 크리에이티브 브리프',
+    )
+    await page.screenshot({ path: screenshotPath('cheil-campaign-set-home') })
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-campaign-set')
+  }
+})
+
+test('Cheil: a campaign opens the media plan with the card in its header cells', async () => {
+  test.skip(!existsSync(SIDECAR), 'the xlsx engine is not built on this PC (npm run native:build)')
+  const launched = await launchShell({
+    userDataDir: await profileWithCampaign(),
+    videoDir: 'cheil-campaign-set-sheet',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  try {
+    await openSet(page, ['cheil-media-plan'])
+    const sheets = await waitForPageWithUrl(app, '://sheets/', 60_000)
+    await expect(sheets.getByText(/카드로 공통 칸 \d+개를 채웠습니다/)).toBeVisible({
+      timeout: 60_000,
+    })
+    // the grid is a canvas: select the header cells through the name box and copy them
+    const nameBox = sheets
+      .locator('input[class*="univer"]')
+      .filter({ hasNot: sheets.locator('[aria-label]') })
+      .first()
+    await nameBox.click()
+    await nameBox.fill('A1:A2')
+    await nameBox.press('Enter')
+    await sheets.waitForTimeout(500)
+    await sheets.keyboard.press('Control+C')
+    await sheets.waitForTimeout(800)
+    const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
+    expect(copied).toContain('가상전자 에어린 봄 런칭 미디어 플랜')
+    expect(copied).toContain('500,000,000원')
+    expect(copied).not.toContain('[광고주]')
+    await sheets.screenshot({ path: screenshotPath('cheil-campaign-set-media-plan') })
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-campaign-set-sheet')
+  }
+})

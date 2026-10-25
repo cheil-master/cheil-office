@@ -15,6 +15,7 @@
  * with the editor's own cell operations. Pure functions only.
  */
 import { buildCheilFillPrompt, findCheilSlots, type CheilSlot } from './cheil-fill'
+import { cheilFieldValueFor } from './cheil-fields'
 
 export type SheetCellValue = string | number | boolean | null
 
@@ -290,6 +291,27 @@ export function cheilSheetWrites(
     result.rowsByTable.push({ sheetName: table.sheetName, rows: written })
   }
   return result
+}
+
+/**
+ * Cheil fork (plan item 4): the cell writes a campaign card makes in a
+ * workbook: each cell whose blanks name a common field the card has a value
+ * for, rewritten with those values. Input tables and other blanks are left to
+ * the quick fill. `filled` counts the blanks written.
+ */
+export function cheilCardSheetWrites(
+  sheets: readonly SheetSnapshot[],
+  values: Readonly<Record<string, string>>,
+): { writes: CheilCellWrite[]; filled: number } {
+  const plan = findCheilSheetBlanks(sheets)
+  const map = new Map(Object.entries(values))
+  const answer: Record<string, string> = {}
+  for (const slot of plan.slots) {
+    const value = cheilFieldValueFor(slot.placeholder, map)
+    if (value) answer[slot.id] = value
+  }
+  const result = cheilSheetWrites(sheets, { slots: plan.slots, tables: [] }, JSON.stringify(answer))
+  return { writes: result.writes, filled: result.fromMaterial }
 }
 
 /** The model request for a workbook: the documents' prompt plus the tables */

@@ -102,6 +102,7 @@ import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
 import { createCampaignStore } from './cheil/campaign-store'
 import { registerCheilCampaignIpc } from './cheil/campaign-ipc'
+import { cheilToday } from '../../../../packages/ui/src/cheil-fields'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
 import {
@@ -7233,6 +7234,21 @@ registerCheilCampaignIpc({
     !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
   openFolder: (path) => shell.openPath(path),
   openDocument: (path) => openDocumentPath(path),
+  // plan item 4: the same path as a home template card, with the card's values for the new tab
+  openTemplate: async (item, cheil) => {
+    const skillId = `builtin:${item.skill}`
+    const opened = await templateTabs.openTemplate(
+      {
+        skillId,
+        text: item.text,
+        chips: [{ id: skillId, source: 'builtin', title: item.title }],
+        prefill: true,
+      },
+      cheil,
+    )
+    return opened.ok
+  },
+  today: () => cheilToday(),
 })
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */

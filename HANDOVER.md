@@ -25,6 +25,7 @@
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 'Cheil 기획 오피스'로 이름·아이콘·색 바꿈, 이음오피스와 데이터 폴더·설치 ID·파일 연결이 안 겹침                                                                                                                 | `apps/shell/tests/product-identity.test.ts` 등 통과         |
 | (10-25 까지) 기본 AI = 이 PC 의 Ollama(새 제공자 `ollama`). 지금은 다음 줄처럼 바뀌었고 Ollama 는 주소를 넣으면 쓰는 선택지                                                                                   | `packages/ai-provider/tests/cheil-ollama.test.ts`           |
+| (10-25 저녁, 계획 4번) **문서 세트 채우기**: 캠페인 보기에서 양식을 골라 열면 카드 값이 공통 칸에 AI 없이 들어감(브리프 10칸, 제안서 8칸), 요청과 카드 줄이 입력란에 대기, 타임라인 기록 | `packages/ui/tests/cheil-card-fill.test.ts`, `apps/shell/tests/cheil-campaign-store.test.ts`, `e2e/cheil-campaign-set.spec.ts`(엑셀 시험은 이 PC 에서 건너뜀) |
 | (10-25 저녁) **내 API 키로 연결**: 설정 → AI 맨 위와 첫 실행 안내에 Claude·GPT·Solar 카드, 새 제공자 `upstage`(Solar), 새 설정의 기본은 `auto`. 저장한 키가 쓰는 AI 가 되고 홈에 "Solar API · solar-pro3"처럼 보인다. OpenAI 호환 API 로 양식 빠른 채우기(이 PC 의 가짜 API 서버로 시험) | `apps/shell/tests/cheil-api-keys.test.ts`, `e2e/cheil-api-keys.spec.ts`, 원본 시험 `settings-ai-section`·`onboarding`·`free-ai-cards` |
 | 이 PC 밖 AI(구독 포함)로 광고주 기밀·개인정보가 나가면 막음                                                                                                                                                     | `cheil-grade.test.ts`                                       |
 | 홈 '광고 문서 양식' 카드 6장 → 양식 사본이 새 탭으로 열리고 AI 창에 요청이 **보내지 않은 채** 채워짐                                                                                                            | `e2e/cheil-office.spec.ts`                                  |
@@ -176,7 +177,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 | 1 | 양식 칸 이름 통일 | **끝남(10-25)** | `CHEIL.md` 4절. 공통 칸 10개 사전 `packages/ui/src/cheil-fields.json`, 생성기가 확인 |
 | 2 | 캠페인 이력 | **끝남(10-25)** | `CHEIL.md` 5-2절. `문서\Cheil 캠페인\<광고주> - <캠페인명>\campaign.json`·`timeline.jsonl`, 홈 '내 캠페인' |
 | 3 | 자동 기록 | 할 일 | 캠페인 보기에서 양식을 열 때 넘겨주기(`SkillHandoff`, `packages/electron-utils/src/generate-handoff.ts`)에 캠페인 id 를 실어 편집기가 알게 하고, 빠른 채우기 끝(`runCheilFill` 워드·PPT, `runCheilSheetFill` 엑셀)에서 기록한다. 기록 창구는 지금의 홈 전용 창구와 따로(편집기 webContents 를 확인), 저장은 `campaign-store.ts`의 `record()`(사건 종류 `fill document mail check revise task`는 이미 정의됨). 받은 메일 → 할 일·마감은 `ai:chat` json 한 번 호출 → `kind:'task', due` |
-| 4 | 문서 세트 채우기 | 할 일 | 카드 값 → 공통 칸은 AI 없이: `cheilFieldValues(card, today)` + 문서에서 찾은 칸마다 `cheilFieldValueFor`(별칭도 읽음) → 워드·PPT `findReplace`, 엑셀 `set_cell`. 나머지 칸만 빠른 채우기. 저장 위치는 캠페인 폴더로 제안 |
+| 4 | 문서 세트 채우기 | **끝남(10-25)** | `CHEIL.md` 5-3절. 캠페인 보기 '문서 세트 만들기' → 양식마다 새 탭, 카드 값이 공통 칸에 AI 없이, 요청+`[캠페인 카드]`는 보내지 않고 대기, 타임라인 기록. 워드·PPT 화면 시험 통과, **엑셀은 엑셀 처리 프로그램이 있는 PC 에서 `e2e/cheil-campaign-set.spec.ts` 두 번째 시험으로 확인 필요**. 저장 위치(캠페인 폴더)는 5번과 함께 |
 | 5 | 변경 전파 | 할 일 | 카드 수정은 이미 `changes`(바뀐 칸, 전·후 값)로 남는다. 문서마다 어느 칸에 무슨 값을 넣었는지 기록해 두고 그 값을 바꾼다 |
 | 6 | 메일 양식 2종 | 할 일 | 광고주용(합니다체·첨부 요약·다음 일정), 내부용(개조식·요청·마감) 스킬 + 양식 |
 | 7 | 메일 초안 버튼 | 할 일 | 이력(`timeline.jsonl`)을 맥락으로 |
