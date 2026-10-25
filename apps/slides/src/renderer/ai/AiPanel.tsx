@@ -32,6 +32,11 @@ import {
   buildCheilFillPrompt,
   cheilFillPlan,
   cheilFillSkillOf,
+  buildCheilDeckPrompt,
+  cheilDeckOps,
+  cheilDeckSamples,
+  cheilDeckSummary,
+  parseCheilDeckPlan,
   cheilFillSummary,
   findCheilSlots,
   parseCheilFillAnswer,
@@ -290,17 +295,18 @@ function safeJsonInput(input: unknown): string | undefined {
 /** Cheil fork: how long (×250ms) a campaign card fill waits for the template's deck to load */
 const CHEIL_CARD_FILL_TRIES = 120
 
+/** Cheil fork: one slide's text, its `[blanks]` in it (no positions) */
+function cheilSlideText(slide: RenderSlide): string {
+  return formatSlideDump(slide)
+    .split('\n')
+    .filter((line) => !/ \| pos\(/.test(line))
+    .join('\n')
+}
+
 /** Cheil fork: the deck's text the template fills read their `[blanks]` from, slide by slide */
 function cheilDeckText(slides: readonly RenderSlide[]): string {
   return slides
-    .map((slide, i) =>
-      [
-        `슬라이드 ${i + 1}`,
-        ...formatSlideDump(slide)
-          .split('\n')
-          .filter((line) => !/ \| pos\(/.test(line)),
-      ].join('\n'),
-    )
+    .map((slide, i) => [`슬라이드 ${i + 1}`, cheilSlideText(slide)].join('\n'))
     .join('\n')
 }
 
@@ -2115,6 +2121,10 @@ export function AiPanel({
       loopRef.current?.run(instruction + skillUse.text)
       return
     }
+    // plan item 13 ②: the person's own template makes a deck as long as the content needs
+    if (cheilFillSkillOf(skillUse.chips) === 'cheil-my-template') {
+      return runCheilDeckPlan(instruction, skillUse, atts)
+    }
     patchLastAssistant({
       text: ko
         ? `양식 칸 ${slots.length}개를 자료로 채우는 중입니다. 이 PC 의 AI 는 몇 분 걸릴 수 있습니다.`
@@ -2190,6 +2200,95 @@ export function AiPanel({
       filled: plan.fromMaterial,
       open: plan.open.length,
     })
+  }
+
+  /**
+   * Cheil fork (plan item 13 ②): a deck in the shape of the person's own
+   * template. Each slide is a sample; one model call answers which samples to
+   * use, in order (repeated or skipped as the content needs), and the words
+   * for their blanks; the deck's own operations copy the samples, fill each
+   * copy and remove the samples, in one undo step. The look stays the template's.
+   */
+  const runCheilDeckPlan = async (
+    instruction: string,
+    skillUse: SkillUse,
+    atts: AttachmentMeta[],
+  ): Promise<void> => {
+    const access = accessRef.current!
+    const ko = langRef.current === 'ko'
+    const finish = (patch: Partial<ChatEntry>) => {
+      patchLastAssistant((last) => ({ streaming: false, tools: last.tools, ...patch }))
+      void finishHistoryBatch().finally(() => setBusy(false))
+    }
+    const samples = cheilDeckSamples(access.getSlides().map(cheilSlideText))
+    patchLastAssistant({
+      text: ko
+        ? `내 양식의 견본 ${samples.length}장으로 자료에 맞춰 슬라이드를 짜는 중입니다.`
+        : `Laying out slides from your template’s ${samples.length} samples…`,
+    })
+    const materials: string[] = []
+    for (const att of atts) {
+      if (ATTACHMENT_IMAGE_EXTS.has(att.ext)) continue
+      const read = await window.desktop.readAttachment(att.path, 0, 24_000).catch(() => null)
+      if (read?.ok && read.text) materials.push(`[${att.name}]\n${read.text}`)
+    }
+    const prompt = buildCheilDeckPrompt({
+      request: instruction,
+      skillText: skillUse.text,
+      materials: materials.join('\n\n'),
+      samples,
+    })
+    const reply = await window.slidesApi
+      .aiChat({
+        settings: settingsRef.current,
+        system: prompt.system,
+        user: prompt.user,
+        json: true,
+      })
+      .catch((e: unknown): { ok: boolean; content?: string; error?: string } => ({
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      }))
+    if (!reply.ok || !reply.content) {
+      finish({ text: '', error: reply.error ?? tGlobal('aiNoResponse') })
+      return
+    }
+    const plan = parseCheilDeckPlan(reply.content, samples)
+    if (!plan) {
+      finish({ text: '', error: tGlobal('aiFailApplyOps') })
+      return
+    }
+    let deck: RenderSlide[] | null = null
+    // in order; one transaction takes at most 50 ops; a blank missing on a copy fails alone
+    for (const ops of cheilDeckOps(plan, samples.length)) {
+      for (let at = 0; at < ops.length; at += 50) {
+        const result = await window.slidesApi
+          .applyTxn({ ops: ops.slice(at, at + 50), isolation: 'per_op' })
+          .catch(() => null)
+        if (result?.applied && result.slides) deck = result.slides
+      }
+    }
+    if (!deck) {
+      finish({ text: '', error: tGlobal('aiFailApplyOps') })
+      return
+    }
+    access.applyDeck(deck, 0)
+    const values = plan.flatMap((slide) => Object.values(slide.fill))
+    const open = values.filter((v) => v.includes('[확인 필요]')).length
+    const text = cheilDeckSummary(langRef.current, {
+      samples: samples.length,
+      slides: plan.length,
+      filled: values.length - open,
+      open,
+    })
+    const tool = {
+      name: 'cheil_deck',
+      summary: ko ? `견본으로 ${plan.length}장 만듦` : `${plan.length} slides from samples`,
+    }
+    runToolsRef.current.push(tool)
+    finish({ text, tools: [tool] })
+    persistMessage('assistant', text, runToolsRef.current)
+    cheilRecordFill({ kind: 'fill', total: values.length, filled: values.length - open, open })
   }
 
   /** One page of a queue submission — runWith's bookkeeping minus the composer and the user bubble */

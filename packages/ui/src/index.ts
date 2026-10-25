@@ -464,6 +464,16 @@ export { useCheilPropagate } from './use-cheil-propagate'
 // Cheil fork: to-dos from a received mail (plan item 3)
 export { buildCheilTaskPrompt, parseCheilTasks } from './cheil-mail'
 export type { CheilMailTask } from './cheil-mail'
+// Cheil fork: a deck in the shape of the person's own template (plan item 13 ②)
+export {
+  CHEIL_DECK_MAX,
+  buildCheilDeckPrompt,
+  cheilDeckOps,
+  cheilDeckSamples,
+  cheilDeckSummary,
+  parseCheilDeckPlan,
+} from './cheil-deck-plan'
+export type { CheilDeckOp, CheilDeckPlanSlide, CheilDeckSample } from './cheil-deck-plan'
 // Cheil fork: a report becomes the person's own template (plan item 13)
 export {
   cheilBlankForLabel,
