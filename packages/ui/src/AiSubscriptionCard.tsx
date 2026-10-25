@@ -19,6 +19,7 @@ import {
 import { AiConnectGuide } from './AiConnectGuide'
 import { AiMark } from './AiMark'
 import { aiSubscriptionText, type AiSubscriptionStringKey } from './strings-ai-subscription'
+import { cheilApiConnectText } from './cheil-connect'
 import './ai-subscription.css'
 
 // The main process opens a terminal window of the CLI's own on Windows alone
@@ -234,6 +235,38 @@ function useSigningInStalled(signingIn: boolean): boolean {
 }
 
 /**
+ * Cheil fork: the lead of the prompt with nothing connected — the person's own
+ * API key, and the way to Settings → AI where its cards are (cheil-connect.ts)
+ */
+function CheilApiConnect({
+  lang,
+  onOpenSettings,
+}: {
+  lang: Lang
+  onOpenSettings?: (() => void) | undefined
+}): React.JSX.Element {
+  const text = cheilApiConnectText(lang)
+  return (
+    <div className="ai-sub-cheil-api" data-cheil="api-key">
+      <p className="ai-sub-prompt-body">{text.body}</p>
+      {onOpenSettings && (
+        <div className="ai-sub-actions">
+          <button
+            type="button"
+            className="ai-sub-btn primary"
+            data-action="open-api-keys"
+            onClick={onOpenSettings}
+          >
+            {text.button}
+          </button>
+        </div>
+      )}
+      <p className="ai-sub-cheil-or">{text.or}</p>
+    </div>
+  )
+}
+
+/**
  * What an AI panel shows instead of an error while no provider can run: why,
  * and the connect cards to act on. Renders nothing once a provider can run.
  * Pass the result of `selectAiProvider(settings, statuses)` as `choice`.
@@ -281,8 +314,12 @@ export function AiConnectPrompt({
         </span>
         <h3 className="ai-sub-prompt-title">{aiSubscriptionText(lang, view.titleKey, params)}</h3>
       </div>
-      {view.bodyKey && (
+      {view.bodyKey && !view.free && (
         <p className="ai-sub-prompt-body">{aiSubscriptionText(lang, view.bodyKey, params)}</p>
+      )}
+      {view.free && (
+        // Cheil fork: nothing is connected — the person's own API key comes first
+        <CheilApiConnect lang={lang} onOpenSettings={onOpenSettings} />
       )}
       {view.free && (
         // nothing is connected: ask which AI the user has, then walk that one path

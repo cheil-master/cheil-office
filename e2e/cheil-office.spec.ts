@@ -40,6 +40,22 @@ test('Cheil: home shows the agency templates and a card prefills a new document'
 })
 
 test('Cheil: the media plan card opens its workbook in the sheets editor', async () => {
+  test.skip(
+    !existsSync(
+      join(
+        __dirname,
+        '..',
+        'apps',
+        'sheets',
+        'native',
+        'xlsx-engine',
+        'target',
+        'release',
+        process.platform === 'win32' ? 'xlsx-sidecar.exe' : 'xlsx-sidecar',
+      ),
+    ),
+    'the xlsx engine is not built on this PC (npm run native:build)',
+  )
   const launched = await launchShell({
     videoDir: 'cheil-office-sheets',
     lang: 'ko',

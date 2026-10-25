@@ -225,3 +225,29 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
     server.close()
   }
 })
+
+test("Cheil: an editor's AI panel with nothing connected leads with adding an API key", async () => {
+  const launched = await launchShell({
+    videoDir: 'cheil-api-editor-prompt',
+    lang: 'ko',
+    onboardingSeen: true,
+  })
+  const { app, page } = launched
+  try {
+    await page.setViewportSize({ width: 1280, height: 900 }).catch(() => {})
+    await page.getByTestId('cheil-template-cheil-brief').click()
+    const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
+    const lead = docs.locator('[data-cheil="api-key"]')
+    await expect(lead).toBeVisible({ timeout: 60_000 })
+    await expect(lead).toContainText('Claude·GPT·Solar API 키를 넣으면 바로 씁니다')
+    await expect(docs.locator('.ai-sub-prompt')).not.toContainText('API 키는 필요 없습니다')
+    await docs.screenshot({ path: screenshotPath('cheil-api-editor-prompt') })
+
+    // the button opens Settings → AI on the home, where the key cards are first
+    await lead.getByRole('button', { name: 'API 키 넣기' }).click()
+    await expect(page.getByTestId('cheil-api-keys')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('.set-nav-item.active')).toHaveText('AI')
+  } finally {
+    await closeAndSaveVideo(launched, 'cheil-api-editor-prompt')
+  }
+})

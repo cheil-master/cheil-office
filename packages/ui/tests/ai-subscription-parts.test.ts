@@ -24,6 +24,7 @@ import { AiSubscriptionUsageLine } from '../src/AiSubscriptionUsageLine'
 import { AI_SIGNING_IN_STALLED_MS, formatAiResetTime } from '../src/ai-subscription'
 import { AI_SUBSCRIPTION_STRINGS } from '../src/strings-ai-subscription'
 import { upstreamAiSettings } from './cheil-upstream-defaults'
+import { cheilApiConnectText } from '../src/cheil-connect'
 
 let host: HTMLDivElement
 let root: ReturnType<typeof createRoot>
@@ -519,13 +520,47 @@ describe('AiConnectPrompt', () => {
         `${el.dataset.step}${el.dataset.done ? ':done' : ''}${el.getAttribute('aria-current') ? ':current' : ''}`,
     )
 
+  it('Cheil fork: leads with adding your own API key, which opens Settings → AI', () => {
+    const onOpenSettings = vi.fn()
+    render(
+      upstreamAiSettings(),
+      {
+        'claude-code': status('claude-code', 'signed-out'),
+        codex: status('codex', 'not-installed'),
+      },
+      { onOpenSettings },
+    )
+    const lead = host.querySelector<HTMLElement>('[data-cheil="api-key"]')!
+    // it comes before the subscription question
+    const question = host.querySelector('.ai-sub-guide-question')!
+    expect(lead.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const button = lead.querySelector<HTMLButtonElement>('[data-action="open-api-keys"]')!
+    expect(button.textContent).toBe(cheilApiConnectText('en').button)
+    click('[data-action="open-api-keys"]')
+    expect(onOpenSettings).toHaveBeenCalledOnce()
+    expect(cheilApiConnectText('ko').body).toContain('Claude·GPT·Solar API 키')
+  })
+
+  it('Cheil fork: keeps the key-provider prompt as it was', () => {
+    const settings = { ...upstreamAiSettings(), provider: 'openai' as const }
+    render(settings, {
+      'claude-code': status('claude-code', 'signed-out'),
+      codex: status('codex', 'not-installed'),
+    })
+    expect(host.querySelector('[data-cheil="api-key"]')).toBeNull()
+  })
+
   it('asks which AI the user has before showing any card', () => {
     render(upstreamAiSettings(), {
       'claude-code': status('claude-code', 'signed-out'),
       codex: status('codex', 'not-installed'),
     })
     expect(host.querySelector('.ai-sub-prompt-title')!.textContent).toBe(en.connectTitle)
-    expect(host.querySelector('.ai-sub-prompt-body')!.textContent).toBe(en.connectBody)
+    // Cheil fork: the lead is the person's own API key, not "no API key needed"
+    expect(host.querySelector('.ai-sub-prompt-body')!.textContent).toBe(
+      cheilApiConnectText('en').body,
+    )
+    expect(host.textContent).not.toContain(en.connectBody)
     expect(host.querySelector('.ai-sub-guide-question')!.textContent).toBe(en.guideQuestion)
     // what is already there shows next to each answer
     expect(paths()).toEqual([
