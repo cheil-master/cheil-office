@@ -14,6 +14,7 @@
  *
  * Pure functions only; each editor's panel does the reading and writing.
  */
+import { cheilFieldHint } from './cheil-fields'
 
 /** builtin skills whose template is filled this way (apps/shell/resources/builtin-skills) */
 export const CHEIL_FILL_SKILLS: ReadonlySet<string> = new Set([
@@ -95,7 +96,11 @@ export function buildCheilFillPrompt(input: {
     '작업 설명서:',
     input.skillText.trim().slice(0, SKILL_TEXT_MAX),
   ].join('\n')
-  const slotLines = input.slots.map((s) => `${s.id}: ${s.placeholder} — 문맥: ${s.context}`)
+  // a common blank's name is short ([타깃]); its meaning goes with it
+  const slotLines = input.slots.map((s) => {
+    const hint = cheilFieldHint(s.placeholder)
+    return `${s.id}: ${s.placeholder}${hint ? ` (뜻: ${hint})` : ''} — 문맥: ${s.context}`
+  })
   const user = [
     '요청:',
     input.request.trim(),

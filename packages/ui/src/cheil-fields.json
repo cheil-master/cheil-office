@@ -1,0 +1,90 @@
+{
+  "$comment": "Cheil fork: the common blanks every Cheil template shares. The one source for tools/cheil/make_templates.py (templates use only these placeholders, never an alias) and the app (cheil-fields.ts: hints for the one-call fill, values straight from a campaign card). 'card' fields come from the campaign card, 'today' is the day the document is made.",
+  "fields": [
+    {
+      "key": "campaign",
+      "placeholder": "[캠페인명]",
+      "label": "캠페인명",
+      "source": "card",
+      "hint": "캠페인 이름",
+      "aliases": ["[캠페인 이름]"]
+    },
+    {
+      "key": "client",
+      "placeholder": "[광고주]",
+      "label": "광고주",
+      "source": "card",
+      "hint": "광고주 회사 이름(브랜드·제품 이름이 아님)",
+      "aliases": ["[광고주명]", "[광고주 이름]", "[광고주사]"]
+    },
+    {
+      "key": "brand",
+      "placeholder": "[브랜드·제품]",
+      "label": "브랜드·제품",
+      "source": "card",
+      "hint": "광고하는 브랜드나 제품 이름",
+      "aliases": ["[브랜드]", "[제품]", "[브랜드명]", "[제품명]", "[브랜드/제품]"]
+    },
+    {
+      "key": "period",
+      "placeholder": "[캠페인 기간]",
+      "label": "캠페인 기간",
+      "source": "card",
+      "hint": "캠페인 시작일 ~ 종료일",
+      "aliases": ["[기간]", "[집행 기간]", "[캠페인기간]"]
+    },
+    {
+      "key": "budget",
+      "placeholder": "[총예산]",
+      "label": "총예산",
+      "source": "card",
+      "hint": "캠페인 전체 예산(원)",
+      "aliases": ["[예산]", "[예산 합계]", "[예산 규모]", "[총 예산]", "[RFP에 적힌 예산 규모]"]
+    },
+    {
+      "key": "target",
+      "placeholder": "[타깃]",
+      "label": "타깃",
+      "source": "card",
+      "hint": "누구에게 — 나이·생활·구매 맥락",
+      "aliases": [
+        "[타겟]",
+        "[핵심 타깃]",
+        "[누구에게 — 나이·생활·구매 맥락]",
+        "[누구 — 나이·생활·구매 맥락]"
+      ]
+    },
+    {
+      "key": "kpi",
+      "placeholder": "[KPI]",
+      "label": "KPI",
+      "source": "card",
+      "hint": "성공을 판단할 지표와 목표 수준",
+      "aliases": ["[목표 KPI]", "[핵심 KPI]"]
+    },
+    {
+      "key": "team",
+      "placeholder": "[팀명]",
+      "label": "팀명",
+      "source": "card",
+      "hint": "담당 팀 이름",
+      "aliases": ["[팀]", "[팀 이름]", "[담당 팀]"]
+    },
+    {
+      "key": "author",
+      "placeholder": "[작성자]",
+      "label": "작성자",
+      "source": "card",
+      "hint": "문서를 쓴 사람 이름",
+      "aliases": ["[작성자 이름]", "[담당자]"]
+    },
+    {
+      "key": "date",
+      "placeholder": "[작성일]",
+      "label": "작성일",
+      "source": "today",
+      "hint": "문서를 만든 날(YYYY-MM-DD)",
+      "aliases": ["[날짜]", "[보고일]", "[제출일]", "[작성 날짜]"]
+    }
+  ]
+}

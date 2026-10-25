@@ -8,9 +8,19 @@ apps/shell/resources/builtin-skills/cheil-*/assets/ 아래에 양식 문서를 �
 
 글꼴은 회사 PC 어디에나 있는 '맑은 고딕'. 색은 기본 서식용 중립색이고
 회사 공식 서식이 있으면 양식 파일만 바꿔 끼우면 된다.
+
+같은 정보(광고주, 캠페인명, 기간, 예산, 타깃, KPI, 팀, 작성자, 작성일)는
+모든 양식에서 같은 칸 이름을 쓴다. 이름은 packages/ui/src/cheil-fields.json
+한 곳에서 정하고, 만든 뒤 check_placeholders()가 다시 읽어 확인한다.
+- 공통 칸은 사전의 이름만 쓴다(별칭 [광고주명] 등은 쓰면 실패).
+- 공통 칸이 아닌 칸은 한 문서 안에서 한 번만 나온다(같은 글이면 찾아 바꾸기가
+  엉뚱한 칸까지 바꾼다). 공통 칸은 값이 같으니 여러 번 나와도 된다.
 """
 import copy
+import json
+import re
 import sys
+import zipfile
 from pathlib import Path
 
 from lxml import etree
@@ -30,6 +40,11 @@ from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "apps" / "shell" / "resources" / "builtin-skills"
+FIELDS_JSON = ROOT / "packages" / "ui" / "src" / "cheil-fields.json"
+
+FIELDS = json.loads(FIELDS_JSON.read_text(encoding="utf-8"))["fields"]
+# 공통 칸: 사전 이름 → 칸. 양식 안에서는 F["client"] 처럼 꺼내 쓴다.
+F = {f["key"]: f["placeholder"] for f in FIELDS}
 
 FONT = "맑은 고딕"
 INK = "1A1A1A"
@@ -179,7 +194,7 @@ def _table_slide(prs, kicker, title, header, rows, note=None):
 
 def make_proposal(path):
     prs = _new_deck()
-    _cover(prs, "[캠페인명]", ["[광고주명] 제안", "[제출일]  ·  [팀명]"])
+    _cover(prs, F["campaign"], [f"{F['client']} 제안", f"{F['date']}  ·  {F['team']}"])
     _content(prs, "목차", "목차", [
         "01  과제 정의", "02  시장·경쟁 환경", "03  타깃과 인사이트", "04  전략 방향",
         "05  크리에이티브 컨셉", "06  실행 아이디어", "07  미디어 전략", "08  일정·예산", "09  KPI와 측정",
@@ -187,6 +202,7 @@ def make_proposal(path):
     _content(prs, "01  과제 정의", "[과제를 한 문장으로: 무엇을 누구에게서 얼마나]", [
         "사업 과제: [광고주가 풀려는 사업 문제]",
         "커뮤니케이션 과제: [광고가 바꿔야 할 인식·행동]",
+        f"목표 KPI: {F['kpi']}",
         "근거: [RFP·브리프의 해당 문장]",
     ])
     _content(prs, "02  시장·경쟁 환경", "[시장에서 보이는 결론 한 문장]", [
@@ -196,7 +212,7 @@ def make_proposal(path):
         "시사점: [그래서 우리에게 무엇이 열려 있나]",
     ])
     _content(prs, "03  타깃과 인사이트", "[타깃의 숨은 긴장을 한 문장으로]", [
-        "핵심 타깃: [누구 — 나이·생활·구매 맥락]",
+        f"핵심 타깃: {F['target']}",
         "지금의 행동·인식: [자료로 확인된 것]",
         "인사이트: [~하지만 ~하다 꼴의 한 문장]",
     ])
@@ -221,18 +237,18 @@ def make_proposal(path):
     _table_slide(prs, "08  일정·예산", "일정과 예산",
                  ["구분", "기간", "예산(원)", "비고"],
                  [[st, f"[{st} 기간]", f"[{st} 예산]", f"[{st} 비고]"] for st in ("준비·제작", "런칭", "유지·확산")]
-                 + [["합계", "", "[예산 합계]", ""]],
+                 + [["합계", F["period"], F["budget"], ""]],
                  note="자료에 없는 금액·날짜는 비워 두고 [확인 필요]로 표시")
     _table_slide(prs, "09  KPI와 측정", "무엇으로 성공을 판단하나",
                  ["지표", "목표", "측정 방법", "측정 시점"],
                  [[f"[KPI {i}]", f"[KPI {i} 목표]", f"[KPI {i} 측정 방법]", f"[KPI {i} 측정 시점]"] for i in (1, 2, 3)])
-    _cover(prs, "[맺음: 핵심 메시지 한 번 더]", ["감사합니다", "[팀명]"])
+    _cover(prs, "[맺음: 핵심 메시지 한 번 더]", ["감사합니다", F["team"]])
     prs.save(path)
 
 
 def make_monthly(path):
     prs = _new_deck()
-    _cover(prs, "[광고주명] [월] 캠페인 성과 보고", ["[보고일]  ·  [팀명]"])
+    _cover(prs, f"{F['client']} {F['campaign']} [월] 성과 보고", [f"{F['date']}  ·  {F['team']}"])
     _content(prs, "요약", "[이번 달 결론 한 문장]", [
         "성과: [핵심 지표 달성 결과]",
         "원인: [가장 큰 원인 하나]",
@@ -346,12 +362,13 @@ def make_brief(path):
     _doc_fonts(doc)
     doc.add_paragraph("크리에이티브 브리프", style="Title")
     _meta_table(doc, [
-        ("광고주", "[광고주]"), ("브랜드·제품", "[브랜드·제품]"), ("캠페인명", "[캠페인명]"),
-        ("작성", "[작성자 이름 · 팀]"), ("작성일 · 판", "[작성일] · [판 번호]"),
+        ("광고주", F["client"]), ("브랜드·제품", F["brand"]), ("캠페인명", F["campaign"]),
+        ("캠페인 기간", F["period"]), ("총예산", F["budget"]),
+        ("작성", f"{F['author']} · {F['team']}"), ("작성일 · 판", f"{F['date']} · [판 번호]"),
     ])
-    _section(doc, "1. 과제", ["[이 광고로 해결할 문제 한 문장]"])
+    _section(doc, "1. 과제", ["[이 광고로 해결할 문제 한 문장]", f"목표 KPI: {F['kpi']}"])
     _section(doc, "2. 배경", ["[시장·브랜드 상황 2~3줄, 숫자는 출처와 함께]"])
-    _section(doc, "3. 타깃", ["[누구에게 — 나이·생활·구매 맥락]", "[타깃이 지금 가진 생각·행동]"])
+    _section(doc, "3. 타깃", [F["target"], "[타깃이 지금 가진 생각·행동]"])
     _section(doc, "4. 인사이트", ["[타깃의 숨은 긴장 한 문장]"])
     _section(doc, "5. 핵심 메시지", ["[타깃이 기억할 단 하나의 말]"])
     _section(doc, "6. 믿을 이유", ["[제품·서비스 근거 1]", "[제품·서비스 근거 2]"])
@@ -370,8 +387,10 @@ def make_meeting(path):
     _doc_fonts(doc)
     doc.add_paragraph("광고주 회의록", style="Title")
     _meta_table(doc, [
-        ("회의명", "[회의명]"), ("일시 · 장소", "[회의 날짜 시간] · [장소/화상]"),
-        ("광고주 참석", "[광고주 참석자 이름(직함)]"), ("우리 참석", "[우리 참석자 이름(팀)]"), ("작성", "[작성자]"),
+        ("회의명", "[회의명]"), ("광고주 · 캠페인", f"{F['client']} · {F['campaign']}"),
+        ("일시 · 장소", "[회의 날짜 시간] · [장소/화상]"),
+        ("광고주 참석", "[광고주 참석자 이름(직함)]"), ("우리 참석", "[우리 참석자 이름(팀)]"),
+        ("작성", f"{F['author']} · {F['date']}"),
     ])
     _section(doc, "1. 안건", ["[안건 1]", "[안건 2]"])
     _section(doc, "2. 논의 내용", ["[안건 1 논의 요지 — 누가 무엇을]", "[안건 2 논의 요지 — 누가 무엇을]"])
@@ -392,8 +411,9 @@ def make_pitch(path):
     _doc_fonts(doc)
     doc.add_paragraph("경쟁 PT 분석", style="Title")
     _meta_table(doc, [
-        ("광고주 · 과제", "[광고주 · 과제]"), ("PT 일정", "[RFP 접수 · 질의 마감 · PT 날짜]"),
-        ("예산 규모", "[RFP에 적힌 예산 규모]"), ("작성", "[작성자 이름 · 팀]"),
+        ("광고주", F["client"]), ("과제", "[RFP 과제 한 줄]"),
+        ("PT 일정", "[RFP 접수 · 질의 마감 · PT 날짜]"),
+        ("예산 규모", F["budget"]), ("작성", f"{F['author']} · {F['team']} · {F['date']}"),
     ])
     _section(doc, "1. RFP 요약", ["[광고주가 요구한 것 3~5줄, RFP 쪽수 표시]"])
     _section(doc, "2. 광고주의 진짜 과제", ["[RFP 문장 뒤에 있는 사업 문제 — 근거와 함께]"])
@@ -425,11 +445,13 @@ def make_media_plan(path):
     head_fill = PatternFill("solid", fgColor=ACCENT)
     calc_fill = PatternFill("solid", fgColor=FILL)
 
-    ws["A1"] = "[광고주명] [캠페인명] 미디어 플랜"
+    ws["A1"] = f"{F['client']} {F['campaign']} 미디어 플랜"
     ws["A1"].font = Font(name=FONT, bold=True, size=14, color=INK)
     ws.row_dimensions[1].height = 26
-    ws["A2"] = "작성 [날짜] · [팀명] · 숫자는 매체 견적·합의 자료 기준(출처는 '가정·출처' 시트)"
+    ws["A2"] = f"작성 {F['date']} · {F['team']} · 캠페인 기간 {F['period']} · 총예산 {F['budget']}"
     ws["A2"].font = Font(name=FONT, size=9, color=SUB)
+    ws["A3"] = "숫자는 매체 견적·합의 자료 기준(출처는 '가정·출처' 시트)"
+    ws["A3"].font = Font(name=FONT, size=9, color=SUB)
 
     header = ["매체", "상품·지면", "시작일", "종료일", "예산(원)", "예상 노출", "예상 클릭",
               "CPM(원)", "CPC(원)", "CTR", "예산 비중", "비고"]
@@ -505,13 +527,66 @@ TEMPLATES = {
 }
 
 
+# ---------------------------------------------------------------- 칸 이름 확인
+
+SLOT_RE = re.compile(r"\[[^\[\]\n]{1,80}\]")
+# 채운 문서에 남기는 표시(채울 칸이 아님). packages/ui/src/cheil-fill.ts 의 MARKER_RE 와 같다.
+MARKER_RE = re.compile(r"^\[\s*(확인 필요|출처 확인 필요|목표 확인 필요)")
+TEXT_RE = re.compile(r"<(w:t|a:t|t)(?:\s[^>]*)?>([^<]*)</\1>")
+
+
+def _norm(placeholder):
+    return re.sub(r"\s+", " ", placeholder).replace("[ ", "[").replace(" ]", "]")
+
+
+def placeholders_of(path):
+    """문서 안의 [칸] 을 나온 순서대로(같은 칸이면 여러 번)."""
+    import html
+    with zipfile.ZipFile(path) as z:
+        names = [n for n in z.namelist() if re.match(
+            r"(word/document\.xml|ppt/slides/slide\d+\.xml|xl/sharedStrings\.xml|xl/worksheets/sheet\d+\.xml)$", n)]
+        # 장 순서대로
+        names.sort(key=lambda n: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", n)])
+        found = []
+        for n in names:
+            xml = z.read(n).decode("utf-8")
+            for m in TEXT_RE.finditer(xml):
+                for s in SLOT_RE.findall(html.unescape(m.group(2))):
+                    if s[1:-1].strip() and not MARKER_RE.match(s):
+                        found.append(_norm(s))
+        return found
+
+
+def check_placeholders(path):
+    """공통 칸은 사전 이름만, 나머지 칸은 문서 안에서 한 번씩. 어기면 이유 목록."""
+    canonical = {_norm(f["placeholder"]) for f in FIELDS}
+    aliases = {_norm(a): f["placeholder"] for f in FIELDS for a in f["aliases"]}
+    found = placeholders_of(path)
+    problems = []
+    for s in sorted(set(found)):
+        if s in aliases:
+            problems.append(f"{s} 대신 공통 칸 {aliases[s]}")
+    seen = {}
+    for s in found:
+        if s not in canonical:
+            seen[s] = seen.get(s, 0) + 1
+    problems += [f"{s} 가 {n}번 나옴(공통 칸이 아니면 한 번만)" for s, n in seen.items() if n > 1]
+    common = [f["placeholder"] for f in FIELDS if _norm(f["placeholder"]) in set(found)]
+    return problems, common, len(set(found))
+
+
 def main():
+    failed = False
     for skill, (name, fn) in TEMPLATES.items():
         out = SKILLS / skill / "assets"
         out.mkdir(parents=True, exist_ok=True)
         fn(out / name)
-        print(f"{skill}/assets/{name}  {(out / name).stat().st_size:,} bytes")
-    return 0
+        problems, common, total = check_placeholders(out / name)
+        print(f"{skill}/assets/{name}  {(out / name).stat().st_size:,} bytes, 칸 {total}개, 공통 칸 {' '.join(common)}")
+        for p in problems:
+            print(f"  ! {p}")
+        failed = failed or bool(problems)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
