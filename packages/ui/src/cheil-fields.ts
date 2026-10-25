@@ -52,7 +52,10 @@ for (const field of CHEIL_FIELDS) {
 
 /** `[ 광고주명 ]` and `[광고주명]` are the same blank */
 function normalize(placeholder: string): string {
-  return placeholder.replace(/\s+/g, ' ').replace(/^\[\s*/, '[').replace(/\s*\]$/, ']')
+  return placeholder
+    .replace(/\s+/g, ' ')
+    .replace(/^\[\s*/, '[')
+    .replace(/\s*\]$/, ']')
 }
 
 /** The common field a blank names, by its own name or an alias; null for any other blank */

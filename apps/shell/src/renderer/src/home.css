@@ -2300,3 +2300,280 @@ html[dir='rtl'] .quick-title-row {
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+/* Cheil fork: "내 캠페인" — campaign cards, the card form and the campaign view */
+.cheil-campaigns {
+  margin-top: 22px;
+}
+
+.cheil-campaign-add {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cheil-campaign-add:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.cheil-campaigns-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.cheil-campaign-icon {
+  color: var(--accent);
+}
+
+.cheil-campaign-last {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cheil-campaign-form.modal,
+.cheil-campaign-view.modal {
+  width: min(720px, 92vw);
+  max-width: none;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.cheil-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-top: 14px;
+}
+
+.cheil-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cheil-field em {
+  color: var(--danger);
+  font-style: normal;
+}
+
+.cheil-field-wide {
+  grid-column: 1 / -1;
+}
+
+.cheil-field input,
+.cheil-field textarea,
+.cheil-note-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.cheil-field input:focus,
+.cheil-field textarea:focus,
+.cheil-note-box textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cheil-campaign-error {
+  margin: 12px 0 0 !important;
+  font-size: 13px !important;
+  color: var(--danger);
+}
+
+.cheil-campaign-view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cheil-campaign-view-head h3 {
+  margin: 0 0 2px;
+  font-size: 18px;
+}
+
+.cheil-campaign-view-sub {
+  font-size: 13px !important;
+  color: var(--text-muted);
+}
+
+.cheil-icon-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cheil-icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.cheil-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.cheil-card-item {
+  min-width: 0;
+}
+
+.cheil-card-target,
+.cheil-card-kpi {
+  grid-column: 1 / -1;
+}
+
+.cheil-card-item dt {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.cheil-card-item dd {
+  margin: 1px 0 0;
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cheil-card-item dd.is-empty {
+  color: var(--text-tertiary);
+}
+
+.cheil-campaign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cheil-campaign-actions .btn,
+.cheil-note-box .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.cheil-note-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cheil-note-box .btn {
+  flex-shrink: 0;
+}
+
+.cheil-timeline-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.cheil-timeline-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.cheil-timeline {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cheil-timeline li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cheil-timeline li.is-empty {
+  display: block;
+  color: var(--text-muted);
+}
+
+.cheil-event-kind {
+  justify-self: start;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--badge-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cheil-event-text {
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cheil-event-due,
+.cheil-event-files {
+  color: var(--text-muted);
+}
+
+.cheil-event-time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cheil-field-grid,
+  .cheil-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cheil-timeline li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

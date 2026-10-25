@@ -1,0 +1,634 @@
+/**
+ * Cheil fork: the home's "내 캠페인" (plan item 2).
+ *
+ * A campaign card is typed once (name, client, period, budget, target, KPI,
+ * ...); every document, mail and check later hangs off it, and the campaign's
+ * timeline keeps what was done. This row lists the campaigns, makes a new one,
+ * and opens one: its card, a note box and the timeline, newest first.
+ *
+ * The main process owns the folders (`window.aiOfficeCheilCampaigns`); this
+ * screen names a campaign by its folder name only. Words are Korean, with
+ * English for every other UI language, like the agency templates row.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { FormEvent, ReactElement } from 'react'
+import type { Lang } from '@genoffice/i18n'
+import { EMPTY_CHEIL_CARD, cheilBudgetText } from '@genoffice/ui'
+import { useI18n } from '../locale'
+import {
+  CHEIL_CAMPAIGN_BRIDGE_KEY,
+  type CampaignDetail,
+  type CampaignEvent,
+  type CampaignEventKind,
+  type CampaignFailReason,
+  type CampaignSummary,
+  type CheilCampaignApi,
+  type CheilCampaignCard,
+} from '../../../shared/cheil-campaign-api'
+
+const WORDS = {
+  ko: {
+    label: '내 캠페인',
+    add: '새 캠페인',
+    empty:
+      '아직 캠페인이 없습니다. 캠페인 정보를 한 번 넣어 두면 문서·메일·작업 기록이 그 캠페인으로 묶입니다.',
+    newTitle: '새 캠페인',
+    editTitle: '캠페인 카드 고치기',
+    create: '만들기',
+    save: '저장',
+    cancel: '취소',
+    close: '닫기',
+    required: '캠페인명은 꼭 넣어 주세요.',
+    badDates: '종료일이 시작일보다 앞섭니다.',
+    editCard: '카드 고치기',
+    openFolder: '폴더 열기',
+    openHistory: '이력 문서로 보기',
+    notePlaceholder: '메모를 남기면 타임라인에 기록됩니다(예: 광고주 OT 완료, 다음 주 시안 공유).',
+    addNote: '메모 남기기',
+    timeline: '타임라인',
+    events: (n: number) => `${n}건`,
+    noEvents: '아직 기록이 없습니다.',
+    lastNone: '기록 없음',
+    fields: {
+      campaign: '캠페인명',
+      client: '광고주',
+      brand: '브랜드·제품',
+      start: '시작일',
+      end: '종료일',
+      budget: '총예산',
+      target: '타깃',
+      kpi: 'KPI',
+      team: '팀명',
+      author: '작성자',
+    } satisfies Record<keyof CheilCampaignCard, string>,
+    hints: {
+      campaign: '예: 에어린 봄 신제품 런칭',
+      client: '예: 가상전자',
+      brand: '예: 에어린',
+      budget: '예: 500000000 또는 5억 원',
+      target: '누구에게 — 나이·생활·구매 맥락',
+      kpi: '성공을 판단할 지표와 목표 수준',
+      team: '예: 비즈니스13팀',
+      author: '이름',
+    } as Partial<Record<keyof CheilCampaignCard, string>>,
+    kinds: {
+      created: '만듦',
+      card: '카드',
+      note: '메모',
+      fill: '채우기',
+      document: '문서',
+      mail: '메일',
+      check: '점검',
+      revise: '수정 반영',
+      task: '할 일',
+    } satisfies Record<CampaignEventKind, string>,
+    changed: '카드 수정',
+    period: '캠페인 기간',
+    emptyValue: '(비어 있음)',
+    due: (d: string) => `마감 ${d}`,
+    fail: {
+      'not-found': '캠페인 폴더를 찾지 못했습니다. 폴더 이름이 바뀌었거나 지워졌을 수 있습니다.',
+      invalid: '입력한 내용을 저장할 수 없습니다. 길이와 날짜를 확인해 주세요.',
+      failed: '저장하지 못했습니다. 문서 폴더에 쓸 수 있는지 확인해 주세요.',
+    } satisfies Record<CampaignFailReason, string>,
+    now: '방금',
+    minutes: (n: number) => `${n}분 전`,
+    hours: (n: number) => `${n}시간 전`,
+    days: (n: number) => `${n}일 전`,
+  },
+  en: {
+    label: 'My campaigns',
+    add: 'New campaign',
+    empty:
+      'No campaigns yet. Enter a campaign once and its documents, mails and work log stay together under it.',
+    newTitle: 'New campaign',
+    editTitle: 'Edit the campaign card',
+    create: 'Create',
+    save: 'Save',
+    cancel: 'Cancel',
+    close: 'Close',
+    required: 'A campaign name is needed.',
+    badDates: 'The end date is before the start date.',
+    editCard: 'Edit card',
+    openFolder: 'Open folder',
+    openHistory: 'History as a document',
+    notePlaceholder: 'A note goes into the timeline (e.g. client orientation done).',
+    addNote: 'Add note',
+    timeline: 'Timeline',
+    events: (n: number) => `${n}`,
+    noEvents: 'Nothing recorded yet.',
+    lastNone: 'Nothing recorded',
+    fields: {
+      campaign: 'Campaign',
+      client: 'Client',
+      brand: 'Brand / product',
+      start: 'Start',
+      end: 'End',
+      budget: 'Total budget',
+      target: 'Target',
+      kpi: 'KPI',
+      team: 'Team',
+      author: 'Author',
+    } satisfies Record<keyof CheilCampaignCard, string>,
+    hints: {
+      budget: 'e.g. 500000000',
+      target: 'Who — age, life, buying context',
+      kpi: 'What decides success, and the goal',
+    } as Partial<Record<keyof CheilCampaignCard, string>>,
+    kinds: {
+      created: 'Created',
+      card: 'Card',
+      note: 'Note',
+      fill: 'Fill',
+      document: 'Document',
+      mail: 'Mail',
+      check: 'Check',
+      revise: 'Revision',
+      task: 'To-do',
+    } satisfies Record<CampaignEventKind, string>,
+    changed: 'Card changed',
+    period: 'Period',
+    emptyValue: '(empty)',
+    due: (d: string) => `due ${d}`,
+    fail: {
+      'not-found': 'The campaign folder was not found. It may have been renamed or removed.',
+      invalid: 'This cannot be saved. Check the lengths and dates.',
+      failed: 'Could not save. Check that the Documents folder can be written.',
+    } satisfies Record<CampaignFailReason, string>,
+    now: 'just now',
+    minutes: (n: number) => `${n} min ago`,
+    hours: (n: number) => `${n} h ago`,
+    days: (n: number) => `${n} d ago`,
+  },
+}
+
+type Words = (typeof WORDS)['ko']
+
+const words = (lang: Lang): Words => (lang === 'ko' ? WORDS.ko : (WORDS.en as unknown as Words))
+
+/** the campaign view's card: short fields in pairs, then target and KPI across */
+const VIEW_ROWS: Array<Exclude<keyof CheilCampaignCard, 'campaign' | 'start' | 'end'> | 'period'> =
+  ['client', 'brand', 'period', 'budget', 'team', 'author', 'target', 'kpi']
+
+function bridge(): CheilCampaignApi | undefined {
+  return (window as unknown as Record<string, CheilCampaignApi | undefined>)[
+    CHEIL_CAMPAIGN_BRIDGE_KEY
+  ]
+}
+
+function period(card: CheilCampaignCard): string {
+  if (!card.start && !card.end) return ''
+  return `${card.start || '?'} ~ ${card.end || '?'}`
+}
+
+function shownValue(w: Words, key: keyof CheilCampaignCard, value: string): string {
+  if (!value) return w.emptyValue
+  return key === 'budget' ? cheilBudgetText(value) : value
+}
+
+function ago(w: Words, iso: string, now = Date.now()): string {
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return ''
+  const minutes = Math.floor((now - t) / 60_000)
+  if (minutes < 1) return w.now
+  if (minutes < 60) return w.minutes(minutes)
+  if (minutes < 24 * 60) return w.hours(Math.floor(minutes / 60))
+  if (minutes < 7 * 24 * 60) return w.days(Math.floor(minutes / (24 * 60)))
+  return localTime(iso).slice(0, 10)
+}
+
+function localTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** A timeline line as a person reads it: card changes from their fields, the rest as recorded */
+function eventText(w: Words, event: CampaignEvent): string {
+  if (event.kind === 'card' && event.changes?.length) {
+    const parts = event.changes.map(
+      (c) =>
+        `${w.fields[c.field]} ${shownValue(w, c.field, c.from)} → ${shownValue(w, c.field, c.to)}`,
+    )
+    return `${w.changed}: ${parts.join(', ')}`
+  }
+  return event.text
+}
+
+/** a folder with a page: one campaign */
+function CampaignIcon(): ReactElement {
+  return (
+    <span className="quick-folder cheil-campaign-icon" aria-hidden>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M1.75 4.25c0-.69.56-1.25 1.25-1.25h3l1.5 1.5H13c.69 0 1.25.56 1.25 1.25v6.5c0 .69-.56 1.25-1.25 1.25H3c-.69 0-1.25-.56-1.25-1.25v-8Z"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M5 8.5h6M5 10.75h4"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
+export function MyCampaigns() {
+  const { lang } = useI18n()
+  const w = words(lang)
+  const api = bridge()
+  const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
+  const [form, setForm] = useState<{ mode: 'new' } | { mode: 'edit'; id: string } | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    if (!api) return
+    const res = await api.list().catch(() => null)
+    setCampaigns(res?.ok ? res.campaigns : [])
+  }, [api])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  if (!api) return null
+
+  return (
+    <section className="quick-start cheil-campaigns" aria-label={w.label}>
+      <div className="section-head">
+        <span className="section-label">{w.label}</span>
+        <button
+          className="cheil-campaign-add"
+          data-testid="cheil-campaign-add"
+          onClick={() => setForm({ mode: 'new' })}
+        >
+          + {w.add}
+        </button>
+      </div>
+      {campaigns && campaigns.length === 0 ? (
+        <p className="cheil-campaigns-empty">{w.empty}</p>
+      ) : (
+        <div className="quick-cards cheil-campaign-cards">
+          {(campaigns ?? []).map((c) => (
+            <button
+              key={c.id}
+              className="quick-card cheil-campaign-card"
+              data-testid="cheil-campaign-card"
+              onClick={() => setOpenId(c.id)}
+            >
+              <CampaignIcon />
+              <span className="quick-text">
+                <span className="quick-title-row">
+                  <span className="quick-title">{c.card.campaign}</span>
+                </span>
+                <span className="quick-sub">
+                  {[c.card.client, period(c.card)].filter(Boolean).join(' · ') || ' '}
+                </span>
+                <span className="cheil-campaign-last">
+                  {c.last ? `${w.kinds[c.last.kind]} · ${ago(w, c.last.at)}` : w.lastNone}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {form ? (
+        <CampaignForm
+          w={w}
+          api={api}
+          editId={form.mode === 'edit' ? form.id : null}
+          onDone={(id) => {
+            setForm(null)
+            void refresh()
+            if (id) setOpenId(id)
+          }}
+        />
+      ) : openId ? (
+        <CampaignView
+          w={w}
+          api={api}
+          id={openId}
+          onEdit={() => setForm({ mode: 'edit', id: openId })}
+          onClose={() => {
+            setOpenId(null)
+            void refresh()
+          }}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+/** Escape closes a dialog */
+function useEscape(onEscape: () => void) {
+  const ref = useRef(onEscape)
+  ref.current = onEscape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        ref.current()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+}
+
+function CampaignForm({
+  w,
+  api,
+  editId,
+  onDone,
+}: {
+  w: Words
+  api: CheilCampaignApi
+  /** null for a new campaign */
+  editId: string | null
+  /** the campaign to show next, or null when cancelled */
+  onDone: (id: string | null) => void
+}) {
+  const [card, setCard] = useState<CheilCampaignCard>({ ...EMPTY_CHEIL_CARD })
+  const [loaded, setLoaded] = useState(editId === null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEscape(() => onDone(editId))
+
+  useEffect(() => {
+    if (editId === null) return
+    let live = true
+    void api.get(editId).then((res) => {
+      if (!live) return
+      if (res.ok) setCard(res.campaign.card)
+      else setError(w.fail[res.reason])
+      setLoaded(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [api, editId, w])
+
+  const set = (key: keyof CheilCampaignCard) => (value: string) =>
+    setCard((prev) => ({ ...prev, [key]: value }))
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (busy) return
+    if (!card.campaign.trim()) return setError(w.required)
+    if (card.start && card.end && card.start > card.end) return setError(w.badDates)
+    setBusy(true)
+    setError('')
+    const res = await (editId === null ? api.create(card) : api.update(editId, card)).catch(() => ({
+      ok: false as const,
+      reason: 'failed' as const,
+    }))
+    setBusy(false)
+    if (!res.ok) return setError(w.fail[res.reason])
+    onDone(res.campaign.id)
+  }
+
+  const input = (key: keyof CheilCampaignCard, type: 'text' | 'date' = 'text') => (
+    <label className={`cheil-field cheil-field-${key}`}>
+      <span>
+        {w.fields[key]}
+        {key === 'campaign' ? <em aria-hidden> *</em> : null}
+      </span>
+      <input
+        type={type}
+        name={key}
+        value={card[key]}
+        placeholder={w.hints[key] ?? ''}
+        required={key === 'campaign'}
+        onChange={(e) => set(key)(e.target.value)}
+      />
+    </label>
+  )
+  const area = (key: 'target' | 'kpi') => (
+    <label className={`cheil-field cheil-field-${key} cheil-field-wide`}>
+      <span>{w.fields[key]}</span>
+      <textarea
+        name={key}
+        rows={2}
+        value={card[key]}
+        placeholder={w.hints[key] ?? ''}
+        onChange={(e) => set(key)(e.target.value)}
+      />
+    </label>
+  )
+
+  return (
+    <div className="modal-overlay cheil-dialog" onClick={() => onDone(editId)}>
+      <form
+        className="modal cheil-campaign-form"
+        role="dialog"
+        aria-modal="true"
+        aria-label={editId === null ? w.newTitle : w.editTitle}
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => void submit(e)}
+      >
+        <h3>{editId === null ? w.newTitle : w.editTitle}</h3>
+        {loaded ? (
+          <div className="cheil-field-grid">
+            {input('campaign')}
+            {input('client')}
+            {input('brand')}
+            {input('budget')}
+            {input('start', 'date')}
+            {input('end', 'date')}
+            {area('target')}
+            {area('kpi')}
+            {input('team')}
+            {input('author')}
+          </div>
+        ) : null}
+        {error ? (
+          <p className="cheil-campaign-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="modal-buttons">
+          <button type="button" className="btn btn-secondary" onClick={() => onDone(editId)}>
+            {w.cancel}
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            data-testid="cheil-campaign-submit"
+            disabled={busy || !loaded}
+          >
+            {editId === null ? w.create : w.save}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function CampaignView({
+  w,
+  api,
+  id,
+  onEdit,
+  onClose,
+}: {
+  w: Words
+  api: CheilCampaignApi
+  id: string
+  onEdit: () => void
+  onClose: () => void
+}) {
+  const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
+  const [error, setError] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEscape(onClose)
+
+  useEffect(() => {
+    let live = true
+    void api.get(id).then((res) => {
+      if (!live) return
+      if (res.ok) setCampaign(res.campaign)
+      else setError(w.fail[res.reason])
+    })
+    return () => {
+      live = false
+    }
+  }, [api, id, w])
+
+  const act = async (run: () => Promise<{ ok: boolean; reason?: CampaignFailReason }>) => {
+    setError('')
+    const res = await run().catch(() => ({ ok: false, reason: 'failed' as const }))
+    if (!res.ok) setError(w.fail[res.reason ?? 'failed'])
+  }
+
+  const addNote = async () => {
+    const text = note.trim()
+    if (!text || busy) return
+    setBusy(true)
+    const res = await api
+      .note(id, text)
+      .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+    setBusy(false)
+    if (!res.ok) return setError(w.fail[res.reason])
+    setCampaign(res.campaign)
+    setNote('')
+  }
+
+  const card = campaign?.card
+  const timeline = campaign ? [...campaign.timeline].reverse() : []
+
+  return (
+    <div className="modal-overlay cheil-dialog" onClick={onClose}>
+      <div
+        className="modal cheil-campaign-view"
+        role="dialog"
+        aria-modal="true"
+        aria-label={card?.campaign ?? w.label}
+        data-testid="cheil-campaign-view"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cheil-campaign-view-head">
+          <div>
+            <h3>{card?.campaign ?? ''}</h3>
+            <p className="cheil-campaign-view-sub">
+              {card ? [card.client, card.brand, period(card)].filter(Boolean).join(' · ') : ''}
+            </p>
+          </div>
+          <button className="cheil-icon-btn" aria-label={w.close} onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        {card ? (
+          <dl className="cheil-card-grid">
+            {VIEW_ROWS.map((key) => {
+              const value = key === 'period' ? period(card) : card[key]
+              const shown = key === 'period' ? value || w.emptyValue : shownValue(w, key, value)
+              return (
+                <div key={key} className={`cheil-card-item cheil-card-${key}`}>
+                  <dt>{key === 'period' ? w.period : w.fields[key]}</dt>
+                  <dd className={value ? '' : 'is-empty'}>{shown}</dd>
+                </div>
+              )
+            })}
+          </dl>
+        ) : null}
+
+        <div className="cheil-campaign-actions">
+          <button className="btn btn-secondary" onClick={onEdit} disabled={!card}>
+            {w.editCard}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => void act(() => api.openFolder(id))}
+            disabled={!card}
+          >
+            {w.openFolder}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => void act(() => api.openHistory(id))}
+            disabled={!card}
+          >
+            {w.openHistory}
+          </button>
+        </div>
+
+        <div className="cheil-note-box">
+          <textarea
+            rows={2}
+            value={note}
+            placeholder={w.notePlaceholder}
+            data-testid="cheil-campaign-note"
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void addNote()
+            }}
+          />
+          <button
+            className="btn btn-primary"
+            data-testid="cheil-campaign-note-add"
+            disabled={!note.trim() || busy || !card}
+            onClick={() => void addNote()}
+          >
+            {w.addNote}
+          </button>
+        </div>
+
+        {error ? (
+          <p className="cheil-campaign-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="cheil-timeline-head">
+          <span className="section-label">{w.timeline}</span>
+          <span className="cheil-timeline-count">{campaign ? w.events(campaign.events) : ''}</span>
+        </div>
+        <ol className="cheil-timeline" data-testid="cheil-campaign-timeline">
+          {campaign && timeline.length === 0 ? <li className="is-empty">{w.noEvents}</li> : null}
+          {timeline.map((event, i) => (
+            <li key={`${event.at}-${i}`} className={`cheil-event cheil-event-${event.kind}`}>
+              <span className="cheil-event-kind">{w.kinds[event.kind]}</span>
+              <span className="cheil-event-text">
+                {eventText(w, event)}
+                {event.due ? <span className="cheil-event-due"> · {w.due(event.due)}</span> : null}
+                {event.files?.length ? (
+                  <span className="cheil-event-files"> · {event.files.join(', ')}</span>
+                ) : null}
+              </span>
+              <time className="cheil-event-time" dateTime={event.at} title={localTime(event.at)}>
+                {localTime(event.at)}
+              </time>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  )
+}

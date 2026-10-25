@@ -68,6 +68,18 @@
 - 양식 문서는 칸 이름이 모두 달라야 한다(같은 `[ ]`가 여러 개면 찾아 바꾸기가 다른 칸까지 바꾼다). `make_templates.py`가 그렇게 만들고 확인한다. 예외: 공통 칸(4절)은 어디서나 값이 같으니 여러 번 나와도 된다.
 - 단발 호출 통로: `ai:chat`에 `json` 옵션을 더했다(`AiChatRequest.json`, `chatForProvider`의 6번째 인자). Ollama 단발 호출은 내부적으로 흘려받아(stream) 토큰마다 감시 타이머를 깨운다.
 
+## 5-2. 캠페인 이력 (공모전 수정 계획 2번)
+
+- 무엇: 캠페인 정보(카드)를 한 번 넣으면 그 캠페인의 문서·메일·작업 기록이 한 폴더에 묶인다. 홈의 '광고 문서 양식' 아래 **'내 캠페인'** 줄에서 만들고 연다.
+- 어디에: `문서\Cheil 캠페인\<광고주> - <캠페인명>\` 폴더 하나가 캠페인 하나다. 같은 이름이면 ` (2)`를 붙인다. 시험 실행(`GENOFFICE_USER_DATA`가 있을 때)은 그 임시 userData 아래 `Cheil 캠페인`, `CHEIL_CAMPAIGNS_DIR`로 바꿀 수 있다.
+  - `campaign.json`: 카드(`campaign client brand start end budget target kpi team author` — 공통 칸 사전의 키와 같다), 만든 때·바꾼 때.
+  - `timeline.jsonl`: 한 줄에 사건 하나(`at kind text`, 카드 수정이면 `changes`). 종류: 만듦·카드·메모, 그리고 3번 이후 쓸 채우기·문서·메일·점검·수정 반영·할 일. 깨진 줄은 건너뛰고 읽는다.
+  - `캠페인 이력.md`: '이력 문서로 보기'를 누르면 카드 표와 타임라인을 써서 마크다운 탭으로 연다(인수인계용, 원본은 `timeline.jsonl`).
+- 코드: 저장 `apps/shell/src/main/cheil/campaign-store.ts`(Electron 없음, 캠페인 하나에 쓰기는 차례로), 창구 `campaign-ipc.ts`(홈 화면만 부를 수 있음, 화면은 폴더 이름만 넘기고 경로는 받지 않음), 약속 `apps/shell/src/shared/cheil-campaign-api.ts`, preload `window.aiOfficeCheilCampaigns`, 화면 `apps/shell/src/renderer/src/cheil/MyCampaigns.tsx`(목록·카드 입력·캠페인 보기: 카드, 메모 남기기, 타임라인 최신순). 문구는 한국어 + 영어.
+- 카드를 고치면 바뀐 칸만 타임라인에 남는다("카드 수정: 총예산 500,000,000원 → 600,000,000원"). 예산이 숫자만이면 쉼표와 '원'을 붙여 보인다(저장은 입력 그대로).
+- 시험: `apps/shell/tests/cheil-campaign-store.test.ts`(만들기·다시 읽기·바뀐 칸만 기록·잘못된 카드·경로 거절·같은 이름·목록 순서·깨진 줄·동시 쓰기 순서·이력 문서·홈만 응답), 화면 `e2e/cheil-office.spec.ts`의 캠페인 시험(만들기 → 타임라인 → 메모 → 카드 수정 → 폴더 파일 → 이력 문서 탭).
+- 아직 없는 것: 문서·채우기·메일이 끝날 때 저절로 남기기(3번), 캠페인에서 양식 열기와 공통 칸 바로 채우기(4번), 캠페인 폴더 위치 바꾸기.
+
 ## 6. 자동 업데이트 끔
 
 - 설치본이 원본 릴리스를 업데이트로 받으면 이음오피스로 바뀐다. `apps/shell/src/main/cheil-update-policy.ts`가 끈다. '업데이트 확인'은 원본 내려받기 쪽을 열지 않는다. 새 판은 새 설치 파일로 나눈다.

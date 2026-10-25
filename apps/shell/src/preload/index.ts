@@ -38,6 +38,11 @@ import type {
   SkillInstallState,
 } from '../shared/integrations-api'
 import { RESULT_STORE_CHANNELS } from '../shared/result-store-api'
+import {
+  CHEIL_CAMPAIGN_BRIDGE_KEY,
+  CHEIL_CAMPAIGN_CHANNELS,
+  type CheilCampaignApi,
+} from '../shared/cheil-campaign-api'
 import { DRIVE_CHANNELS } from '../shared/drive-api'
 import type { DriveApi, DriveUiState } from '../shared/drive-api'
 import type { ResultStoreApi } from '../shared/result-store-api'
@@ -872,6 +877,18 @@ const quickLookHomeApi: QuickLookHomeApi = {
   },
 }
 contextBridge.exposeInMainWorld('aiOfficeQuickLookHome', quickLookHomeApi)
+
+// Cheil fork: the home's "내 캠페인" (the main process checks every request again)
+const cheilCampaignApi: CheilCampaignApi = {
+  list: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.list),
+  create: (card) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.create, card),
+  get: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.get, id),
+  update: (id, card) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.update, id, card),
+  note: (id, text) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.note, id, text),
+  openFolder: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openFolder, id),
+  openHistory: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.openHistory, id),
+}
+contextBridge.exposeInMainWorld(CHEIL_CAMPAIGN_BRIDGE_KEY, cheilCampaignApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()

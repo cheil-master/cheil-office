@@ -31,8 +31,13 @@
 | 엑셀 처리 프로그램(Rust `xlsx-sidecar`) 빌드, 엑셀 양식 열기                                                                                                                                                    | 엑셀 처리 프로그램 시험 32개, `e2e/cheil-office.spec.ts`    |
 | Windows 설치 파일 `apps/shell/release/CheilOffice-Setup-0.12.3.exe`(188MB, 서명 없음)                                                                                                                           | `e2e/cheil-packaged.spec.ts`(설치본 내용물로 홈·엑셀 열기)  |
 | 자동 업데이트 끔(원본 릴리스로 바뀌는 것을 막음)                                                                                                                                                                | `apps/shell/tests/updater.test.ts`의 "Cheil fork" 묶음      |
+| (10-25 오후, 계획 1번) 공통 칸 사전 10개, 양식 6종을 그 이름으로 다시 만듦(브리프 29칸, 제안서 70칸, 월간 64, 회의록 26, 경쟁 PT 33, 미디어 플랜 9), 빠른 채우기가 공통 칸의 뜻을 함께 보냄                                  | `packages/ui/tests/cheil-fields.test.ts`, 생성기의 자체 확인 |
+| (10-25 오후, 계획 2번) 캠페인 이력: 홈 '내 캠페인'에서 카드를 만들고 열면 타임라인이 보임, 메모·카드 수정이 남음, 이력 문서(.md) 탭                                                                              | `apps/shell/tests/cheil-campaign-store.test.ts`, `e2e/cheil-office.spec.ts` 캠페인 시험 |
 
 ### 안 된 것·주의
+
+- (10-25 오후) **양식 칸 이름이 바뀌어 실제 Ollama 시험(`e2e/cheil-ollama-real.spec.ts`)을 다시 돌려야 한다.** 두 번째 PC 에는 Ollama 가 없어 못 돌렸다. 위 표의 채우기 시간·칸 수(브리프 25칸 등)는 바뀌기 전 양식의 기록이다.
+- (10-25 오후) 두 번째 PC 에서 `e2e/cheil-office.spec.ts`의 미디어 플랜 시험은 실패한다 — 엑셀 처리 프로그램(`xlsx-sidecar.exe`)이 없어서(ENOENT). Rust 가 있는 PC 에서는 통과해야 한다(확인 필요).
 
 - **설치 파일이 낡았다.** 10-23 04:25 에 만든 것이라 엑셀 미디어 플랜 빠른 채우기(10-23 오전)가 **없다.** 다시 만들기(`npm run dist:win -- -- --publish never`)를 돌리다 세션이 끊겼다. 그 여파로 워드 편집기 빌드가 깨졌던 것은 10-25 에 다시 빌드해 고쳤다.
 - 2026-10-25 까지의 모든 변경은 `cheil` 갈래의 **기준선 커밋 하나**(`feat: Cheil 기획 오피스 …`, 원본 `upstream` 의 `5fda829` = v0.12.3 위)에 들어 있다. 원본과의 차이는 `git diff 5fda829 HEAD`. 푸시한 원격은 없다(원격 `upstream`은 원본 저장소라 푸시 금지).
@@ -85,6 +90,15 @@
 
 ## 5. 이 PC 환경 (2026-10-25)
 
+### 5-0. 두 번째 PC (2026-10-25 오후, 공모전 수정 계획 1·2번을 한 곳)
+
+- 저장소: `C:\Users\CHEIL\Desktop\개발\제일오피스\cheil-office`(GitHub `cheil-master/cheil-office`를 받아 옴, 원격 `origin`). 작업 갈래 `cheil/campaign-workbench`. 원본 원격(`upstream`)은 이 사본에 없다 — 원본과의 차이는 `git diff 5fda829 HEAD`.
+- Windows 11 Enterprise, Core Ultra 5 125H, 메모리 16GB. Node 24.15.0, npm 11.12.1.
+- **없는 것**: Rust·cargo(→ 엑셀 처리 프로그램 `xlsx-sidecar`를 못 만든다. `npm run build:all`이 엑셀 편집기에서 멈추니 엑셀만 `cd apps/sheets; npx electron-vite build`로 화면 쪽만 빌드하고 나머지는 하나씩 빌드했다. 이 PC 에서는 엑셀 파일이 안 열린다), Ollama(빠른 채우기 실제 시험 불가), 시스템 Python 의 python-docx·python-pptx·openpyxl(양식 생성은 따로 만든 가상환경에서 돌렸다: `py -V:Astral/CPython3.12.13 -m venv <폴더>` 후 `pip install python-docx python-pptx openpyxl lxml`). Visual Studio Build Tools 는 확인 안 함.
+- git 작성자 설정이 없어 커밋마다 `-c user.name=... -c user.email=...`를 붙였다.
+
+### 5-1. 첫 PC
+
 - Windows 11 Enterprise, i5-1135G7, 메모리 16GB, **외장 GPU 없음 → Ollama 가 CPU 로만 돈다.** 지시문 읽기 초당 약 35토큰, 글쓰기 약 8토큰.
 - Node 24.19.0, npm 11.17.0, Python 3.12.10(python-pptx·python-docx·openpyxl 있음), Git.
 - Rust 1.99.1(rustup, `~/.cargo`, 기본 `stable-x86_64-pc-windows-msvc`, GNU 묶음도 깔려 있음). 새 터미널이 아니면 `$env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"`.
@@ -133,12 +147,43 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 - 원본 규칙: 내부 이름(`@genoffice/*`, `GENOFFICE_*`)을 바꾸지 않는다. 문서 엔진 패키지(`docx-engine`, `pptx-*`, `xlsx-gateway`, `xlsx-engine` 등)는 고치지 않는다(필요하면 사람에게 먼저 묻기). LICENSE·NOTICE·"GenOffice/이음오피스를 바탕으로" 고지를 지우지 않는다. NOTICE 에 Cheil 고지를 더해 두었다.
 - 구독(Claude Code·Codex)으로 가는 시험은 사용자 한도를 쓴다. 화면 시험은 기본이 Ollama 라 괜찮지만, 구독을 고르는 시험을 만들면 `e2e/helpers.ts`의 `stubAiReady`를 쓴다.
 
-## 8. 다음 할 일 (추천 순서)
+## 8. 다음 할 일 — 공모전 수정 계획(2026-10-25)의 14가지, 이 순서로
 
-1. **설치 파일 다시 만들기**(엑셀 빠른 채우기 포함) → `CHEIL_PACKAGED=1` 시험 → 동료 PC 한 대에 깔아 회사 보안 정책에 막히는지 확인(사용자 몫).
-2. (끝남, 10-25) 기준선 커밋. 앞으로의 변경은 작게 나눠 커밋하고, 푸시는 사용자에게 묻는다(이 PC 에는 git 작성자 설정이 없어 첫 커밋은 `-c user.name/-c user.email`로 그 커밋에만 넣었다).
+계획서 원본은 사용자 바탕화면의 `Cheil 기획 오피스 — 공모전 수정 계획.docx`. 목표: 양식만 고르면 AI 가 채우고, 고치고, 점검하고, 메일까지 써 주는 기획 AE 작업대. 범용 AI 와는 '캠페인 단위로 일을 끝내는 능력'으로 겨룬다(캠페인 묶음, 원본 파일 제자리 수정, 발송 전 점검, 이력 기반 메일, PC 안 기밀 처리).
+
+모든 수정에 지키는 원칙(계획서 그대로):
+
+- **앱이 일하고 AI 는 글만**: 칸 찾기·값 옮기기·계산·검사·변경 내역은 앱 코드, AI 는 정해진 칸의 글만 한 번에 답한다(빠른 채우기와 같은 방식).
+- **기밀은 PC 밖으로 안 나간다**: 새 기능의 AI 요청은 기밀 검사를 거치는 AI 창 경로(`ai:chat` → `chatForProvider`)로만. 에이전트 창은 이 검사를 안 거치니 새 기능에 쓰지 않는다.
+- **숫자는 자료에 있는 것만**: 없으면 `[확인 필요]`, 보내기 전 점검(8번)에서 다시 잡는다.
+- **원본 파일과 문서 엔진은 그대로**: 엔진 패키지를 고쳐야 하면 먼저 묻는다.
+- **시험은 가상 이름으로**: 가상전자, 에어린, 블루윈드, 오로라7.
+
+| 순서 | 수정사항 | 상태 | 이어받을 때 볼 것 |
+| ---- | -------- | ---- | ----------------- |
+| 1 | 양식 칸 이름 통일 | **끝남(10-25)** | `CHEIL.md` 4절. 공통 칸 10개 사전 `packages/ui/src/cheil-fields.json`, 생성기가 확인 |
+| 2 | 캠페인 이력 | **끝남(10-25)** | `CHEIL.md` 5-2절. `문서\Cheil 캠페인\<광고주> - <캠페인명>\campaign.json`·`timeline.jsonl`, 홈 '내 캠페인' |
+| 3 | 자동 기록 | 할 일 | 캠페인 보기에서 양식을 열 때 넘겨주기(`SkillHandoff`, `packages/electron-utils/src/generate-handoff.ts`)에 캠페인 id 를 실어 편집기가 알게 하고, 빠른 채우기 끝(`runCheilFill` 워드·PPT, `runCheilSheetFill` 엑셀)에서 기록한다. 기록 창구는 지금의 홈 전용 창구와 따로(편집기 webContents 를 확인), 저장은 `campaign-store.ts`의 `record()`(사건 종류 `fill document mail check revise task`는 이미 정의됨). 받은 메일 → 할 일·마감은 `ai:chat` json 한 번 호출 → `kind:'task', due` |
+| 4 | 문서 세트 채우기 | 할 일 | 카드 값 → 공통 칸은 AI 없이: `cheilFieldValues(card, today)` + 문서에서 찾은 칸마다 `cheilFieldValueFor`(별칭도 읽음) → 워드·PPT `findReplace`, 엑셀 `set_cell`. 나머지 칸만 빠른 채우기. 저장 위치는 캠페인 폴더로 제안 |
+| 5 | 변경 전파 | 할 일 | 카드 수정은 이미 `changes`(바뀐 칸, 전·후 값)로 남는다. 문서마다 어느 칸에 무슨 값을 넣었는지 기록해 두고 그 값을 바꾼다 |
+| 6 | 메일 양식 2종 | 할 일 | 광고주용(합니다체·첨부 요약·다음 일정), 내부용(개조식·요청·마감) 스킬 + 양식 |
+| 7 | 메일 초안 버튼 | 할 일 | 이력(`timeline.jsonl`)을 맥락으로 |
+| 8 | 보내기 전 점검 | 할 일 | 규칙(코드): 남은 칸·`[확인 필요]`·자료에 없는 숫자·다른 광고주 이름·AI 흔적, 위치 목록 |
+| 9 | 광고주 이름 사전 | 할 일 | 점검과 `cheil-grade.ts`가 함께 씀 |
+| 10 | 수정 요청 반영 | 할 일 | 가장 어려움, 맨 끝. 변경 추적 켜고 반영 → 바뀐 곳 목록 → 회신 메일(7번) |
+| 11 | 기밀 판정 '막기 → 고르기' | 할 일 | 회사 정책 확인 뒤에만. 그 전에는 로컬 AI 만 |
+| 12 | 에이전트 창 막기 | 할 일 | 기밀 표지가 있는 폴더에서는 안 열리게 |
+| 13 | 내 양식 등록 | 할 일 | 예전 문서 → `[칸]` 양식. 공통 칸은 사전 이름으로(별칭 목록이 이미 있음) |
+| 14 | 인수인계 남은 일 | 할 일 | 아래 '그 밖에 남은 일' |
+
+사용자 몫(계획서 '다음 할 일'): 가상 이름 샘플 세트(캠페인 정보 한 장, 광고주 수정 메일 2~3통, 일부러 실수를 넣은 제안서 1개, 손으로 할 때 걸리는 시간 메모), 회사 PC 설치 시험, 사내 엔터프라이즈 모델에 보내도 되는 범위 확인. 효과 숫자는 '(손 시간 − 도구 시간) × 월 건수'로 실측만 쓴다.
+
+그 밖에 남은 일(이전 목록, 14번에 포함):
+
+1. **설치 파일 다시 만들기**(엑셀 빠른 채우기·공통 칸·캠페인 포함) → `CHEIL_PACKAGED=1` 시험 → 동료 PC 한 대에 깔아 회사 보안 정책에 막히는지 확인(사용자 몫). Rust 가 있는 PC 에서.
+2. (끝남, 10-25) 기준선 커밋. 앞으로의 변경은 작게 나눠 커밋하고, 푸시는 사용자에게 묻는다.
 3. 이름 마무리: 명령어 `ieumoffice`→`cheiloffice`(+`~/.cheiloffice`, 도움말 925곳, 설치 PATH), 설정 → 정보의 저장소·문의 메일, `README.md`.
-4. 빠른 채우기 품질: 칸 이름을 값에 붙이지 않기, 광고주/브랜드 구분, 날짜 추정 금지를 지시문(`buildCheilFillPrompt`)에 넣거나 후처리. 실행마다 흔들리는 정도를 2~3번 돌려 비교.
+4. 빠른 채우기 품질: 칸 이름을 값에 붙이지 않기, 광고주/브랜드 구분(공통 칸에 뜻을 붙여 보내기 시작함, 10-25), 날짜 추정 금지. 실행마다 흔들리는 정도를 2~3번 돌려 비교.
 5. 빠른 채우기 '중지'(AbortSignal 을 `ai:chat`까지).
 6. 속도: 지시문 줄이기(스킬 본문 길이), 다른 모델 비교, GPU PC 에서 측정.
 7. PPT 화면이 닫힌 일 재현 감시(`e2e/cheil-ollama-real.spec.ts`에 닫힘·충돌 기록을 남기게 해 둠).

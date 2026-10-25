@@ -3,6 +3,7 @@ import type { DragEvent as ReactDragEvent, ReactElement } from 'react'
 import logoLockup from './assets/genoffice-logo.svg'
 import { KbAskPanel } from './KbAskPanel'
 import { AgencyTemplates } from './cheil/AgencyTemplates'
+import { MyCampaigns } from './cheil/MyCampaigns'
 import { localEngineView } from './cheil/local-engine'
 import { useAiSettings } from './FreeAiCards'
 import iconDocx from './assets/file-docx.svg'
@@ -2863,7 +2864,9 @@ export function Home({
         movePicker !== null ||
         groupPicker !== null ||
         conflict !== null ||
-        document.querySelector('.set-overlay')
+        document.querySelector('.set-overlay') ||
+        // Cheil fork: a campaign dialog is open over the list
+        document.querySelector('.cheil-dialog')
       ) {
         return
       }
@@ -2941,6 +2944,8 @@ export function Home({
         </section>
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        {/* Cheil fork: the campaigns, each with its card and timeline */}
+        <MyCampaigns />
 
         <section className="recents" aria-label={t('folders')}>
           <div className="recents-toolbar">
@@ -3068,6 +3073,8 @@ export function Home({
         </section>
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        {/* Cheil fork: the campaigns, each with its card and timeline */}
+        <MyCampaigns />
 
         <section
           className="recents"

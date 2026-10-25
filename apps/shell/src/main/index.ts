@@ -100,6 +100,8 @@ import { installCliLinkBestEffort } from './cli-link'
 import { createDefaultAppService, execFileRunner } from './default-app'
 import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
+import { createCampaignStore } from './cheil/campaign-store'
+import { registerCheilCampaignIpc } from './cheil/campaign-ipc'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
 import { registerDriveIpc, type DriveService } from './drive/drive-ipc'
 import {
@@ -7209,6 +7211,29 @@ const templateTabs = createTemplateTabs({
   now: () => Date.now(),
 })
 registerTemplateTabsIpc(templateTabs)
+
+// Cheil fork: campaign history (plan item 2). Each campaign is a folder under
+// "Cheil 캠페인" in Documents; a test driver's scratch userData (or
+// CHEIL_CAMPAIGNS_DIR) keeps them away from the person's own folder.
+const cheilCampaignsRoot = (): string =>
+  process.env.CHEIL_CAMPAIGNS_DIR ||
+  join(
+    process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
+    'Cheil 캠페인',
+  )
+const cheilCampaigns = createCampaignStore({
+  root: cheilCampaignsRoot,
+  writeFile: (path, bytes) => atomicWriteFile(path, bytes),
+  now: () => new Date(),
+})
+registerCheilCampaignIpc({
+  ipc: ipcMain,
+  store: cheilCampaigns,
+  isHome: (sender) =>
+    !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
+  openFolder: (path) => shell.openPath(path),
+  openDocument: (path) => openDocumentPath(path),
+})
 
 /** A template copy's new untitled tab: sheets here (its backing workbook), the others in the tab manager */
 async function openTemplateCopyTab(copy: TemplateCopy): Promise<OpenedCopyTab | null> {

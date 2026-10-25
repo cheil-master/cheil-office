@@ -92,8 +92,15 @@ describe('Cheil fork: common template blanks', () => {
 
   it("tells the model what a common blank means, and leaves other blanks' lines as they were", () => {
     const slots = findCheilSlots('핵심 타깃: [타깃]\n[이 광고로 해결할 문제 한 문장]')
-    const { user } = buildCheilFillPrompt({ request: '채워 줘', skillText: '', materials: '', slots })
-    expect(user).toContain('S1: [타깃] (뜻: 누구에게 — 나이·생활·구매 맥락) — 문맥: 핵심 타깃: [타깃]')
+    const { user } = buildCheilFillPrompt({
+      request: '채워 줘',
+      skillText: '',
+      materials: '',
+      slots,
+    })
+    expect(user).toContain(
+      'S1: [타깃] (뜻: 누구에게 — 나이·생활·구매 맥락) — 문맥: 핵심 타깃: [타깃]',
+    )
     expect(user).toContain('S2: [이 광고로 해결할 문제 한 문장] — 문맥:')
   })
 
