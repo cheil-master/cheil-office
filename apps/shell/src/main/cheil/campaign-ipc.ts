@@ -43,6 +43,7 @@ import type { CampaignStore } from './campaign-store'
 import { REOPEN_MAX } from './campaign-files'
 import { isMyTemplateName, type MyTemplates } from './my-templates'
 import type { ObsidianLink } from './obsidian'
+import { knowledgePathsOf, type KnowledgeBase } from './knowledge'
 import {
   cheilBlankOf,
   findCheilTemplateBlanks,
@@ -94,6 +95,10 @@ export interface CheilCampaignIpcDeps {
   obsidian: ObsidianLink
   /** a folder the person picks; null when they close the dialog */
   pickFolder(): Promise<string | null>
+  /** the knowledge base in the vault (10-26) */
+  knowledge: KnowledgeBase
+  /** files for the knowledge base the person picks; [] when they close the dialog */
+  pickKnowledgeFiles(): Promise<string[]>
   /** ISO time now */
   nowIso(): string
 }
@@ -629,6 +634,50 @@ export function registerCheilCampaignIpc(deps: CheilCampaignIpcDeps): void {
     homeOnly(async (): Promise<CampaignResult> => {
       await deps.obsidian.setVault(null)
       return { ok: true }
+    }),
+  )
+  // the knowledge base (10-26): put in, sort and search, all inside the vault on this PC
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgeOverview,
+    homeOnly(async () => ({ ok: true as const, ...(await deps.knowledge.overview()) })),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgeAddFiles,
+    homeOnly(async (raw: unknown) => {
+      const paths = knowledgePathsOf(raw)
+      if (!paths) return { ok: false as const, reason: 'invalid' as const }
+      return { ok: true as const, ...(await deps.knowledge.addFiles(paths)) }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgePickFiles,
+    homeOnly(async () => {
+      if (!(await deps.obsidian.vault())) return { ok: true as const, vault: false, added: [] }
+      const paths = await deps.pickKnowledgeFiles().catch(() => [])
+      if (!paths.length) return { ok: false as const, reason: 'canceled' as const }
+      return { ok: true as const, ...(await deps.knowledge.addFiles(paths)) }
+    }),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgeAddText,
+    homeOnly(async (raw: unknown) => ({
+      ok: true as const,
+      ...(await deps.knowledge.addText(raw)),
+    })),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgeSearch,
+    homeOnly(async (raw: unknown) => ({
+      ok: true as const,
+      ...(await deps.knowledge.search(raw)),
+    })),
+  )
+  ipc.handle(
+    CHEIL_CAMPAIGN_CHANNELS.knowledgeOpen,
+    homeOnly(async (raw: unknown): Promise<CampaignResult> => {
+      const path = await deps.knowledge.notePathOf(raw)
+      if (!path) return refused
+      return deps.openDocument(path) ? { ok: true } : { ok: false, reason: 'failed' }
     }),
   )
   // plan item 3: an editor tab a set opened reports a fill it finished; any other tab is ignored

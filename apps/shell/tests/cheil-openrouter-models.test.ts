@@ -124,7 +124,11 @@ describe('Cheil: OpenRouter model field', () => {
       calls[0].resolve({ models: ['upstage/solar-pro-test', 'openrouter/auto'], defaultModel: '' })
       await Promise.resolve()
     })
-    expect(listed()).toEqual(['openrouter/auto', 'anthropic/claude-sonnet-5', 'upstage/solar-pro-test'])
+    expect(listed()).toEqual([
+      'openrouter/auto',
+      'anthropic/claude-sonnet-5',
+      'upstage/solar-pro-test',
+    ])
   })
 
   it('keeps a typed id that no list has and saves it', async () => {

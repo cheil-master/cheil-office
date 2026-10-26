@@ -20,6 +20,7 @@ import {
   type CheilCampaignApi,
 } from '../../../shared/cheil-campaign-api'
 import { MailDraft, words as campaignWords } from './MyCampaigns'
+import { KnowledgeBase } from './KnowledgeBase'
 import { applySpellingFixes, countText, findSpellingIssues } from './tools/text-tools'
 import {
   addWorkdays,
@@ -43,12 +44,13 @@ import {
   type TranslateLang,
 } from './tools/ai-tools'
 
-export type WorkToolId = 'mail' | 'spelling' | 'money' | 'dates' | 'translate'
+export type WorkToolId = 'knowledge' | 'mail' | 'spelling' | 'money' | 'dates' | 'translate'
 
 const WORDS = {
   ko: {
     section: '업무 도구',
     tools: {
+      knowledge: '내 지식 베이스',
       mail: '메일 초안',
       spelling: '맞춤법·글자수',
       money: '금액·부가세',
@@ -123,6 +125,7 @@ const WORDS = {
   en: {
     section: 'Work tools',
     tools: {
+      knowledge: 'Knowledge base',
       mail: 'Mail draft',
       spelling: 'Spelling · count',
       money: 'Amount · VAT',
@@ -233,6 +236,8 @@ async function askOnce(
 // ── nav ──────────────────────────────────────────────────────────────────
 
 const ICON_PATHS: Record<WorkToolId | 'pdf', string> = {
+  knowledge:
+    'M3 2.5h8.5a1 1 0 011 1v10h-8.5a1 1 0 01-1-1zM3 12.5a1 1 0 011-1h8.5M5.5 5h4.5M5.5 7.5h3',
   mail: 'M2 4h12v8H2zM2 4l6 4.5L14 4',
   spelling: 'M2.5 12L5.5 4l3 8M3.6 9.2h3.8M10 9.5l1.6 1.6L14 7.5',
   money:
@@ -268,7 +273,7 @@ export function WorkToolsNav({
   const { lang } = useI18n()
   const w = toolWords(lang)
   if (!bridge()) return null
-  const tools: WorkToolId[] = ['mail', 'spelling', 'money', 'dates', 'translate']
+  const tools: WorkToolId[] = ['knowledge', 'mail', 'spelling', 'money', 'dates', 'translate']
   const pdf = (window as { aiOfficePdfToolsHome?: { open(): Promise<unknown> } })
     .aiOfficePdfToolsHome
   return (
@@ -302,6 +307,8 @@ export function WorkToolView({ tool }: { tool: WorkToolId }) {
   const w = toolWords(lang)
   const api = bridge()
   if (!api) return null
+  // the knowledge base lays out its own page (a drop zone, the filed notes and the search)
+  if (tool === 'knowledge') return <KnowledgeBase lang={lang} api={api} />
   return (
     <main className="content cheil-tool" data-testid={`cheil-tool-${tool}`}>
       <h2 className="cheil-tool-title">{w.tools[tool]}</h2>

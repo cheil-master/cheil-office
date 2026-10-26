@@ -3018,3 +3018,175 @@ html[dir='rtl'] .quick-title-row {
     gap: 2px;
   }
 }
+
+/* Cheil fork (10-26): 내 지식 베이스 */
+.cheil-kb > * {
+  max-width: 1080px;
+}
+.cheil-kb-vault {
+  margin-left: 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.cheil-kb-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.cheil-kb-drop.over {
+  border-color: var(--accent, #3a4fd8);
+  background: var(--badge-bg);
+}
+.cheil-kb-drop strong {
+  font-size: 15px;
+  color: var(--text);
+}
+.cheil-kb-added {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.cheil-kb-added li.bad {
+  color: var(--danger, #b42318);
+}
+.cheil-kb-link,
+.cheil-kb-note,
+.cheil-kb-hit {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cheil-kb-link {
+  color: var(--accent, #3a4fd8);
+}
+.cheil-kb-main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.cheil-kb-tree,
+.cheil-kb-search {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+.cheil-kb-tree h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.cheil-kb-tree summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 2px 0;
+}
+.cheil-kb-kind {
+  margin-left: 12px;
+}
+.cheil-kb-kind summary {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.cheil-kb-note {
+  display: block;
+  width: 100%;
+  margin-left: 14px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.cheil-kb-note:hover,
+.cheil-kb-hit:hover {
+  background: var(--badge-bg);
+}
+.cheil-kb-searchbar {
+  display: flex;
+  gap: 8px;
+}
+.cheil-kb-searchbar input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.cheil-kb-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.cheil-kb-summary {
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--badge-bg);
+  font-size: 13.5px;
+}
+.cheil-kb-summary-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.cheil-kb-summary-text {
+  white-space: pre-wrap;
+}
+.cheil-kb-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cheil-kb-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cheil-kb-path {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.cheil-kb-hit-title {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.cheil-kb-snippet {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.cheil-kb-hit mark {
+  background: #fff1b8;
+  color: inherit;
+}
+.cheil-kb-muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.cheil-kb-muted.small {
+  font-size: 12px;
+}

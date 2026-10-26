@@ -893,6 +893,13 @@ const cheilCampaignApi: CheilCampaignApi = {
   obsidian: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidian),
   obsidianPick: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidianPick),
   obsidianClear: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.obsidianClear),
+  knowledgeOverview: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgeOverview),
+  knowledgeAddFiles: (paths) =>
+    ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgeAddFiles, paths),
+  knowledgePickFiles: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgePickFiles),
+  knowledgeAddText: (text) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgeAddText, text),
+  knowledgeSearch: (query) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgeSearch, query),
+  knowledgeOpen: (note) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.knowledgeOpen, note),
   documents: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.documents, id),
   mailDrafted: (id, draft) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.mailDrafted, id, draft),
   myTemplates: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.myTemplates),

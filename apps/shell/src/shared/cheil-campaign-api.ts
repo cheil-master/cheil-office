@@ -37,6 +37,13 @@ export const CHEIL_CAMPAIGN_CHANNELS = {
   obsidian: 'cheil:obsidian-get',
   obsidianPick: 'cheil:obsidian-pick',
   obsidianClear: 'cheil:obsidian-clear',
+  /** the knowledge base in the vault (10-26): put in, sort, search */
+  knowledgeOverview: 'cheil:knowledge-overview',
+  knowledgeAddFiles: 'cheil:knowledge-add-files',
+  knowledgePickFiles: 'cheil:knowledge-pick-files',
+  knowledgeAddText: 'cheil:knowledge-add-text',
+  knowledgeSearch: 'cheil:knowledge-search',
+  knowledgeOpen: 'cheil:knowledge-open',
   /** from an editor tab (plan item 3); the same name as electron-utils' CHEIL_RECORD_CHANNEL */
   record: 'cheil:campaign-record',
 } as const
@@ -159,6 +166,39 @@ export interface CampaignEvent {
   due?: string
 }
 
+/** Knowledge base (10-26): one piece of material put in, and where its note went */
+export interface KnowledgeAdded {
+  name: string
+  ok: boolean
+  /** relative to the vault, forward slashes */
+  note?: string
+  advertiser?: string
+  kind?: string
+  reason?: 'unreadable' | 'unsupported' | 'empty' | 'failed'
+}
+export interface KnowledgeAddResult {
+  /** false when no vault is set: nothing was written */
+  vault: boolean
+  added: KnowledgeAdded[]
+}
+export interface KnowledgeHit {
+  note: string
+  title: string
+  folder: string
+  snippet: string
+  matched: string[]
+}
+export interface KnowledgeSearchResult {
+  vault: boolean
+  hits: KnowledgeHit[]
+  /** the notes the search read */
+  notes: number
+}
+export interface KnowledgeOverview {
+  vault: string | null
+  groups: Array<{ advertiser: string; kinds: Array<{ kind: string; notes: string[] }> }>
+}
+
 export interface CampaignSummary {
   /** the campaign's folder name under the campaigns root */
   id: string
@@ -230,6 +270,18 @@ export interface CheilCampaignApi {
   obsidianPick(): Promise<CampaignResult<{ vault: string | null; written: number }>>
   /** Plan item 13: stop writing into the vault (the notes already there stay) */
   obsidianClear(): Promise<CampaignResult>
+  /** Knowledge base: the vault and its sorted notes, per advertiser and kind */
+  knowledgeOverview(): Promise<CampaignResult<KnowledgeOverview>>
+  /** Knowledge base: files dropped on the home (their paths), each turned into a sorted note */
+  knowledgeAddFiles(paths: string[]): Promise<CampaignResult<KnowledgeAddResult>>
+  /** Knowledge base: the same, from a file dialog */
+  knowledgePickFiles(): Promise<CampaignResult<KnowledgeAddResult>>
+  /** Knowledge base: a mail or memo pasted in */
+  knowledgeAddText(text: string): Promise<CampaignResult<KnowledgeAddResult>>
+  /** Knowledge base: the vault's notes holding the query's words, on this PC */
+  knowledgeSearch(query: string): Promise<CampaignResult<KnowledgeSearchResult>>
+  /** Knowledge base: open a note (relative to the vault) in the Markdown editor */
+  knowledgeOpen(note: string): Promise<CampaignResult>
   /** Plan item 13: the person's own templates, the last saved first */
   myTemplates(): Promise<CampaignResult<{ templates: MyTemplate[] }>>
   /**

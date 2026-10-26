@@ -107,7 +107,8 @@ import { installCliLinkBestEffort } from './cli-link'
 import { createDefaultAppService, execFileRunner } from './default-app'
 import { registerIntegrationsIpc } from './integrations-ipc'
 import { registerResultStoreIpc } from './result-store-ipc'
-import { createCampaignStore } from './cheil/campaign-store'
+import { createCampaignStore, localTime } from './cheil/campaign-store'
+import { createKnowledgeBase, KNOWLEDGE_EXTENSIONS } from './cheil/knowledge'
 import { registerCheilCampaignIpc } from './cheil/campaign-ipc'
 import {
   campaignDocumentOf,
@@ -7273,6 +7274,16 @@ const cheilObsidian = createObsidianLink({
   },
   documents: async (id) => cheilCampaignDocuments(id).map(({ path, title }) => ({ path, title })),
 })
+/** Cheil fork (10-26): the knowledge base in the Obsidian vault */
+const cheilKnowledge = createKnowledgeBase({
+  vault: () => cheilObsidian.vault(),
+  readText: cheilReadText,
+  advertisers: async () => {
+    const listed = await cheilCampaigns.list()
+    return listed.ok ? listed.campaigns.map((c) => c.card.client) : []
+  },
+  now: () => localTime(new Date().toISOString()),
+})
 /** plan item 5: the tab or detached window showing a file, if one does */
 const cheilTabOfPath = (path: string) =>
   tabManager?.findTabByPath(path) ?? findDetachedTabByPath(path)
@@ -7380,6 +7391,18 @@ registerCheilCampaignIpc({
   documentNames: async (campaignId) => cheilCampaignDocuments(campaignId).map((doc) => doc.name),
   myTemplates: cheilMyTemplates,
   obsidian: cheilObsidian,
+  knowledge: cheilKnowledge,
+  pickKnowledgeFiles: async () => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Documents', extensions: [...KNOWLEDGE_EXTENSIONS] }],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? [] : picked.filePaths
+  },
   nowIso: () => new Date().toISOString(),
   pickFolder: async () => {
     const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] }
