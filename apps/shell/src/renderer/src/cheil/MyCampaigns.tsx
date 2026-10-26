@@ -152,7 +152,12 @@ const WORDS = {
       '상황·받는 사람·강도를 고르면 캠페인 이력을 바탕으로 초안을 씁니다(AI 한 번). 금액·날짜 같은 사실은 AI 에 보내지 않고 앱이 넣습니다.',
     draftSituation: '상황',
     draftAudience: '받는 사람',
-    draftStrength: '강도',
+    draftStrength: '발신자 태도',
+    strengthHints: {
+      soft: '공손하게: 정중히 부탁하고 양해를 구함, 날짜는 희망으로',
+      normal: '보통: 용건 먼저, 요청과 날짜를 분명히',
+      firm: '단호하게: 마감과 지연 시 영향, 회신 날짜를 못 박음(무례한 말은 안 씀)',
+    } satisfies Record<CheilMailStrength, string>,
     situations: {
       send: '자료 송부',
       reply: '회신',
@@ -162,7 +167,7 @@ const WORDS = {
       issue: '이슈 대응',
     } satisfies Record<CheilMailSituation, string>,
     audiences: { client: '광고주', internal: '내부' } satisfies Record<CheilMailAudience, string>,
-    strengths: { soft: '부드럽게', normal: '보통', firm: '단호하게' } satisfies Record<
+    strengths: { soft: '공손하게', normal: '보통', firm: '단호하게' } satisfies Record<
       CheilMailStrength,
       string
     >,
@@ -292,7 +297,12 @@ const WORDS = {
       'Pick the situation, the reader and the tone; a draft is written from the campaign’s history (one AI call). Facts such as amounts and dates are not sent to the AI; the app puts them in.',
     draftSituation: 'Situation',
     draftAudience: 'To',
-    draftStrength: 'Tone',
+    draftStrength: 'Sender’s stance',
+    strengthHints: {
+      soft: 'Polite: asks and apologises, dates as wishes',
+      normal: 'Normal: business first, clear asks and dates',
+      firm: 'Firm: deadlines, what a delay costs, a fixed reply date (never rude)',
+    },
     situations: {
       send: 'Sending material',
       reply: 'Reply',
@@ -302,7 +312,7 @@ const WORDS = {
       issue: 'Issue',
     },
     audiences: { client: 'Client', internal: 'Team' },
-    strengths: { soft: 'Soft', normal: 'Normal', firm: 'Firm' },
+    strengths: { soft: 'Polite', normal: 'Normal', firm: 'Firm' },
     draftRecipient: 'Recipient (e.g. Ms. Kim)',
     draftPoints: 'Points to include (optional)',
     draftWrite: 'Write a draft',
@@ -1180,6 +1190,9 @@ export function MailDraft({
         names={w.strengths}
         onChange={setStrength}
       />
+      <p className="cheil-set-desc cheil-mail-hint" data-testid="cheil-mail-strength-hint">
+        {w.strengthHints[strength]}
+      </p>
       {campaign ? null : (
         <input
           className="cheil-mail-input"

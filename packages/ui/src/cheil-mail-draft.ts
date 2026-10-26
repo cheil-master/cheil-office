@@ -76,9 +76,9 @@ const AUDIENCE_BRIEF: Record<CheilMailAudience, { name: string; brief: string }>
 
 const STRENGTH_BRIEF: Record<CheilMailStrength, { name: string; brief: string }> = {
   soft: {
-    name: '부드럽게',
+    name: '공손하게',
     brief:
-      '정중하고 완곡하게. 부탁과 양해의 말("가능하시다면", "번거로우시겠지만")을 쓰고, 날짜는 희망으로 적는다.',
+      '공손하고 완곡하게. 부탁과 양해의 말("가능하시다면", "번거로우시겠지만")을 쓰고, 날짜는 희망으로 적는다.',
   },
   normal: {
     name: '보통',

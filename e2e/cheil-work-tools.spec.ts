@@ -164,6 +164,13 @@ test('Cheil: the work tools run from the left nav without a campaign', async () 
 
     // mail draft without a campaign, then with one
     await nav.locator('[data-tool="mail"]').click()
+    // the sender's stance, three steps, each with what it means
+    const draft = page.getByTestId('cheil-mail-draft')
+    await expect(draft.getByRole('radiogroup', { name: '발신자 태도' })).toContainText(
+      '공손하게보통단호하게',
+    )
+    await draft.locator('input[data-choice="firm"]').check()
+    await expect(page.getByTestId('cheil-mail-strength-hint')).toContainText('회신 날짜를 못 박음')
     await page.getByTestId('cheil-mail-sender').fill('홍길동')
     await page.getByTestId('cheil-mail-recipient').fill('김가상 프로님')
     await page.getByTestId('cheil-mail-write').click()

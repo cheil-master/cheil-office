@@ -1,6 +1,21 @@
-# 인수인계 — Cheil 기획 오피스 (2026-10-25 기준)
+# 인수인계 — Cheil 기획 오피스 (2026-10-26 기준)
 
 다음 개발자(Codex 등)가 이 파일 하나로 이어받을 수 있게 정리했다. 바꾼 것의 상세 목록은 `CHEIL.md`, 원본 규칙은 `AGENTS.md`(= `CLAUDE.md`), 분석·시험 기록은 `../자료/Cheil기획오피스_분석과_변경_20261023.md`.
+
+## 0. 다른 PC·다른 계정에서 이어받기 (10-26)
+
+사용자는 10-26 이후 다른 PC, 다른 계정에서 이어서 작업한다. GitHub `main`(https://github.com/cheil-master/cheil-office)에 10-26 까지의 모든 작업이 들어 있다.
+
+1. 받기: `git clone https://github.com/cheil-master/cheil-office.git` → `cd cheil-office` → `npm install` (이 PC: Node v24.15.0, npm 11.12.1).
+2. 빌드: Rust 가 없으면 `npm run build:all`이 엑셀에서 멈춘다. 그때는 편집기마다 `npx electron-vite build`(apps/docs, apps/slides, apps/sheets …) 뒤 `apps/shell`도 빌드(6절). 엑셀 파일까지 열려면 Rust(rustup, MSVC) + VS Build Tools 를 깔고 `npm run native:build -w @genoffice/sheets`.
+3. 띄우기: `npx electron apps/shell`.
+4. **git 에 없는 것 — 새 PC 에서 다시 해야 함**
+   - AI 키: 설정 → AI 맨 위 '내 API 키로 연결'에 다시 넣는다(키는 앱 데이터 폴더의 `ai-settings.json`에만 있다).
+   - 앱 데이터: `%APPDATA%\CheilOffice-Dev`(개발판)·`%APPDATA%\CheilOffice`(설치본). 옵시디언 볼트 위치(`cheil-settings.json`)도 여기.
+   - 캠페인과 내 양식 파일: `문서\Cheil 캠페인`, `문서\Cheil 양식`. 옮기려면 폴더째 복사.
+   - 계획서 원본: 이 PC 바탕화면의 `Cheil 기획 오피스 — 공모전 수정 계획.docx`(8절 표에 내용이 요약되어 있다).
+   - 이 PC 의 Claude 기억(예: "모든 답을 한국어로")은 따라가지 않는다 → 2절을 읽는다.
+5. 이어서 할 일: 8절 맨 위 '재개 지점'.
 
 ## 1. 무엇을 만드는가
 
@@ -10,7 +25,7 @@
 
 ## 2. 사용자(요청하는 사람)
 
-- 기획 AE, AI TF. 비개발자. **한국어로 직설적으로.** 코드 설명보다 "뭐가 되고 뭐가 안 되는지".
+- 기획 AE, AI TF. 비개발자. **모든 답은 한국어로(10-26 요청), 직설적으로.** 코드 설명보다 "뭐가 되고 뭐가 안 되는지".
 - **지어내기를 매우 싫어한다.** 확인 못 한 건 "확인 필요". 시험을 안 돌렸으면 "됐다"고 하지 않는다.
 - 보고는 맨 위에 **된 것 · 안 된 것 · 사용자가 할 일 하나**, 자세한 건 파일로.
 - 기본값은 직접 정하고 진행하길 원한다(질문지 방식 싫어함). 다만 설치·약관 동의·밖으로 보내는 일은 먼저 묻는다.
@@ -166,7 +181,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 
 ## 8. 다음 할 일 — 공모전 수정 계획(2026-10-25)의 14가지, 이 순서로
 
-**재개 지점(10-26)**: 1~7번, 13번(①, ② PPT), 옵시디언 연계, 홈 왼쪽 메뉴의 업무 도구 6개(메일 초안·맞춤법·글자수·금액·부가세·날짜 계산·번역·PDF, `CHEIL.md` 5-9절) 끝남. 다음은 계획 순서대로 **8번(보내기 전 점검)** → 9 → 10, 그다음 11·12·14번. 13번 ②의 워드·엑셀 판은 만들지 않았다(`CHEIL.md` 5-7-2절). 그다음 8~10번, 11·12·14번. 갈래는 커밋 순서대로 `cheil/api-first-prompt` → `cheil/auto-record` → `cheil/propagate` → `cheil/campaign-folder` → `cheil/mail-draft` → `cheil/my-template`이 하나로 이어져 있고 아직 main 에 합치지도 GitHub 에 올리지도 않았다(사용자: "GitHub 은 나중에"). 사용 한도로 세션이 멈추면 사용자가 "재개"라고 하면 여기서 잇는다.
+**재개 지점(10-26 저녁, GitHub main 에 올림)**: 1~7번, 13번(①, ② PPT), 옵시디언 연계, 홈 왼쪽 메뉴의 업무 도구 6개(메일 초안·맞춤법·글자수·금액·부가세·날짜 계산·번역·PDF, `CHEIL.md` 5-9절), 메일 초안의 '발신자 태도' 3단계(공손하게·보통·단호하게) 끝남. 다음은 계획 순서대로 **8번(보내기 전 점검)** → 9 → 10, 그다음 11·12·14번. 13번 ②의 워드·엑셀 판은 만들지 않았다(`CHEIL.md` 5-7-2절). 그다음 8~10번, 11·12·14번. (아래는 10-26 오후까지의 기록) 갈래는 커밋 순서대로 `cheil/api-first-prompt` → `cheil/auto-record` → `cheil/propagate` → `cheil/campaign-folder` → `cheil/mail-draft` → `cheil/my-template`이 하나로 이어져 있고 아직 main 에 합치지도 GitHub 에 올리지도 않았다(사용자: "GitHub 은 나중에"). 사용 한도로 세션이 멈추면 사용자가 "재개"라고 하면 여기서 잇는다.
 
 계획서 원본은 사용자 바탕화면의 `Cheil 기획 오피스 — 공모전 수정 계획.docx`. 목표: 양식만 고르면 AI 가 채우고, 고치고, 점검하고, 메일까지 써 주는 기획 AE 작업대. 범용 AI 와는 '캠페인 단위로 일을 끝내는 능력'으로 겨룬다(캠페인 묶음, 원본 파일 제자리 수정, 발송 전 점검, 이력 기반 메일, PC 안 기밀 처리).
 
