@@ -166,7 +166,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 
 ## 8. 다음 할 일 — 공모전 수정 계획(2026-10-25)의 14가지, 이 순서로
 
-**재개 지점(10-26)**: 1~7번, 13번(①, ② PPT), 옵시디언 연계 끝남. 다음은 계획 순서대로 **8번(보내기 전 점검)** → 9 → 10, 그다음 11·12·14번. 13번 ②의 워드·엑셀 판은 만들지 않았다(`CHEIL.md` 5-7-2절). 그다음 8~10번, 11·12·14번. 갈래는 커밋 순서대로 `cheil/api-first-prompt` → `cheil/auto-record` → `cheil/propagate` → `cheil/campaign-folder` → `cheil/mail-draft` → `cheil/my-template`이 하나로 이어져 있고 아직 main 에 합치지도 GitHub 에 올리지도 않았다(사용자: "GitHub 은 나중에"). 사용 한도로 세션이 멈추면 사용자가 "재개"라고 하면 여기서 잇는다.
+**재개 지점(10-26)**: 1~7번, 13번(①, ② PPT), 옵시디언 연계, 홈 왼쪽 메뉴의 업무 도구 6개(메일 초안·맞춤법·글자수·금액·부가세·날짜 계산·번역·PDF, `CHEIL.md` 5-9절) 끝남. 다음은 계획 순서대로 **8번(보내기 전 점검)** → 9 → 10, 그다음 11·12·14번. 13번 ②의 워드·엑셀 판은 만들지 않았다(`CHEIL.md` 5-7-2절). 그다음 8~10번, 11·12·14번. 갈래는 커밋 순서대로 `cheil/api-first-prompt` → `cheil/auto-record` → `cheil/propagate` → `cheil/campaign-folder` → `cheil/mail-draft` → `cheil/my-template`이 하나로 이어져 있고 아직 main 에 합치지도 GitHub 에 올리지도 않았다(사용자: "GitHub 은 나중에"). 사용 한도로 세션이 멈추면 사용자가 "재개"라고 하면 여기서 잇는다.
 
 계획서 원본은 사용자 바탕화면의 `Cheil 기획 오피스 — 공모전 수정 계획.docx`. 목표: 양식만 고르면 AI 가 채우고, 고치고, 점검하고, 메일까지 써 주는 기획 AE 작업대. 범용 AI 와는 '캠페인 단위로 일을 끝내는 능력'으로 겨룬다(캠페인 묶음, 원본 파일 제자리 수정, 발송 전 점검, 이력 기반 메일, PC 안 기밀 처리).
 

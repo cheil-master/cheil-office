@@ -5,6 +5,7 @@ import { KbAskPanel } from './KbAskPanel'
 import { AgencyTemplates } from './cheil/AgencyTemplates'
 import { MyCampaigns } from './cheil/MyCampaigns'
 import { MyTemplates } from './cheil/MyTemplates'
+import { WorkToolView, WorkToolsNav, type WorkToolId } from './cheil/WorkTools'
 import { localEngineView } from './cheil/local-engine'
 import { useAiSettings } from './FreeAiCards'
 import iconDocx from './assets/file-docx.svg'
@@ -1073,6 +1074,8 @@ export function Home({
   const [askMode, setAskMode] = useState(false)
   // Google Drive (decision 0033) takes over the content area the same way
   const [driveMode, setDriveMode] = useState(false)
+  // Cheil fork: a work tool (mail draft, spelling, ...) takes over the content area too
+  const [toolMode, setToolMode] = useState<WorkToolId | null>(null)
   const driveState = useDriveState()
   const driveOffered = driveState !== null && driveState.state !== 'unavailable'
   const [filter, setFilter] = useState('all')
@@ -1545,6 +1548,7 @@ export function Home({
     setSelectedFolder(null)
     setAskMode(false)
     setDriveMode(false)
+    setToolMode(null)
     setSelected(new Set())
     setRowMenu(null)
     setGroupFilter(null)
@@ -2901,7 +2905,7 @@ export function Home({
           }
           return
         }
-      } else if (event.key === ' ' && !askMode && !driveMode) {
+      } else if (event.key === ' ' && !askMode && !driveMode && !toolMode) {
         const checkedPath = selectedFolder ? folderSelectedPaths[0] : selectedPaths[0]
         const candidate = hoveredFilePathRef.current ?? checkedPath ?? null
         if (candidate) {
@@ -3256,7 +3260,7 @@ export function Home({
         </div>
         <nav className="sidebar-nav">
           <button
-            className={`nav-item${view === 'recent' && !selectedFolder ? ' active' : ''}`}
+            className={`nav-item${view === 'recent' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
             onClick={() => changeView('recent')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -3272,7 +3276,7 @@ export function Home({
             <span className="nav-count">{navCounts.recent}</span>
           </button>
           <button
-            className={`nav-item${view === 'starred' && !selectedFolder ? ' active' : ''}`}
+            className={`nav-item${view === 'starred' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
             onClick={() => changeView('starred')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -3291,6 +3295,7 @@ export function Home({
             onClick={() => {
               setAskMode(true)
               setDriveMode(false)
+              setToolMode(null)
               setSelectedFolder(null)
               setSelected(new Set())
               setRowMenu(null)
@@ -3352,6 +3357,7 @@ export function Home({
               onClick={() => {
                 setDriveMode(true)
                 setAskMode(false)
+                setToolMode(null)
                 setSelectedFolder(null)
                 setSelected(new Set())
                 setRowMenu(null)
@@ -3362,6 +3368,18 @@ export function Home({
             </button>
           )}
         </nav>
+        {/* Cheil fork: tools office staff otherwise open other websites for */}
+        <WorkToolsNav
+          active={selectedFolder ? null : toolMode}
+          onPick={(tool) => {
+            setToolMode(tool)
+            setAskMode(false)
+            setDriveMode(false)
+            setSelectedFolder(null)
+            setSelected(new Set())
+            setRowMenu(null)
+          }}
+        />
         <div className="sidebar-divider" />
         {renderFolderPanel()}
         <AccountEntry
@@ -3373,6 +3391,8 @@ export function Home({
       </aside>
       {selectedFolder && rootOf(selectedFolder, roots)?.readable ? (
         renderFolderContent()
+      ) : toolMode ? (
+        <WorkToolView tool={toolMode} />
       ) : driveMode && driveOffered ? (
         <DrivePanel
           lang={lang}

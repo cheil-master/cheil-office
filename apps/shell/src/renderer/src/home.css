@@ -2733,6 +2733,110 @@ html[dir='rtl'] .quick-title-row {
   }
 }
 
+/* work tools: the left nav group and the tool pages */
+.cheil-tools-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.cheil-tools-nav-label {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cheil-tool > * {
+  max-width: 820px;
+}
+
+.cheil-tool-title {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cheil-tool-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cheil-tool-select,
+.cheil-tool-small,
+.cheil-tool input[type='date'] {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cheil-tool-small {
+  width: 72px;
+}
+
+.cheil-tool-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.cheil-tool-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--badge-bg);
+}
+
+.cheil-tool-metrics span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cheil-tool-metrics strong {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.cheil-tool-result {
+  margin: 6px 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.cheil-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.cheil-tool-list .btn {
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.cheil-tool-wrong {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.cheil-tool-kind {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* plan item 13: the campaigns in Obsidian */
 .cheil-obsidian {
   display: inline-flex;

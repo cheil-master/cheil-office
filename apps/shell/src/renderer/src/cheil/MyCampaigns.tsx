@@ -174,6 +174,8 @@ const WORDS = {
     draftCopy: '복사하고 기록',
     draftSubject: '제목',
     draftCopied: '복사했습니다. 타임라인에 남겼습니다.',
+    draftCopiedOnly: '복사했습니다.',
+    draftSender: '보내는 사람 (예: 홍길동 / 비즈니스13팀)',
     draftUnknown: (n: number) => `[확인 필요] ${n}곳 — 보내기 전에 채우세요.`,
     draftFailed: (why: string) => `초안을 쓰지 못했습니다${why ? `: ${why}` : '.'}`,
     draftBroken: 'AI 의 답을 초안으로 읽지 못했습니다. 다시 써 보세요.',
@@ -309,6 +311,8 @@ const WORDS = {
     draftCopy: 'Copy and record',
     draftSubject: 'Subject',
     draftCopied: 'Copied, and recorded in the timeline.',
+    draftCopiedOnly: 'Copied.',
+    draftSender: 'From (e.g. Gildong Hong / Team 13)',
     draftUnknown: (n: number) => `[확인 필요] in ${n} places — fill them before sending.`,
     draftFailed: (why: string) => `Could not write a draft${why ? `: ${why}` : '.'}`,
     draftBroken: 'The AI’s answer was not a draft. Try again.',
@@ -329,9 +333,10 @@ const WORDS = {
   },
 }
 
-type Words = (typeof WORDS)['ko']
+export type Words = (typeof WORDS)['ko']
 
-const words = (lang: Lang): Words => (lang === 'ko' ? WORDS.ko : (WORDS.en as unknown as Words))
+export const words = (lang: Lang): Words =>
+  lang === 'ko' ? WORDS.ko : (WORDS.en as unknown as Words)
 
 /** how often an open campaign view re-reads its timeline (editor tabs add lines) */
 const VIEW_REFRESH_MS = 3_000
@@ -1049,26 +1054,27 @@ function Choices<T extends string>({
  * out, and the app puts the values back. The person edits it, copies it, and
  * the timeline records that a draft was made.
  */
-function MailDraft({
+export function MailDraft({
   w,
   api,
-  id,
   campaign,
   onRecorded,
 }: {
   w: Words
   api: CheilCampaignApi
-  id: string
-  campaign: CampaignDetail
-  onRecorded: (campaign: CampaignDetail) => void
+  /** the campaign it is written from; null in the work tools without one */
+  campaign: CampaignDetail | null
+  onRecorded?: (campaign: CampaignDetail) => void
 }) {
-  const lastKind = campaign.timeline.at(-1)?.kind
+  const id = campaign?.id ?? null
+  const lastKind = campaign?.timeline.at(-1)?.kind
   const [situation, setSituation] = useState<CheilMailSituation>(() =>
     suggestCheilMailSituation(lastKind),
   )
   const [audience, setAudience] = useState<CheilMailAudience>('client')
   const [strength, setStrength] = useState<CheilMailStrength>('normal')
   const [recipient, setRecipient] = useState('')
+  const [sender, setSender] = useState('')
   const [points, setPoints] = useState('')
   const [writing, setWriting] = useState(false)
   const [draft, setDraft] = useState<CheilMailDraft | null>(null)
@@ -1078,8 +1084,8 @@ function MailDraft({
     if (writing) return
     setWriting(true)
     setMessage('')
-    const { card } = campaign
-    const docs = await api.documents(id).catch(() => null)
+    const docs = id ? await api.documents(id).catch(() => null) : null
+    const card = campaign?.card ?? EMPTY_CHEIL_CARD
     const facts: CheilMailFact[] = [
       { name: '캠페인명', label: '캠페인 이름', value: card.campaign },
       { name: '광고주', label: '광고주 회사', value: card.client },
@@ -1089,7 +1095,7 @@ function MailDraft({
       { name: '타깃', label: '타깃', value: card.target },
       { name: 'KPI', label: '목표 지표(KPI)', value: card.kpi },
       { name: '팀명', label: '보내는 팀', value: card.team },
-      { name: '작성자', label: '보내는 사람', value: card.author },
+      { name: '작성자', label: '보내는 사람', value: campaign ? card.author : sender },
       { name: '받는분', label: '받는 사람 호칭', value: recipient },
       { name: '오늘', label: '오늘 날짜', value: cheilToday() },
       {
@@ -1098,7 +1104,7 @@ function MailDraft({
         value: docs?.ok ? docs.names.join(', ') : '',
       },
     ]
-    const history = campaign.timeline
+    const history = (campaign?.timeline ?? [])
       .filter((e) => e.kind !== 'created')
       .map((e) => (e.due ? `${e.text} (마감 ${e.due})` : e.text))
     const prompt = buildCheilMailPrompt({ situation, audience, strength, facts, history, points })
@@ -1124,6 +1130,11 @@ function MailDraft({
     setMessage('')
     const copied = await copyText(draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body)
     if (!copied) return
+    // without a campaign there is no timeline to record in
+    if (!id) {
+      setMessage(w.draftCopiedOnly)
+      return
+    }
     const res = await api
       .mailDrafted(id, { situation, audience, strength, subject: draft.subject, body: draft.body })
       .catch(() => ({ ok: false as const, reason: 'failed' as const }))
@@ -1131,7 +1142,7 @@ function MailDraft({
       setMessage(w.fail[res.reason])
       return
     }
-    onRecorded(res.campaign)
+    onRecorded?.(res.campaign)
     setMessage(w.draftCopied)
   }
 
@@ -1169,6 +1180,16 @@ function MailDraft({
         names={w.strengths}
         onChange={setStrength}
       />
+      {campaign ? null : (
+        <input
+          className="cheil-mail-input"
+          value={sender}
+          placeholder={w.draftSender}
+          aria-label={w.draftSender}
+          data-testid="cheil-mail-sender"
+          onChange={(e) => setSender(e.target.value)}
+        />
+      )}
       <input
         className="cheil-mail-input"
         value={recipient}
@@ -1432,7 +1453,7 @@ function CampaignView({
         ) : null}
 
         {campaign ? (
-          <MailDraft w={w} api={api} id={id} campaign={campaign} onRecorded={setCampaign} />
+          <MailDraft w={w} api={api} campaign={campaign} onRecorded={setCampaign} />
         ) : null}
 
         {card ? (
