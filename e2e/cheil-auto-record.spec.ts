@@ -108,16 +108,16 @@ test('Cheil: the campaign timeline records fills and the to-dos confirmed from a
   const { app, page } = launched
   try {
     await page.setViewportSize({ width: 1280, height: 1000 }).catch(() => {})
-    // a brief from the campaign: the card fills its common blanks
+    // a Word document from the campaign: the card fills its common blanks
     await page.locator('[data-testid="cheil-campaign-card"]').first().click()
     const set = page.getByTestId('cheil-campaign-set')
     for (const box of await set.locator('input[type="checkbox"]').all()) {
-      const want = (await box.getAttribute('data-skill')) === 'cheil-brief'
+      const want = (await box.getAttribute('data-skill')) === 'cheil-pitch-analysis'
       if ((await box.isChecked()) !== want) await box.click()
     }
     await page.getByTestId('cheil-campaign-open-set').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
-    await expect(docs.getByText(/카드로 공통 칸 10개를 채웠습니다/)).toBeVisible({
+    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
 
@@ -131,11 +131,11 @@ test('Cheil: the campaign timeline records fills and the to-dos confirmed from a
     // back home: both fills are in the timeline without anyone writing them
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     const timeline = page.getByTestId('cheil-campaign-timeline')
-    await expect(timeline).toContainText('크리에이티브 브리프: 캠페인 카드로 공통 칸 10개를 채움', {
+    await expect(timeline).toContainText('경쟁 PT 분석: 캠페인 카드로 공통 칸 5개를 채움', {
       timeout: 15_000,
     })
     await expect(timeline).toContainText(
-      /크리에이티브 브리프: 빠른 채우기 — 양식 칸 \d+개 중 \d+개를 자료로 채움/,
+      /경쟁 PT 분석: 빠른 채우기 — 양식 칸 \d+개 중 \d+개를 자료로 채움/,
       { timeout: 15_000 },
     )
 

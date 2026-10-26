@@ -51,7 +51,8 @@ export interface CheilSheetPlan {
 
 /** columns and rows a template is read over */
 export const SHEET_SCAN_COLUMNS = 'ABCDEFGHIJKL'.split('')
-export const SHEET_SCAN_ROWS = 40
+// Cheil fork (10-26): 60 rows, for the media plan after the media brief (overview, plan, summary, creatives)
+export const SHEET_SCAN_ROWS = 60
 /** most rows one table takes (a table without a total row runs to this) */
 const TABLE_ROWS_MAX = 15
 /** a row whose first cell says this ends the input rows */

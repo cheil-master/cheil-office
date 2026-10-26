@@ -172,18 +172,35 @@ def _cover(prs, title, lines):
     return s
 
 
+def _page_title(slide, prs, text):
+    """본문 장의 제목: 구획 이름 아래 왼쪽 정렬(현업 장표처럼 제목이 한 줄 메시지)."""
+    t = _title(slide, text, 24)
+    t.left, t.top = Emu(457200), Emu(560000)
+    t.width, t.height = prs.slide_width - Emu(914400), Emu(800000)
+    for p in t.text_frame.paragraphs:
+        p.alignment = PP_ALIGN.LEFT
+    return t
+
+
 def _content(prs, kicker, title, lines):
     s = prs.slides.add_slide(prs.slide_layouts[1])
     _kicker(s, prs, kicker)
-    _title(s, title)
-    _bullets(s.placeholders[1], lines)
+    _page_title(s, prs, title)
+    body = s.placeholders[1]
+    body.left, body.top = Emu(457200), Emu(1650000)
+    body.width, body.height = prs.slide_width - Emu(914400), Emu(4500000)
+    _bullets(body, lines)
     return s
 
 
-def _table_slide(prs, kicker, title, header, rows, note=None):
+def _table_slide(prs, kicker, title, header, rows, note=None, lead=None):
     s = prs.slides.add_slide(prs.slide_layouts[5])
     _kicker(s, prs, kicker)
-    _title(s, title)
+    _page_title(s, prs, title)
+    if lead:
+        box = s.shapes.add_textbox(Emu(457200), Emu(1300000), prs.slide_width - Emu(914400), Emu(340000))
+        box.text_frame.text = lead
+        _style_runs(box.text_frame, 13, SUB)
     _table(s, prs, header, rows)
     if note:
         box = s.shapes.add_textbox(Emu(457200), prs.slide_height - Emu(800000), prs.slide_width - Emu(914400), Emu(400000))
@@ -246,38 +263,184 @@ def make_proposal(path):
     prs.save(path)
 
 
-def make_monthly(path):
+def _two_col(prs, kicker, title, left, right, size=15):
+    """왼쪽·오른쪽 두 묶음(작은 제목 + 줄들)."""
+    s = prs.slides.add_slide(prs.slide_layouts[5])
+    _kicker(s, prs, kicker)
+    _page_title(s, prs, title)
+    col_w = (prs.slide_width - Emu(914400) - Emu(300000)) // 2
+    for i, (head, lines) in enumerate((left, right)):
+        x = Emu(457200) + i * (col_w + Emu(300000))
+        hb = s.shapes.add_textbox(x, Emu(1650000), col_w, Emu(400000))
+        hb.text_frame.text = head
+        _style_runs(hb.text_frame, 15, ACCENT, True)
+        body = s.shapes.add_textbox(x, Emu(2100000), col_w, Emu(3900000))
+        body.text_frame.word_wrap = True
+        _bullets(body, lines, size)
+    return s
+
+
+def make_ot(path):
+    """캠페인 OT(크리에이티브 브리프). 킥오프·제작 OT 자료의 흐름:
+    지난 성과·현황 → 시장 → 과제·구조 → 타깃 → 메시지·RTB → 크리에이티브 가이드
+    → 소재 운영 → 산출물·일정·예산 → 레퍼런스 → 확인할 것·Next."""
     prs = _new_deck()
-    _cover(prs, f"{F['client']} {F['campaign']} [월] 성과 보고", [f"{F['date']}  ·  {F['team']}"])
-    _content(prs, "요약", "[이번 달 결론 한 문장]", [
-        "성과: [핵심 지표 달성 결과]",
-        "원인: [가장 큰 원인 하나]",
-        "다음 달: [제안 요약]",
+    _cover(prs, f"{F['campaign']} 캠페인 OT", [f"{F['client']}  ·  {F['brand']}", f"{F['date']}  ·  {F['team']}"])
+    _content(prs, "오늘 공유할 이야기", "오늘 공유할 이야기", [
+        "01  지난 캠페인 성과와 현황", "02  시장·경쟁 상황", "03  이번 캠페인 과제", "04  타깃",
+        "05  메시지와 RTB", "06  크리에이티브 가이드", "07  소재 운영 구조", "08  산출물·일정·예산",
+        "09  레퍼런스와 아이디어 단초", "10  확인할 것과 Next",
     ])
-    _table_slide(prs, "01  KPI 달성", "[KPI 결과 한 문장]",
-                 ["지표", "목표", "실적", "달성률", "전월 대비"],
-                 [[f"[지표 {i}]", f"[지표 {i} 목표]", f"[지표 {i} 실적]", f"[지표 {i} 달성률]", f"[지표 {i} 전월 대비]"] for i in (1, 2, 3)],
-                 note="달성률 = 실적 ÷ 목표. 숫자는 실적표에 있는 것만 씀")
-    _table_slide(prs, "02  매체별 성과", "[매체 성과 한 문장]",
-                 ["매체", "집행 금액(원)", "노출", "클릭", "CTR", "CPC(원)"],
-                 [[f"[매체 {i}]", f"[매체 {i} 집행 금액]", f"[매체 {i} 노출]", f"[매체 {i} 클릭]", f"[매체 {i} CTR]", f"[매체 {i} CPC]"] for i in (1, 2, 3)]
-                 + [["합계", "[집행 금액 합계]", "[노출 합계]", "[클릭 합계]", "[전체 CTR]", "[전체 CPC]"]])
-    _content(prs, "03  크리에이티브별 성과", "[잘된 소재와 이유 한 문장]", [
-        "[소재 1]: [소재 1의 지표와 해석]",
-        "[소재 2]: [소재 2의 지표와 해석]",
+    _content(prs, "01  지난 캠페인 성과와 현황", "[지난 캠페인을 한 문장으로: 무엇을 했고 무엇이 남았나]", [
+        "지난 목표: [지난 캠페인 목표]",
+        "진행 내용: [지난 캠페인에서 한 것 — 메시지·장치·매체]",
+        "성과: [지난 캠페인 성과 — 숫자는 출처와 함께]",
+        "남은 과제: [지난 캠페인에서 아쉬웠던 점]",
     ])
-    _content(prs, "04  원인 분석", "[결과를 만든 원인 한 문장]", [
-        "잘된 점: [잘된 점 — 사실과 근거 숫자]",
-        "아쉬운 점: [아쉬운 점 — 사실과 근거 숫자]",
-        "외부 요인: [시즌·경쟁·이슈, 출처]",
+    _table_slide(prs, "01  지난 캠페인 성과와 현황", "지난 캠페인 리뷰 → 이번에 가져갈 것",
+                 ["지난 캠페인에서", "이번 캠페인에서"],
+                 [[f"[리뷰 {i}]", f"[리뷰 {i}을 이번에 활용·보완하는 법]"] for i in (1, 2, 3)])
+    _content(prs, "02  시장·경쟁 상황", "[시장에서 보이는 결론 한 문장]", [
+        "시장 변화: [시장 변화] (출처: [시장 변화의 자료명·날짜])",
+        "경쟁사 동향: [경쟁사 동향] (출처: [경쟁사 동향의 자료명·날짜])",
+        "우리 상황: [우리 브랜드·제품의 지금 위치]",
+        "시사점: [그래서 이번 캠페인에 열려 있는 기회]",
     ])
-    _content(prs, "05  다음 달 제안", "[다음 달 방향 한 문장]", [
+    _two_col(prs, "03  이번 캠페인 과제", "[이번 캠페인 목표 한 문장]",
+             ("과제", [
+                 "사업 과제: [광고주가 풀려는 사업 문제]",
+                 "커뮤니케이션 과제: [광고가 바꿔야 할 인식·행동]",
+                 f"KPI: {F['kpi']}",
+             ]),
+             ("캠페인 구조", [
+                 "[구조 요소 1] + [구조 요소 2] + [구조 요소 3]",
+                 "구조 설명: [세 요소가 어떻게 하나의 캠페인이 되나]",
+                 "광고주 예시 컨셉: [광고주가 OT에서 준 예시 컨셉 문장]",
+             ]))
+    _two_col(prs, "04  타깃", "[타깃의 숨은 긴장을 한 문장으로]",
+             ("누구에게", [
+                 f"핵심 타깃: {F['target']}",
+                 "확장 타깃: [확장 타깃]",
+                 "지금의 생각·행동: [자료로 확인된 타깃의 생각·행동]",
+             ]),
+             ("인사이트", [
+                 "인사이트: [~하지만 ~하다 꼴의 한 문장]",
+                 "근거: [인사이트의 근거 자료]",
+             ]))
+    _content(prs, "05  메시지와 RTB", "[핵심 메시지: 타깃이 기억할 한 문장]", [
+        "핵심 메시지: [핵심 메시지 풀어쓰기 — 왜 이 말인가]",
+        "톤앤매너: [말투·분위기·피할 것]",
+        "필수 포함: [로고·고지 문구·법적 표기·필수 장면]",
+    ])
+    _table_slide(prs, "05  메시지와 RTB", "믿을 이유(RTB)",
+                 ["RTB", "근거가 되는 사실", "소비자 언어로"],
+                 [[f"[RTB {i}]", f"[RTB {i}의 근거 사실·출처]", f"[RTB {i}를 소비자 말로]"] for i in (1, 2, 3)],
+                 note="제품·서비스 사실만. 자료에 없으면 [확인 필요]")
+    _content(prs, "06  크리에이티브 가이드", "[크리에이티브가 꼭 지킬 원칙 한 문장]", [
+        "1. [가이드 1 — 무엇을 / 왜]",
+        "2. [가이드 2 — 무엇을 / 왜]",
+        "3. [가이드 3 — 무엇을 / 왜]",
+        "4. [가이드 4 — 무엇을 / 왜]",
+        "피할 것: [광고주가 원하지 않는 표현·포맷]",
+    ])
+    _table_slide(prs, "07  소재 운영 구조", "[통합 소재와 개별 소재의 관계 한 문장]",
+                 ["소재", "역할", "핵심 메시지", "초수·규격"],
+                 [["통합 소재", "[통합 소재의 역할]", "[통합 소재 메시지]", "[통합 소재 초수·규격]"]]
+                 + [[f"[개별 소재 {i}]", f"[개별 소재 {i}의 역할]", f"[개별 소재 {i} 메시지]", f"[개별 소재 {i} 초수·규격]"] for i in (1, 2, 3)])
+    _table_slide(prs, "08  산출물·일정·예산", "산출물과 일정",
+                 ["산출물", "규격·초수", "매체", "마감"],
+                 [[f"[산출물 {i}]", f"[산출물 {i} 규격·초수]", f"[산출물 {i} 매체]", f"[산출물 {i} 마감]"] for i in (1, 2, 3)]
+                 + [["주요 일정", "[아이디어 보고 날짜]", "[시사 날짜]", "[온에어 날짜]"]],
+                 note="자료에 없는 금액·날짜는 비워 두고 [확인 필요]로 표시",
+                 lead=f"캠페인 기간 {F['period']}  ·  예산 {F['budget']}")
+    _two_col(prs, "09  레퍼런스와 아이디어 단초", "[참고할 방향 한 문장]",
+             ("레퍼런스", [
+                 "[레퍼런스 1] — [레퍼런스 1에서 가져올 점]",
+                 "[레퍼런스 2] — [레퍼런스 2에서 가져올 점]",
+             ]),
+             ("아이디어 단초", [
+                 "[아이디어 단초 1]",
+                 "[아이디어 단초 2]",
+             ]))
+    _two_col(prs, "10  확인할 것과 Next", "확인할 것과 다음 단계",
+             ("확인할 것", [
+                 "[자료가 없어 비워 둔 항목과 누구에게 확인할지]",
+             ]),
+             ("Next", [
+                 "[Next 1 — 할 일 · 담당 · 날짜]",
+                 "[Next 2 — 할 일 · 담당 · 날짜]",
+             ]))
+    prs.save(path)
+
+
+def make_result(path):
+    """결과보고서. 캠페인 결과 리포트·매체 결과 리뷰의 흐름:
+    요약 → 개요 → 미디어 운영 방향 → 정량(KPI·매체별·검색·확산) → 정성 → 소재별
+    → 인사이트 → 다음 제안 → 출처."""
+    prs = _new_deck()
+    _cover(prs, f"{F['client']} {F['campaign']} 캠페인 결과 보고", [f"{F['date']}  ·  {F['team']}"])
+    _content(prs, "Summary", "[캠페인 결과를 한 문장으로]", [
+        "정량 성과: [가장 중요한 지표의 결과 — 목표 대비]",
+        "정성 성과: [가장 눈에 띈 반응]",
+        "잘된 이유: [성과를 만든 가장 큰 이유]",
+        "다음 캠페인: [제안 요약]",
+    ])
+    _two_col(prs, "01  캠페인 개요", "캠페인 개요",
+             ("캠페인", [
+                 f"브랜드·제품: {F['brand']}",
+                 "캠페인 목표: [캠페인 목표]",
+                 f"KPI: {F['kpi']}",
+                 "소재: [운영 소재 — 편 수·초수]",
+             ]),
+             ("매체 운영", [
+                 f"타깃: {F['target']}",
+                 f"기간: {F['period']}",
+                 f"총예산: {F['budget']}",
+                 "집행 매체: [집행 매체와 예산 비중]",
+             ]))
+    _table_slide(prs, "02  미디어 운영 방향", "[미디어 운영 방향 한 문장]",
+                 ["방향", "무엇을", "주요 매체"],
+                 [[f"[운영 방향 {i}]", f"[운영 방향 {i}의 내용]", f"[운영 방향 {i}의 매체]"] for i in (1, 2, 3)])
+    _table_slide(prs, "03  주요 성과: 정량", "[KPI 결과 한 문장]",
+                 ["지표", "목표", "결과", "달성률"],
+                 [[f"[지표 {i}]", f"[지표 {i} 목표]", f"[지표 {i} 결과]", f"[지표 {i} 달성률]"] for i in (1, 2, 3, 4)],
+                 note="달성률 = 결과 ÷ 목표. 숫자는 매체 리포트·실적표에 있는 것만")
+    _table_slide(prs, "03  주요 성과: 정량", "매체별 집행 결과",
+                 ["매체·상품", "집행비용(원)", "노출", "조회", "클릭", "CTR", "CPM(원)", "CPV(원)"],
+                 [[f"[매체 {i}]", f"[매체 {i} 집행비용]", f"[매체 {i} 노출]", f"[매체 {i} 조회]", f"[매체 {i} 클릭]",
+                   f"[매체 {i} CTR]", f"[매체 {i} CPM]", f"[매체 {i} CPV]"] for i in (1, 2, 3, 4)]
+                 + [["합계", "[집행비용 합계]", "[노출 합계]", "[조회 합계]", "[클릭 합계]", "[전체 CTR]", "[전체 CPM]", "[전체 CPV]"]],
+                 note="CTR = 클릭 ÷ 노출, CPM = 집행비용 ÷ 노출 × 1000, CPV = 집행비용 ÷ 조회")
+    _table_slide(prs, "03  주요 성과: 정량", "[검색량·인게이지먼트 변화 한 문장]",
+                 ["지표", "캠페인 전", "캠페인 중·후", "변화"],
+                 [[f"[반응 지표 {i}]", f"[반응 지표 {i} 캠페인 전]", f"[반응 지표 {i} 캠페인 후]", f"[반응 지표 {i} 변화]"] for i in (1, 2, 3)],
+                 note="검색량·버즈량·인게이지먼트·공유 등. 출처와 기간을 함께")
+    _content(prs, "04  주요 성과: 정성", "[소비자·시장 반응 한 문장]", [
+        "세일즈 연계: [판촉·구매와 연결된 결과]",
+        "기사 반응: [기사 반응 — 매체명·날짜]",
+        "소비자 반응: [댓글·후기에서 보인 반응 — 대표 문장]",
+        "기타 성과: [수상·순위·자발적 확산 등]",
+    ])
+    _table_slide(prs, "05  소재별 결과", "[가장 반응이 좋았던 소재와 이유]",
+                 ["소재", "핵심 메시지·장치", "주요 반응", "미디어 성과"],
+                 [[f"[소재 {i}]", f"[소재 {i} 메시지·장치]", f"[소재 {i} 주요 반응]", f"[소재 {i} 미디어 성과]"] for i in (1, 2, 3)])
+    _two_col(prs, "06  인사이트", "[이번 캠페인이 남긴 배움 한 문장]",
+             ("잘된 점", [
+                 "[잘된 점 1 — 사실과 근거 숫자]",
+                 "[잘된 점 2 — 사실과 근거 숫자]",
+             ]),
+             ("아쉬운 점·외부 요인", [
+                 "[아쉬운 점 — 사실과 근거 숫자]",
+                 "[외부 요인 — 시즌·경쟁·이슈, 출처]",
+             ]))
+    _content(prs, "07  다음 캠페인 제안", "[다음 캠페인 방향 한 문장]", [
         "제안 1: [제안 1 — 무엇을 / 왜 / 기대 효과]",
         "제안 2: [제안 2 — 무엇을 / 왜 / 기대 효과]",
         "제안 3: [제안 3 — 무엇을 / 왜 / 기대 효과]",
     ])
     _content(prs, "부록", "데이터 출처", [
-        "실적: [매체 리포트·파일명, 추출일]",
+        "매체 실적: [매체 리포트·파일명, 추출일]",
+        "검색·반응 데이터: [도구·기간]",
         "목표: [합의 문서·날짜]",
     ])
     prs.save(path)
@@ -357,52 +520,83 @@ def _section(doc, title, prompts):
         doc.add_paragraph(p, style="List Bullet")
 
 
-def make_brief(path):
-    doc = Document()
-    _doc_fonts(doc)
-    doc.add_paragraph("크리에이티브 브리프", style="Title")
-    _meta_table(doc, [
-        ("광고주", F["client"]), ("브랜드·제품", F["brand"]), ("캠페인명", F["campaign"]),
-        ("캠페인 기간", F["period"]), ("총예산", F["budget"]),
-        ("작성", f"{F['author']} · {F['team']}"), ("작성일 · 판", f"{F['date']} · [판 번호]"),
-    ])
-    _section(doc, "1. 과제", ["[이 광고로 해결할 문제 한 문장]", f"목표 KPI: {F['kpi']}"])
-    _section(doc, "2. 배경", ["[시장·브랜드 상황 2~3줄, 숫자는 출처와 함께]"])
-    _section(doc, "3. 타깃", [F["target"], "[타깃이 지금 가진 생각·행동]"])
-    _section(doc, "4. 인사이트", ["[타깃의 숨은 긴장 한 문장]"])
-    _section(doc, "5. 핵심 메시지", ["[타깃이 기억할 단 하나의 말]"])
-    _section(doc, "6. 믿을 이유", ["[제품·서비스 근거 1]", "[제품·서비스 근거 2]"])
-    _section(doc, "7. 톤앤매너", ["[말투·분위기·피할 것]"])
-    _section(doc, "8. 꼭 들어갈 것", ["[로고·고지 문구·법적 표기·필수 장면]"])
-    doc.add_heading("9. 산출물과 일정", level=1)
-    _grid(doc, ["산출물", "규격·길이", "매체", "마감"],
-          [[f"[산출물 {i}]", f"[산출물 {i} 규격·길이]", f"[산출물 {i} 매체]", f"[산출물 {i} 마감]"] for i in (1, 2)])
-    doc.add_heading("10. 확인할 것", level=1)
-    doc.add_paragraph("[자료가 없어 비워 둔 항목과 누구에게 확인할지]", style="List Bullet")
-    doc.save(path)
+def _box(doc, label, text):
+    """회색 칸 하나짜리 표(AE 의견·해석)."""
+    t = doc.add_table(rows=1, cols=1)
+    t.style = "Table Grid"
+    cell = t.cell(0, 0)
+    cell.text = ""
+    p = cell.paragraphs[0]
+    r = p.add_run(f"{label}) ")
+    r.bold = True
+    p.add_run(text)
+    _shade(cell, FILL)
+    doc.add_paragraph()
+    return t
 
 
-def make_meeting(path):
+def _quote(doc, text):
+    p = doc.add_paragraph()
+    r = p.add_run(text)
+    r.italic = True
+    r.font.color.rgb = DocxRGB.from_string(SUB)
+    return p
+
+
+def make_contact(path):
+    """컨택 리포트. 광고주 보고·시사·OT 뒤에 남기는 회의 기록:
+    머리표(회의명·일시·장소·참석자) → 요약 → 상세 피드백(광고주 발언·AE 의견) → NEXT."""
     doc = Document()
     _doc_fonts(doc)
-    doc.add_paragraph("광고주 회의록", style="Title")
-    _meta_table(doc, [
-        ("회의명", "[회의명]"), ("광고주 · 캠페인", f"{F['client']} · {F['campaign']}"),
-        ("일시 · 장소", "[회의 날짜 시간] · [장소/화상]"),
-        ("광고주 참석", "[광고주 참석자 이름(직함)]"), ("우리 참석", "[우리 참석자 이름(팀)]"),
-        ("작성", f"{F['author']} · {F['date']}"),
-    ])
-    _section(doc, "1. 안건", ["[안건 1]", "[안건 2]"])
-    _section(doc, "2. 논의 내용", ["[안건 1 논의 요지 — 누가 무엇을]", "[안건 2 논의 요지 — 누가 무엇을]"])
-    doc.add_heading("3. 결정 사항", level=1)
-    _grid(doc, ["번호", "결정 내용", "근거·조건"],
-          [[str(i), f"[결정 {i}]", f"[결정 {i}의 근거·조건]"] for i in (1, 2)])
-    doc.add_heading("4. 할 일", level=1)
-    _grid(doc, ["할 일", "담당", "기한", "상태"],
-          [[f"[할 일 {i}]", f"[할 일 {i} 담당]", f"[할 일 {i} 기한]", "예정"] for i in (1, 2)])
-    _section(doc, "5. 남은 쟁점", ["[결정되지 않은 것과 다음에 누가 정할지]"])
-    _section(doc, "6. 다음 회의", ["[다음 회의 날짜 · 안건]"])
-    doc.add_paragraph("배포: [배포 받는 사람]")
+    doc.add_paragraph("CONTACT REPORT", style="Title")
+    t = doc.add_table(rows=5, cols=4)
+    t.style = "Table Grid"
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    rows = [
+        ("Project명 / 회의명", "[회의명]", None, None),
+        ("광고주 · 캠페인", f"{F['client']} · {F['campaign']}", None, None),
+        ("Date", "[회의 날짜 · 시간]", "Place", "[회의 장소]"),
+        ("참석자 (광고주)", "[광고주 참석자 — 이름·직함]", None, None),
+        ("참석자 (우리)", f"{F['team']} — [우리 참석자 — 이름·직함]", None, None),
+    ]
+    for i, (k1, v1, k2, v2) in enumerate(rows):
+        cells = t.rows[i].cells
+        if k2 is None:
+            merged = cells[1].merge(cells[3])
+            merged.text = v1
+        else:
+            cells[1].text = v1
+            cells[2].text = k2
+            cells[3].text = v2
+            _shade(cells[2], FILL)
+            cells[2].paragraphs[0].runs[0].bold = True
+        cells[0].text = k1
+        _shade(cells[0], FILL)
+        cells[0].paragraphs[0].runs[0].bold = True
+    doc.add_paragraph(f"작성: {F['author']} · {F['date']}")
+
+    doc.add_heading("요약", level=1)
+    for line in ("[핵심 피드백 1 — 광고주가 가장 강조한 것]", "[핵심 피드백 2]",
+                 "[결정된 것 — 확정·선택된 안]", "[다시 해 올 것 — 수정·보강 요청]"):
+        doc.add_paragraph(line, style="List Bullet")
+
+    doc.add_heading("상세 피드백", level=1)
+    for i in (1, 2, 3):
+        doc.add_heading(f"{i}. [논의 주제 {i}]", level=2)
+        _quote(doc, f"“[주제 {i}에 대한 광고주 발언 그대로]”")
+        doc.add_paragraph(f"[주제 {i} 피드백 요지 — 무엇을 왜]", style="List Bullet")
+        doc.add_paragraph(f"[주제 {i} 요청 사항 — 무엇을 어떻게 바꿀지]", style="List Bullet")
+        if i == 1:
+            _box(doc, "AE 의견", "[광고주 발언을 어떻게 해석했는지, 제작팀에 전할 뜻]")
+
+    doc.add_heading("NEXT", level=1)
+    _grid(doc, ["주체", "할 일", "기한"],
+          [["우리", f"[우리 할 일 {i}]", f"[우리 할 일 {i} 기한]"] for i in (1, 2, 3)]
+          + [["광고주", f"[광고주 할 일 {i}]", f"[광고주 할 일 {i} 기한]"] for i in (1, 2)])
+    doc.add_paragraph()
+    doc.add_paragraph("남은 쟁점: [결정되지 않은 것과 누가 언제 정할지]")
+    end = doc.add_paragraph("- END -")
+    end.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.save(path)
 
 
@@ -435,6 +629,10 @@ def make_pitch(path):
 
 
 def make_media_plan(path):
+    """미디어 플랜. 미디어 브리프 양식의 흐름: 캠페인 개요 → 매체별 집행 계획
+    (계산식) → 매체 구분별 예산 요약 → 소재 운영 → 매체별 운영 메모.
+    빠른 채우기는 A1:L60 을 읽는다(packages/ui/src/cheil-sheet-fill.ts). 사람이 넣는
+    열은 A~L 안에 두고, 계산식 열은 그 오른쪽에 두어도 된다."""
     wb = Workbook()
     ws = wb.active
     ws.title = "미디어 플랜"
@@ -442,65 +640,139 @@ def make_media_plan(path):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     head_font = Font(name=FONT, bold=True, color="FFFFFF", size=10)
     body_font = Font(name=FONT, size=10)
+    label_font = Font(name=FONT, bold=True, size=10, color=INK)
+    sec_font = Font(name=FONT, bold=True, size=12, color=ACCENT)
     head_fill = PatternFill("solid", fgColor=ACCENT)
-    calc_fill = PatternFill("solid", fgColor=FILL)
+    label_fill = PatternFill("solid", fgColor=FILL)
+    calc_fill = PatternFill("solid", fgColor="F4F5F7")
+    wrap = Alignment(vertical="center", wrap_text=True)
+
+    widths = [12, 16, 20, 18, 11, 11, 14, 13, 12, 11, 11, 11, 9, 9, 22]
+    for c, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(c)].width = w
 
     ws["A1"] = f"{F['client']} {F['campaign']} 미디어 플랜"
     ws["A1"].font = Font(name=FONT, bold=True, size=14, color=INK)
     ws.row_dimensions[1].height = 26
-    ws["A2"] = f"작성 {F['date']} · {F['team']} · 캠페인 기간 {F['period']} · 총예산 {F['budget']}"
+    ws["A2"] = f"작성 {F['date']} · {F['team']} · 숫자는 매체 견적·합의 자료 기준(출처는 '가정·출처' 시트)"
     ws["A2"].font = Font(name=FONT, size=9, color=SUB)
-    ws["A3"] = "숫자는 매체 견적·합의 자료 기준(출처는 '가정·출처' 시트)"
-    ws["A3"].font = Font(name=FONT, size=9, color=SUB)
 
-    header = ["매체", "상품·지면", "시작일", "종료일", "예산(원)", "예상 노출", "예상 클릭",
-              "CPM(원)", "CPC(원)", "CTR", "예산 비중", "비고"]
-    widths = [14, 22, 12, 12, 14, 14, 12, 11, 11, 9, 10, 24]
-    hr = 4
-    for c, (h, w) in enumerate(zip(header, widths), start=1):
+    def section(row, text):
+        ws.cell(row=row, column=1, value=text).font = sec_font
+
+    def pair(row, label, value, col=1, span=6):
+        k = ws.cell(row=row, column=col, value=label)
+        k.font, k.fill, k.border, k.alignment = label_font, label_fill, border, wrap
+        v = ws.cell(row=row, column=col + 1, value=value)
+        v.font, v.border, v.alignment = body_font, border, wrap
+        ws.merge_cells(start_row=row, start_column=col + 1, end_row=row, end_column=col + span)
+        for c in range(col + 2, col + span + 1):
+            ws.cell(row=row, column=c).border = border
+
+    # 1. 캠페인 개요 (미디어 브리프의 '통합' 칸)
+    section(4, "1. 캠페인 개요")
+    pair(5, "브랜드·제품", F["brand"], 1, 4)
+    pair(5, "캠페인명", F["campaign"], 7, 5)
+    pair(6, "배경 및 목적", "[배경 및 목적 — 이번 미디어 집행으로 이루려는 것]", 1, 10)
+    pair(7, "Comm. 타깃", F["target"], 1, 4)
+    pair(7, "캠페인 기간", F["period"], 7, 5)
+    pair(8, "캠페인 목표", "[캠페인 목표 — 도달·조회·유입·전환 중 무엇, 비중]", 1, 4)
+    pair(8, "캠페인 예산", F["budget"], 7, 5)
+    pair(9, "집행 매체", "[집행 매체 — 지상파·케이블·디지털·CTV·OOH·기타 중]", 1, 10)
+    pair(10, "운영 소재", "[운영 소재 — 편 수·초수·형태(가로·세로·이미지)]", 1, 10)
+    for r in range(5, 11):
+        ws.row_dimensions[r].height = 30
+
+    # 2. 매체별 집행 계획 (사람·AI 가 넣는 열: A~J, 계산식: K~N)
+    section(12, "2. 매체별 집행 계획")
+    header = ["구분", "매체", "상품·지면", "타깃팅", "시작일", "종료일", "예산(원)",
+              "예상 노출", "예상 조회", "예상 클릭", "CPM(원)", "CPV(원)", "CTR", "예산 비중", "비고"]
+    hr = 13
+    for c, h in enumerate(header, start=1):
         cell = ws.cell(row=hr, column=c, value=h)
         cell.font, cell.fill, cell.border = head_font, head_fill, border
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        ws.column_dimensions[get_column_letter(c)].width = w
-
-    first, last = hr + 1, hr + 10
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    first, last = hr + 1, hr + 12
     total = last + 1
     for r in range(first, last + 1):
         for c in range(1, len(header) + 1):
             cell = ws.cell(row=r, column=c)
             cell.font, cell.border = body_font, border
-        ws.cell(row=r, column=3).number_format = "yyyy-mm-dd"
-        ws.cell(row=r, column=4).number_format = "yyyy-mm-dd"
-        for c in (5, 6, 7):
+        ws.cell(row=r, column=5).number_format = "yyyy-mm-dd"
+        ws.cell(row=r, column=6).number_format = "yyyy-mm-dd"
+        for c in (7, 8, 9, 10):
             ws.cell(row=r, column=c).number_format = "#,##0"
-        ws.cell(row=r, column=8, value=f'=IF(OR(E{r}="",F{r}="",F{r}=0),"",E{r}/F{r}*1000)')
-        ws.cell(row=r, column=9, value=f'=IF(OR(E{r}="",G{r}="",G{r}=0),"",E{r}/G{r})')
-        ws.cell(row=r, column=10, value=f'=IF(OR(F{r}="",G{r}="",F{r}=0),"",G{r}/F{r})')
-        ws.cell(row=r, column=11, value=f'=IF(OR(E{r}="",$E${total}=0),"",E{r}/$E${total})')
-        for c in (8, 9, 10, 11):
+        ws.cell(row=r, column=11, value=f'=IF(OR(G{r}="",H{r}="",H{r}=0),"",G{r}/H{r}*1000)')
+        ws.cell(row=r, column=12, value=f'=IF(OR(G{r}="",I{r}="",I{r}=0),"",G{r}/I{r})')
+        ws.cell(row=r, column=13, value=f'=IF(OR(H{r}="",J{r}="",H{r}=0),"",J{r}/H{r})')
+        ws.cell(row=r, column=14, value=f'=IF(OR(G{r}="",$G${total}=0),"",G{r}/$G${total})')
+        for c in (11, 12, 13, 14):
             ws.cell(row=r, column=c).fill = calc_fill
-        ws.cell(row=r, column=8).number_format = "#,##0"
-        ws.cell(row=r, column=9).number_format = "#,##0"
-        ws.cell(row=r, column=10).number_format = "0.00%"
-        ws.cell(row=r, column=11).number_format = "0.0%"
-    ws.cell(row=first, column=1, value="[매체]")
-    ws.cell(row=first, column=2, value="[상품·지면]")
-
+        ws.cell(row=r, column=11).number_format = "#,##0"
+        ws.cell(row=r, column=12).number_format = "#,##0"
+        ws.cell(row=r, column=13).number_format = "0.00%"
+        ws.cell(row=r, column=14).number_format = "0.0%"
     ws.cell(row=total, column=1, value="합계")
-    for c in (5, 6, 7):
+    for c in (7, 8, 9, 10):
         L = get_column_letter(c)
         ws.cell(row=total, column=c, value=f"=SUM({L}{first}:{L}{last})").number_format = "#,##0"
-    ws.cell(row=total, column=8, value=f'=IF(F{total}=0,"",E{total}/F{total}*1000)').number_format = "#,##0"
-    ws.cell(row=total, column=9, value=f'=IF(G{total}=0,"",E{total}/G{total})').number_format = "#,##0"
-    ws.cell(row=total, column=10, value=f'=IF(F{total}=0,"",G{total}/F{total})').number_format = "0.00%"
-    ws.cell(row=total, column=11, value=f'=IF(E{total}=0,"",1)').number_format = "0.0%"
+    ws.cell(row=total, column=11, value=f'=IF(H{total}=0,"",G{total}/H{total}*1000)').number_format = "#,##0"
+    ws.cell(row=total, column=12, value=f'=IF(I{total}=0,"",G{total}/I{total})').number_format = "#,##0"
+    ws.cell(row=total, column=13, value=f'=IF(H{total}=0,"",J{total}/H{total})').number_format = "0.00%"
+    ws.cell(row=total, column=14, value=f'=IF(G{total}=0,"",1)').number_format = "0.0%"
     for c in range(1, len(header) + 1):
         cell = ws.cell(row=total, column=c)
-        cell.font = Font(name=FONT, bold=True, size=10)
-        cell.border = border
-        cell.fill = calc_fill
-    ws.freeze_panes = ws.cell(row=hr + 1, column=3)
-    ws.cell(row=total + 2, column=1, value="회색 칸은 계산식. 예산·노출·클릭만 넣는다.").font = Font(name=FONT, size=9, color=SUB)
+        cell.font, cell.border, cell.fill = Font(name=FONT, bold=True, size=10), border, calc_fill
+    ws.cell(row=total + 1, column=1,
+            value="구분은 지상파·케이블·디지털·CTV·OOH·기타 중 하나로. 회색 칸은 계산식, 예산·노출·조회·클릭만 넣는다.").font = Font(name=FONT, size=9, color=SUB)
+
+    # 3. 매체 구분별 예산 요약 (계산식만)
+    section(29, "3. 매체 구분별 예산 요약")
+    sr = 30
+    for c, h in enumerate(["매체 구분", "예산(원)", "비중"], start=1):
+        cell = ws.cell(row=sr, column=c, value=h)
+        cell.font, cell.fill, cell.border = head_font, head_fill, border
+        cell.alignment = Alignment(horizontal="center")
+    kinds = ["지상파", "케이블", "디지털", "CTV", "OOH", "기타"]
+    for i, k in enumerate(kinds, start=sr + 1):
+        ws.cell(row=i, column=1, value=k)
+        ws.cell(row=i, column=2, value=f'=SUMIF($A${first}:$A${last},A{i},$G${first}:$G${last})').number_format = "#,##0"
+        ws.cell(row=i, column=3, value=f'=IF($G${total}=0,"",B{i}/$G${total})').number_format = "0.0%"
+        for c in (1, 2, 3):
+            ws.cell(row=i, column=c).font = body_font
+            ws.cell(row=i, column=c).border = border
+        for c in (2, 3):
+            ws.cell(row=i, column=c).fill = calc_fill
+    sum_row = sr + len(kinds) + 1
+    ws.cell(row=sum_row, column=1, value="합계")
+    ws.cell(row=sum_row, column=2, value=f"=SUM(B{sr + 1}:B{sum_row - 1})").number_format = "#,##0"
+    ws.cell(row=sum_row, column=3,
+            value=f'=IF(B{sum_row}=$G${total},"집행 계획 합계와 같음","구분을 확인하세요")')
+    for c in (1, 2, 3):
+        cell = ws.cell(row=sum_row, column=c)
+        cell.font, cell.border, cell.fill = Font(name=FONT, bold=True, size=10), border, calc_fill
+
+    # 4. 소재 운영
+    section(40, "4. 소재 운영")
+    mr = 41
+    for c, h in enumerate(["소재", "유형", "초수·규격", "운영 비중", "소재 특성·키 메시지"], start=1):
+        cell = ws.cell(row=mr, column=c, value=h)
+        cell.font, cell.fill, cell.border = head_font, head_fill, border
+        cell.alignment = Alignment(horizontal="center")
+    for r in range(mr + 1, mr + 7):
+        for c in range(1, 6):
+            ws.cell(row=r, column=c).border = border
+            ws.cell(row=r, column=c).font = body_font
+
+    # 5. 매체별 운영 메모 (미디어 브리프의 매체별 요청 칸)
+    section(49, "5. 매체별 운영 메모")
+    pair(50, "TV", "[TV 운영 메모 — 지상파·케이블 비중, 선호 채널·프로그램]", 1, 10)
+    pair(51, "디지털", "[디지털 운영 메모 — 필수 매체, 타깃팅 기준]", 1, 10)
+    pair(52, "CTV·OOH", "[CTV·OOH 운영 메모 — 선호 매체·지역]", 1, 10)
+    pair(53, "특이 사항", "[운영 특이 사항 — 제외 매체·광고주 요청]", 1, 10)
+    for r in range(50, 54):
+        ws.row_dimensions[r].height = 30
+    ws.freeze_panes = "A4"
 
     src = wb.create_sheet("가정·출처")
     src["A1"] = "가정·출처"
@@ -509,19 +781,21 @@ def make_media_plan(path):
         cell = src.cell(row=3, column=c, value=h)
         cell.font, cell.fill, cell.border = head_font, head_fill, border
         src.column_dimensions[get_column_letter(c)].width = w
-    for r in range(4, 10):
+    for r in range(4, 12):
         for c in range(1, 4):
             src.cell(row=r, column=c).border = border
             src.cell(row=r, column=c).font = body_font
-    src.cell(row=4, column=1, value="[예: 매체 견적]")
     wb.save(path)
 
 
+# 캠페인 OT·결과보고서·미디어 플랜·컨택 리포트는 현업 문서(킥오프·제작 OT, 결과
+# 리포트·매체 결과 리뷰, 미디어 브리프, 컨택 리포트)의 구성을 따랐다(2026-10-26).
+# 스킬 이름(cheil-brief 등)은 그대로 두고 양식 파일만 바꾼다.
 TEMPLATES = {
     "cheil-proposal": ("캠페인 제안서.pptx", make_proposal),
-    "cheil-monthly-report": ("월간 성과 보고서.pptx", make_monthly),
-    "cheil-brief": ("크리에이티브 브리프.docx", make_brief),
-    "cheil-meeting-notes": ("광고주 회의록.docx", make_meeting),
+    "cheil-monthly-report": ("결과보고서.pptx", make_result),
+    "cheil-brief": ("캠페인 OT.pptx", make_ot),
+    "cheil-meeting-notes": ("컨택 리포트.docx", make_contact),
     "cheil-pitch-analysis": ("경쟁 PT 분석.docx", make_pitch),
     "cheil-media-plan": ("미디어 플랜.xlsx", make_media_plan),
 }

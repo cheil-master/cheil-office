@@ -76,11 +76,11 @@ async function docTexts(app: ElectronApplication): Promise<string[]> {
   })
 }
 
-test('Cheil: a saved brief becomes my template, and a campaign set fills it again', async () => {
+test('Cheil: a saved contact report becomes my template, and a campaign set fills it again', async () => {
   // two runs of the app
   test.setTimeout(240_000)
   const userDataDir = await profileWithCampaign()
-  const brief = join(userDataDir, 'Cheil 캠페인', FOLDER, '크리에이티브 브리프.docx')
+  const brief = join(userDataDir, 'Cheil 캠페인', FOLDER, '컨택 리포트.docx')
 
   // run 1: a brief filled from the campaign, saved in place
   const first = await launchShell({
@@ -91,9 +91,9 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
   })
   try {
     await first.page.locator('[data-testid="cheil-campaign-card"]').first().click()
-    await chooseSet(first.page, ['cheil-brief'])
+    await chooseSet(first.page, ['cheil-meeting-notes'])
     const docs = await waitForPageWithUrl(first.app, '://docs/', 60_000)
-    await expect(docs.getByText(/카드로 공통 칸 10개를 채웠습니다/)).toBeVisible({
+    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
     const before = (await stat(brief)).mtimeMs
@@ -133,18 +133,18 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
     await page.getByTestId('cheil-my-template-add').click()
     const review = page.getByTestId('cheil-my-template-review')
     await expect(review).toBeVisible({ timeout: 20_000 })
-    for (const value of ['가상전자', '에어린 봄 런칭', '500,000,000원', '브랜드 인지도 30%']) {
+    for (const value of ['가상전자', '에어린 봄 런칭', '홍길동']) {
       await expect(review).toContainText(value)
     }
     // a blank of the person's own (not a common field: no card fills it)
-    await page.getByTestId('cheil-my-template-extra-find').fill('25~34세 1인 가구 직장인')
+    await page.getByTestId('cheil-my-template-extra-find').fill('CONTACT REPORT')
     await page.getByTestId('cheil-my-template-extra-blank').fill('타깃 한 줄 정리')
     await page.getByTestId('cheil-my-template-extra-add').click()
     await page.screenshot({ path: screenshotPath('cheil-my-template-review') })
     await page.getByTestId('cheil-my-template-make').click()
 
     // the copy in "Cheil 양식" opens with the values turned into blanks
-    const copy = join(userDataDir, 'Cheil 양식', '크리에이티브 브리프.docx')
+    const copy = join(userDataDir, 'Cheil 양식', '컨택 리포트.docx')
     expect(existsSync(copy)).toBe(true)
     await expect
       .poll(async () => (await docTexts(app)).find((t) => t.includes('[광고주]')) ?? '', {
@@ -153,13 +153,13 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
       .toContain('[캠페인명]')
     const template = (await docTexts(app)).find((t) => t.includes('[광고주]'))!
     expect(template).not.toContain('가상전자')
-    expect(template).not.toContain('500,000,000원')
+    expect(template).not.toContain('에어린 봄 런칭')
     expect(template).toContain('[타깃 한 줄 정리]')
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     await expect(page.getByTestId('cheil-my-template-status')).toContainText(
       /곳을 \[칸\]으로 바꿨습니다/,
     )
-    await expect(row.getByTestId('cheil-my-template-card')).toContainText('크리에이티브 브리프')
+    await expect(row.getByTestId('cheil-my-template-card')).toContainText('컨택 리포트')
 
     // the template is saved in place, then a campaign's set opens it with the card in its blanks
     const savedBefore = (await stat(copy)).mtimeMs
@@ -172,7 +172,7 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
       .poll(async () => (await stat(copy)).mtimeMs, { timeout: 15_000 })
       .toBeGreaterThan(savedBefore)
     await page.locator('[data-testid="cheil-campaign-card"]').first().click()
-    await chooseSet(page, ['mine:크리에이티브 브리프.docx'])
+    await chooseSet(page, ['mine:컨택 리포트.docx'])
     // the card fills the common blanks; the person's own blank waits for the quick fill
     await expect
       .poll(
@@ -180,7 +180,7 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
           (await docTexts(app)).some(
             (t) =>
               t.includes('가상전자') &&
-              t.includes('25~34세 1인 가구 직장인') === false &&
+              t.includes('CONTACT REPORT') === false &&
               t.includes('[타깃 한 줄 정리]') &&
               !t.includes('[광고주]'),
           ),
@@ -190,15 +190,15 @@ test('Cheil: a saved brief becomes my template, and a campaign set fills it agai
     await page.screenshot({ path: screenshotPath('cheil-my-template-set') })
 
     // Obsidian: the report as a note, and the campaign's notes after the set
-    const source = join(vault, 'Cheil', '내 양식', '크리에이티브 브리프.md')
-    expect(readFileSync(source, 'utf8')).toContain('| 광고주 | 가상전자 |')
+    const source = join(vault, 'Cheil', '내 양식', '컨택 리포트.md')
+    expect(readFileSync(source, 'utf8')).toContain('가상전자 · 에어린 봄 런칭')
     const campaignNote = join(vault, 'Cheil', FOLDER, `${FOLDER}.md`)
     await expect.poll(() => existsSync(campaignNote), { timeout: 15_000 }).toBe(true)
     const note = readFileSync(campaignNote, 'utf8')
     expect(note).toContain('# 가상전자 · 에어린 봄 런칭')
     expect(note).toContain('문서 세트를 캠페인 폴더에 만들어 엽니다')
-    expect(note).toContain(`[[Cheil/${FOLDER}/문서/크리에이티브 브리프|크리에이티브 브리프]]`)
-    expect(existsSync(join(vault, 'Cheil', FOLDER, '문서', '크리에이티브 브리프.md'))).toBe(true)
+    expect(note).toContain(`[[Cheil/${FOLDER}/문서/컨택 리포트|컨택 리포트]]`)
+    expect(existsSync(join(vault, 'Cheil', FOLDER, '문서', '컨택 리포트.md'))).toBe(true)
     await expect(page.getByTestId('cheil-obsidian')).toContainText('옵시디언: vault')
   } finally {
     await closeAndSaveVideo(launched, 'cheil-my-template-2')

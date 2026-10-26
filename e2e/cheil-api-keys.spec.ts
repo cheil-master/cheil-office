@@ -191,12 +191,12 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
   })
   const { app, page } = launched
   try {
-    await page.getByTestId('cheil-template-cheil-brief').click()
+    await page.getByTestId('cheil-template-cheil-pitch-analysis').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const composer = docs.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/브리프를 채워 줘/, { timeout: 60_000 })
+    await expect(composer).toHaveValue(/분석 양식을 채워 줘/, { timeout: 60_000 })
     await composer.fill(
-      '아래 OT 메모로 이 브리프를 채워 줘.\n가상전자 에어린 공기청정기 봄 캠페인 OT 메모',
+      '아래 RFP 메모로 이 분석 양식을 채워 줘.\n가상전자 에어린 공기청정기 봄 캠페인 RFP 메모',
     )
     await composer.press('Enter')
     await expect(docs.getByText(/양식 칸 \d+개 중 \d+개를 자료로 채웠습니다/)).toBeVisible({
@@ -216,7 +216,7 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
     // every blank written, the open one marked for a person
     expect(docText).toContain('가상전자')
     expect(docText).toContain('API 채움 S')
-    expect(docText).not.toMatch(/\[(광고주|캠페인명|타깃|작성일)\]/)
+    expect(docText).not.toMatch(/\[(광고주|작성자|작성일)\]/)
     expect(await docs.evaluate(() => document.body.innerText)).toContain(
       '[확인 필요]로 둔 칸 1개: [총예산]',
     )
@@ -235,7 +235,7 @@ test("Cheil: an editor's AI panel with nothing connected leads with adding an AP
   const { app, page } = launched
   try {
     await page.setViewportSize({ width: 1280, height: 900 }).catch(() => {})
-    await page.getByTestId('cheil-template-cheil-brief').click()
+    await page.getByTestId('cheil-template-cheil-meeting-notes').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const lead = docs.locator('[data-cheil="api-key"]')
     await expect(lead).toBeVisible({ timeout: 60_000 })

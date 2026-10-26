@@ -1815,7 +1815,7 @@ export function App({
       })
   }
 
-  /** Cheil fork: the cells the template fills read (A1:L40 of every sheet), loaded first */
+  /** Cheil fork: the cells the template fills read (A1:L60 of every sheet), loaded first */
   async function readCheilSheets(): Promise<SheetSnapshot[]> {
     const scan = parseRange(`A1:${SHEET_SCAN_COLUMNS.at(-1)}${SHEET_SCAN_ROWS}`)
     const addresses = sheetScanAddresses()
@@ -1862,6 +1862,13 @@ export function App({
         })),
         getLang() === 'ko' ? '캠페인 카드로 채우기' : 'Campaign card fill',
       )
+      // Cheil fork (10-26): cells read before the workbook finished streaming
+      // in refuse the write ("still streaming in"); nothing was applied, so
+      // try again shortly, as for a workbook still loading
+      if (!outcome.ok && tries < CHEIL_CARD_FILL_TRIES) {
+        window.setTimeout(() => void fillFromCampaignCard(card, tries + 1), 250)
+        return
+      }
       if (!outcome.ok) done = 0
     }
     appendChat({

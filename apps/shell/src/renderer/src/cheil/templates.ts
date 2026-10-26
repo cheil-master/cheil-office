@@ -32,28 +32,29 @@ export const AGENCY_TEMPLATES: readonly AgencyTemplate[] = [
     skill: 'cheil-monthly-report',
     ext: 'pptx',
     ko: {
-      title: '월간 성과 보고서',
-      sub: '실적표 → 8장',
-      request: '첨부한 실적표로 이 보고서 양식을 채워 줘. 보고 월: ',
+      title: '결과보고서',
+      sub: '매체 리포트·실적 → 12장',
+      request: '첨부한 매체 리포트와 실적 자료로 이 결과보고서를 채워 줘.',
     },
     en: {
-      title: 'Monthly performance report',
-      sub: 'Results sheet → 8 slides',
-      request: 'Fill this report template from the attached results. Month: ',
+      title: 'Campaign result report',
+      sub: 'Media reports and results → 12 slides',
+      request: 'Fill this result report from the attached media reports and results.',
     },
   },
   {
+    // Cheil fork (10-26): the brief became the campaign OT deck, after the agency's kickoff decks
     skill: 'cheil-brief',
-    ext: 'docx',
+    ext: 'pptx',
     ko: {
-      title: '크리에이티브 브리프',
-      sub: 'OT 자료 → 제작 지시서',
-      request: '첨부한 OT 자료와 회의 메모로 이 브리프를 채워 줘.',
+      title: '캠페인 OT',
+      sub: '광고주 OT·브리프 → 14장',
+      request: '첨부한 광고주 OT·브리프 자료와 회의 메모로 이 캠페인 OT 를 채워 줘.',
     },
     en: {
-      title: 'Creative brief',
-      sub: 'Orientation notes → brief',
-      request: 'Fill this brief from the attached orientation material and notes.',
+      title: 'Campaign OT',
+      sub: 'Client orientation and brief → 14 slides',
+      request: 'Fill this campaign OT from the attached client orientation, brief and notes.',
     },
   },
   {
@@ -61,27 +62,27 @@ export const AGENCY_TEMPLATES: readonly AgencyTemplate[] = [
     ext: 'xlsx',
     ko: {
       title: '미디어 플랜',
-      sub: '매체 견적 → 예산·CPM·CTR',
-      request: '첨부한 매체 견적으로 이 미디어 플랜을 채워 줘.',
+      sub: '미디어 브리프·견적 → 매체 믹스·예산',
+      request: '첨부한 미디어 브리프와 매체 견적으로 이 미디어 플랜을 채워 줘.',
     },
     en: {
       title: 'Media plan',
-      sub: 'Media quotes → budget, CPM, CTR',
-      request: 'Fill this media plan from the attached media quotes.',
+      sub: 'Media brief and quotes → mix and budget',
+      request: 'Fill this media plan from the attached media brief and quotes.',
     },
   },
   {
     skill: 'cheil-meeting-notes',
     ext: 'docx',
     ko: {
-      title: '광고주 회의록',
-      sub: '메모 → 결정·할 일',
-      request: '아래 회의 메모로 이 회의록을 채워 줘.\n',
+      title: '컨택 리포트',
+      sub: '회의 메모 → 피드백·Next',
+      request: '아래 회의 메모로 이 컨택 리포트를 채워 줘.\n',
     },
     en: {
-      title: 'Client meeting notes',
-      sub: 'Notes → decisions and actions',
-      request: 'Fill these minutes from the meeting notes below.\n',
+      title: 'Contact report',
+      sub: 'Meeting notes → feedback and next steps',
+      request: 'Fill this contact report from the meeting notes below.\n',
     },
   },
   {
@@ -100,7 +101,7 @@ export const AGENCY_TEMPLATES: readonly AgencyTemplate[] = [
   },
 ]
 
-/** the set a campaign opens by default (plan item 4: brief, proposal, media plan) */
+/** the set a campaign opens by default (plan item 4: campaign OT, proposal, media plan) */
 export const DEFAULT_SET: ReadonlySet<string> = new Set([
   'cheil-brief',
   'cheil-proposal',

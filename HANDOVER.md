@@ -181,7 +181,7 @@ $env:CHEIL_PACKAGED='1'; npx playwright test --config e2e/playwright.config.ts e
 
 ## 8. 다음 할 일 — 공모전 수정 계획(2026-10-25)의 14가지, 이 순서로
 
-**10-26 밤, 첫 PC 에서 더함(아직 GitHub 에 안 올림)**: ① 설정 → AI → OpenRouter 의 모델 칸이 직접 입력 + openrouter.ai 목록(`upstage/solar-pro4` 등, `CHEIL.md` 2-0절), 커밋 `0bb1ddff`. ② **'내 지식 베이스'**(홈 왼쪽 업무 도구 맨 위): 자료 넣기 → md → `Cheil/지식/<광고주>/<종류>` 자동 분류 → 볼트 안에서 찾기 + AI 요약(`CHEIL.md` 5-10절). 사용자 정의: 앱은 개인 지식 베이스의 허브. 첫 PC 에서 cheil-office·cheil-campaign-set 화면 시험의 엑셀 부분도 통과(10-26).
+**10-26 밤, 첫 PC 에서 더함(아직 GitHub 에 안 올림)**: ① 설정 → AI → OpenRouter 의 모델 칸이 직접 입력 + openrouter.ai 목록(`upstage/solar-pro4` 등, `CHEIL.md` 2-0절), 커밋 `0bb1ddff`. ② **'내 지식 베이스'**(홈 왼쪽 업무 도구 맨 위): 자료 넣기 → md → `Cheil/지식/<광고주>/<종류>` 자동 분류 → 볼트 안에서 찾기 + AI 요약(`CHEIL.md` 5-10절). 사용자 정의: 앱은 개인 지식 베이스의 허브. 첫 PC 에서 cheil-office·cheil-campaign-set 화면 시험의 엑셀 부분도 통과(10-26). ③ **양식 4종을 현업 문서 구성으로 다시 만듦**: 캠페인 OT(브리프, 워드 → PPT 14장), 결과보고서(PPT 12장), 미디어 플랜(엑셀, 미디어 브리프 구성, 빠른 채우기 읽기 A1:L60), 컨택 리포트(워드). 근거는 사용자가 모은 현업 문서 17개의 구성(실제 광고주 문서라 저장소에 넣지 않음), 상세는 `CHEIL.md` 4절. 실제 AI 로 새 양식을 채워 보지는 않았다.
 
 **재개 지점(10-26 저녁, GitHub main 에 올림)**: 1~7번, 13번(①, ② PPT), 옵시디언 연계, 홈 왼쪽 메뉴의 업무 도구 6개(메일 초안·맞춤법·글자수·금액·부가세·날짜 계산·번역·PDF, `CHEIL.md` 5-9절), 메일 초안의 '발신자 태도' 3단계(공손하게·보통·단호하게) 끝남. 다음은 계획 순서대로 **8번(보내기 전 점검)** → 9 → 10, 그다음 11·12·14번. 13번 ②의 워드·엑셀 판은 만들지 않았다(`CHEIL.md` 5-7-2절). 그다음 8~10번, 11·12·14번. (아래는 10-26 오후까지의 기록) 갈래는 커밋 순서대로 `cheil/api-first-prompt` → `cheil/auto-record` → `cheil/propagate` → `cheil/campaign-folder` → `cheil/mail-draft` → `cheil/my-template`이 하나로 이어져 있고 아직 main 에 합치지도 GitHub 에 올리지도 않았다(사용자: "GitHub 은 나중에"). 사용 한도로 세션이 멈추면 사용자가 "재개"라고 하면 여기서 잇는다.
 

@@ -24,16 +24,17 @@ test('Cheil: home shows the agency templates and a card prefills a new document'
     expect(await page.title()).toContain('Cheil 기획 오피스')
     await page.screenshot({ path: screenshotPath('cheil-home') })
 
+    // the campaign OT is a deck (10-26: after the agency's kickoff decks)
     await page.getByTestId('cheil-template-cheil-brief').click()
-    const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
-    const composer = docs.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/OT 자료와 회의 메모로 이 브리프를 채워 줘/, {
+    const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
+    const composer = slides.locator('.ai-input-box textarea').first()
+    await expect(composer).toHaveValue(/OT·브리프 자료와 회의 메모로 이 캠페인 OT 를 채워 줘/, {
       timeout: 60_000,
     })
     // the skill rides along as a chip and nothing has been sent
-    await expect(docs.getByText('크리에이티브 브리프', { exact: false }).first()).toBeVisible()
-    await expect(docs.locator('.ai-message.user, .msg-user')).toHaveCount(0)
-    await docs.screenshot({ path: screenshotPath('cheil-brief-prefilled') })
+    await expect(slides.getByText('캠페인 OT', { exact: false }).first()).toBeVisible()
+    await expect(slides.locator('.ai-message.user, .msg-user')).toHaveCount(0)
+    await slides.screenshot({ path: screenshotPath('cheil-brief-prefilled') })
   } finally {
     await closeAndSaveVideo(launched, 'cheil-office')
   }

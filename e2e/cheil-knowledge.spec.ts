@@ -22,7 +22,7 @@ const MEETING_DOCX = join(
   'builtin-skills',
   'cheil-meeting-notes',
   'assets',
-  '광고주 회의록.docx',
+  '컨택 리포트.docx',
 )
 const MAIL = [
   '보낸 사람: 가상전자 마케팅팀',
