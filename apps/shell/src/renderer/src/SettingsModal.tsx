@@ -321,6 +321,9 @@ function Field({
  */
 const CUSTOM_MODELS_DEBOUNCE_MS = 400
 
+/** Cheil fork: where the OpenRouter model list is asked for (the provider's own endpoint) */
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
+
 /** replace one catalog entry's model list, leaving every other entry untouched */
 function foldModels(providerId: string, models: string[]) {
   return (current: AiCatalogEntry[]): AiCatalogEntry[] =>
@@ -457,6 +460,32 @@ function AiModelPane({ t }: { t: TFunc }) {
       clearTimeout(timer)
     }
   }, [endpointProvider, endpointBaseUrl, endpointApiKey])
+
+  // Cheil fork: OpenRouter serves hundreds of models (Solar among them) that the
+  // fixed list cannot keep up with, so its list is asked of openrouter.ai itself
+  // through the same probe as a custom endpoint. Its model list is public, so
+  // the key is not sent; a failed probe keeps the built-in list.
+  const showsOpenRouter = editProvider === 'openrouter'
+  useEffect(() => {
+    if (!showsOpenRouter || !window.aiOffice.getCustomModels) return
+    let cancelled = false
+    void window.aiOffice
+      .getCustomModels(OPENROUTER_BASE_URL, '')
+      .then((live) => {
+        if (cancelled || !live || live.models.length === 0) return
+        setCatalog((current) =>
+          current.map((entry) =>
+            entry.id === 'openrouter'
+              ? { ...entry, models: [...new Set([...entry.models, ...live.models])] }
+              : entry,
+          ),
+        )
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [showsOpenRouter])
 
   if (!settings || !editProvider) return null
   const provider = editProvider
@@ -682,7 +711,27 @@ function AiModelPane({ t }: { t: TFunc }) {
         <div className="set-field-text">
           <label className="set-field-label">{t('setAiModelId')}</label>
         </div>
-        {meta && meta.models.length > 0 ? (
+        {provider === 'openrouter' && meta ? (
+          // Cheil fork: typed or picked — the datalist filters OpenRouter's own
+          // list as the person types, and any id it does not list is kept as typed
+          <>
+            <input
+              id="set-ai-model"
+              className="set-input"
+              type="text"
+              list="set-ai-model-openrouter"
+              value={config.model}
+              placeholder={meta.defaultModel}
+              spellCheck={false}
+              onChange={(e) => updateConfig({ model: e.target.value.trim() })}
+            />
+            <datalist id="set-ai-model-openrouter">
+              {meta.models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          </>
+        ) : meta && meta.models.length > 0 ? (
           <Dropdown
             className="set-dd"
             value={config.model || meta.defaultModel}
