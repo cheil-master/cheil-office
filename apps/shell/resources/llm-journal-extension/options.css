@@ -1,0 +1,8 @@
+:root { color-scheme: light dark; font: 14px system-ui,sans-serif; }
+body { margin: 0; min-width: 380px; }
+main { max-width: 680px; padding: 24px; margin: auto; }
+h1 { font-size: 22px; }
+p { line-height: 1.7; }
+textarea { width: 100%; box-sizing: border-box; margin: 10px 0; padding: 10px; font: 12px monospace; }
+button { padding: 9px 18px; margin: 6px 8px 6px 0; cursor: pointer; }
+#local { font-size: 12px; }

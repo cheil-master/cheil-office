@@ -1,3 +1,7 @@
+import { CommonFolderWork } from './cheil/CommonFolderWork'
+import { useAiSettings } from './FreeAiCards'
+import { localEngineView } from './cheil/local-engine'
+import { selectAiProvider } from '@genoffice/ai-provider/browser'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RELEASE_IS_BETA } from '../../shared/release-stage'
 import type { ReactNode } from 'react'
@@ -11,10 +15,9 @@ import {
   clampAiCustomFontSize,
 } from '@genoffice/ui'
 import type { AiFontSize, AiPanelPrefs, AiPanelSide } from '@genoffice/ui'
-import { PRODUCT_CONTACT_EMAIL, PRODUCT_REPO_SLUG } from '@genoffice/i18n'
+import { PRODUCT_NAME } from '@genoffice/i18n'
 import type { Lang } from '@genoffice/i18n'
 import type { DecisionEndpoint, DefaultAppStatus, FileSearchSettings } from '../../shared/home-api'
-import type { UpdateUiState } from '../../shared/update-api'
 import {
   DEFAULT_MAX_OUTPUT_TOKENS,
   MAX_MAX_OUTPUT_TOKENS,
@@ -42,7 +45,7 @@ import type { StringKey, TFunc } from './locale'
 import type { AiCatalogEntry, DocTheme, UiTheme } from '../../shared/home-api'
 import { ProviderLogo } from './provider-logos'
 import { IntegrationsPane, skillUpdateDue } from './IntegrationsPane'
-import { AiSection, SubscriptionSummary } from './SettingsAiSection'
+import { AiSection } from './SettingsAiSection'
 import { QuickLookField } from './SettingsQuickLook'
 import { ResultStoreField } from './SettingsResultStore'
 import { useSubscriptionConnection } from './subscription-client'
@@ -60,6 +63,8 @@ import {
 } from './settings-ai'
 import type { MediaSpecialChoice } from './settings-ai'
 import './settings.css'
+
+import { productCopy } from './cheil/product-copy'
 
 // ── Settings modal (opened from the account menu) ─────────
 // Two-pane dialog: section nav on the left, fields on the right.
@@ -112,11 +117,6 @@ const AI_FONT_SIZE_OPTIONS = [
   { value: 'xlarge', labelKey: 'aiFontSizeXLarge' },
   { value: 'custom', labelKey: 'aiFontSizeCustom' },
 ] as const satisfies readonly { value: AiFontSize; labelKey: StringKey }[]
-
-const CHANNEL_OPTIONS = [
-  { value: 'stable', labelKey: 'channelStable' },
-  { value: 'beta', labelKey: 'channelBeta' },
-] as const satisfies readonly { value: 'stable' | 'beta'; labelKey: StringKey }[]
 
 /** px stepper for the custom AI panel text size; in-range values apply live,
  * out-of-range or partial input is clamped on blur */
@@ -171,7 +171,7 @@ function CustomFontSizeInput({
 }
 
 export type SectionId =
-  'account' | 'aiModel' | 'aiMedia' | 'skills' | 'general' | 'integrations' | 'about'
+  'account' | 'aiModel' | 'aiMedia' | 'skills' | 'general' | 'integrations' | 'about' | 'agent'
 
 /** a section labelled from the home dictionary, or by a feature's own dictionary */
 type SectionEntry = { id: SectionId } & (
@@ -179,13 +179,13 @@ type SectionEntry = { id: SectionId } & (
 )
 
 const SECTIONS: readonly SectionEntry[] = [
-  { id: 'account', labelKey: 'setSecAccount' },
   // one AI entry: 'aiMedia' stays a valid target and opens it on the Advanced media area
-  { id: 'aiModel', labelKey: 'setSecAi' },
+  // Cheil fork: one entry for connection setup and folder work, with distinct roles.
+  { id: 'aiModel', label: (lang) => (lang === 'ko' ? 'AI 연결 센터' : 'AI connection center') },
   { id: 'skills', label: (lang) => skillsText(lang, 'navLabel') },
-  { id: 'general', labelKey: 'setSecGeneral' },
-  { id: 'integrations', labelKey: 'setSecIntegrations' },
-  { id: 'about', labelKey: 'setSecAbout' },
+  { id: 'general', label: (lang) => (lang === 'ko' ? '업무 환경' : 'Workspace preferences') },
+  { id: 'integrations', label: (lang) => (lang === 'ko' ? '외부 도구 연결' : 'External tools') },
+  { id: 'about', label: (lang) => (lang === 'ko' ? 'CheilOffice 안내' : 'About CheilOffice') },
 ]
 
 function SectionIcon({ id }: { id: SectionId }) {
@@ -1525,9 +1525,11 @@ export function SettingsModal({
   target,
 }: SettingsModalProps) {
   const { lang, setLang, t } = useI18n()
-  const [section, setSection] = useState<SectionId>(target?.section ?? 'account')
+  const [section, setSection] = useState<SectionId>(
+    target?.section === 'account' ? 'aiModel' : (target?.section ?? 'aiModel'),
+  )
   useEffect(() => {
-    if (target) setSection(target.section)
+    if (target) setSection(target.section === 'account' ? 'aiModel' : target.section)
   }, [target])
   const [theme, setTheme] = useState<UiTheme>('system')
   const [docTheme, setDocTheme] = useState<DocTheme>('follow')
@@ -1537,11 +1539,21 @@ export function SettingsModal({
   const [defaultAppBusy, setDefaultAppBusy] = useState(false)
   const [defaultAppFailed, setDefaultAppFailed] = useState(false)
   const [aiPrefs, setAiPrefs] = useState<AiPanelPrefs>(DEFAULT_AI_PANEL_PREFS)
-  const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
-  const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
   // one live view of the two subscription connections for the whole dialog
   const connection = useSubscriptionConnection()
+  const aiConfiguration = useAiSettings()
+  const aiChoice = aiConfiguration ? selectAiProvider(aiConfiguration, connection.statuses) : null
+  const configuredEngine = localEngineView(aiConfiguration, lang)
+  const activeName =
+    configuredEngine?.name ??
+    (aiChoice?.provider === 'codex'
+      ? 'Codex'
+      : aiChoice?.provider === 'claude-code'
+        ? 'Claude Code'
+        : (aiChoice?.provider ?? ''))
+  const aiReady = aiChoice?.connected === true
+  const folderReady = aiReady
 
   useEffect(() => {
     let alive = true
@@ -1563,30 +1575,12 @@ export function SettingsModal({
     void window.aiOffice.getAiPanelPrefs?.().then((prefs) => {
       if (alive) setAiPrefs(prefs)
     })
-    void window.aiOffice.getUpdateChannel?.().then((ch) => {
-      if (alive) setChannel(ch)
-    })
     void window.aiOffice.getAppVersion?.().then((v) => {
       if (alive && v) setAppVersion(v)
     })
-    // a rejected invoke (main process not ready, a shell whose preload does
-    // not expose the channel) must not surface as an unhandled rejection;
-    // without a known state the About row simply stays hidden
-    void window.aiOffice
-      .getUpdateState?.()
-      .then((s) => {
-        if (alive) setUpdateState(s)
-      })
-      .catch(() => undefined)
     return () => {
       alive = false
     }
-  }, [])
-
-  // live update state: the About row offers the update as soon as one is known
-  useEffect(() => {
-    const off = window.aiOffice.onUpdateStateChanged?.((s) => setUpdateState(s))
-    return () => off?.()
   }, [])
 
   useEffect(() => {
@@ -1644,7 +1638,7 @@ export function SettingsModal({
   }
 
   // the media area is part of the AI section: a target naming it lights the AI entry
-  const navSection: SectionId = section === 'aiMedia' ? 'aiModel' : section
+  const navSection: SectionId = section === 'aiMedia' || section === 'agent' ? 'aiModel' : section
 
   const defaultAppDesc = (() => {
     if (!defaultApp) return ''
@@ -1678,7 +1672,7 @@ export function SettingsModal({
         </div>
         <div className="set-body">
           <nav className="set-nav" aria-label={t('settings')}>
-            {SECTIONS.map((s) => (
+            {SECTIONS.filter((s) => s.id !== 'integrations' && s.id !== 'skills').map((s) => (
               <button
                 key={s.id}
                 className={`set-nav-item${navSection === s.id ? ' active' : ''}`}
@@ -1692,15 +1686,147 @@ export function SettingsModal({
                 )}
               </button>
             ))}
+            <details
+              className="cheil-developer-settings"
+              open={navSection === 'integrations' || navSection === 'skills'}
+            >
+              <summary>{lang === 'ko' ? '업무 확장 설정' : 'Workspace extensions'}</summary>
+              {SECTIONS.filter((s) => s.id === 'integrations' || s.id === 'skills').map((s) => (
+                <button
+                  key={s.id}
+                  className={`set-nav-item${navSection === s.id ? ' active' : ''}`}
+                  onClick={() => setSection(s.id)}
+                >
+                  <SectionIcon id={s.id} />
+                  {'label' in s ? s.label(lang) : t(s.labelKey)}
+                  {s.id === 'integrations' && updateDue && (
+                    <span className="set-nav-dot" role="img" aria-label={t('intgUpdateDue')} />
+                  )}
+                </button>
+              ))}
+            </details>
           </nav>
           <div className="set-pane">
-            {section === 'account' && (
-              <SubscriptionSummary
-                t={t}
-                lang={lang}
-                connection={connection}
-                onManage={() => setSection('aiModel')}
-              />
+            {navSection !== 'aiModel' && (
+              <header className="cheil-settings-context">
+                <span className="cheil-settings-eyebrow">CHEILOFFICE · WORKSPACE</span>
+                <h3>
+                  {lang === 'ko'
+                    ? ({
+                        general: '업무 환경',
+                        about: 'CheilOffice 안내',
+                        skills: '업무 자동화 스킬',
+                        integrations: '외부 도구 연결',
+                      }[navSection as 'general' | 'about' | 'skills' | 'integrations'] ??
+                      '업무 설정')
+                    : 'Workspace settings'}
+                </h3>
+                <p>
+                  {lang === 'ko'
+                    ? ({
+                        general: '문서 작업에 맞춰 화면, 저장 방식과 파일 열기 환경을 조정하세요.',
+                        about: '설치 버전과 제품 안내, 기반 소프트웨어 고지를 확인하세요.',
+                        skills: '반복 업무에 사용할 스킬을 추가하고 관리하세요.',
+                        integrations: '업무에 필요한 외부 도구의 연결과 업데이트를 관리하세요.',
+                      }[navSection as 'general' | 'about' | 'skills' | 'integrations'] ?? '')
+                    : 'Configure your CheilOffice workspace.'}
+                </p>
+              </header>
+            )}
+
+            {navSection === 'aiModel' && (
+              <section className="cheil-ai-guide cheil-ai-center">
+                <span className="cheil-settings-eyebrow">CHEILOFFICE · AI</span>
+                <h3>{lang === 'ko' ? '내 업무에 함께 쓰는 AI' : 'One AI across your work'}</h3>
+                <p>
+                  {lang === 'ko'
+                    ? '문서·My Wiki·폴더 작업에서 공통으로 쓰는 연결을 관리합니다.'
+                    : 'Manage connections across documents, My Wiki and folder work.'}
+                </p>
+                <div className="cheil-ai-live" data-ready={aiReady} role="status">
+                  <strong>
+                    {activeName || (lang === 'ko' ? '선택한 AI 없음' : 'No AI selected')}
+                  </strong>
+                  <span>
+                    {!aiChoice || (!aiChoice.connected && aiChoice.reason === 'checking')
+                      ? lang === 'ko'
+                        ? '연결 확인 중'
+                        : 'Checking connection'
+                      : configuredEngine
+                        ? lang === 'ko'
+                          ? '설정됨 · 응답은 사용 시 확인'
+                          : 'Configured · response checked on use'
+                        : aiReady
+                          ? lang === 'ko'
+                            ? '연결됨'
+                            : 'Connected'
+                          : lang === 'ko'
+                            ? '연결 필요'
+                            : 'Connection required'}
+                  </span>
+                  {configuredEngine && <small>{configuredEngine.model}</small>}
+                </div>
+                <details className="cheil-ai-help">
+                  <summary>
+                    {lang === 'ko'
+                      ? '로그인·여러 AI 사용 안내'
+                      : 'Sign-in and multiple AI connections'}
+                  </summary>
+                  <p>
+                    {lang === 'ko'
+                      ? '웹 채팅 계정 로그인만으로 API가 연결되지는 않습니다. API 방식은 각 회사의 키와 API 이용 권한이 필요합니다. 구독 프로그램 방식은 Claude Code·Codex 설치와 로그인, 앱의 연결 확인이 필요합니다.'
+                      : 'Web chat sign-in alone does not connect an API. API access requires a key. Subscription programs require installation, sign-in and a connection check.'}
+                  </p>
+                  <p>
+                    {lang === 'ko'
+                      ? 'Claude·GPT·Gemini 연결을 함께 저장할 수 있습니다. 기본 AI는 문서·My Wiki에 적용되고 폴더 작업에서는 요청마다 다른 AI를 선택해 동시에 실행할 수 있습니다. 여러 AI가 자동으로 협업하거나 서로의 답을 공유하지는 않습니다.'
+                      : 'Save multiple providers, select a default, and choose an AI for each independent folder job. Jobs do not automatically collaborate.'}
+                  </p>
+                </details>
+                <div className="cheil-ai-capabilities">
+                  <span>
+                    {lang === 'ko'
+                      ? '문서·파일 질문·My Wiki'
+                      : 'Documents · file questions · My Wiki'}{' '}
+                    ·{' '}
+                    {aiReady
+                      ? lang === 'ko'
+                        ? '사용 가능'
+                        : 'Available'
+                      : lang === 'ko'
+                        ? '연결 확인 필요'
+                        : 'Check connection'}
+                  </span>
+                  <span>
+                    {lang === 'ko' ? '폴더 작업' : 'Folder work'} ·{' '}
+                    {folderReady
+                      ? lang === 'ko'
+                        ? '공통 AI 연결로 사용'
+                        : 'Uses the same subscription connection'
+                      : lang === 'ko'
+                        ? '공통 AI 연결 필요'
+                        : 'Connect Claude Code or Codex'}
+                  </span>
+                </div>
+                <p>
+                  {lang === 'ko'
+                    ? '등록한 연결은 문서·My Wiki·폴더 자료 작업에서 공통으로 사용합니다. 기본 AI를 바꾸어도 이미 시작한 폴더 작업의 AI는 유지됩니다.'
+                    : 'Documents, Wiki and folder drafts share registered connections. Running folder jobs retain their chosen AI.'}
+                </p>
+                <button
+                  className="set-btn primary"
+                  onClick={() =>
+                    document
+                      .querySelector('.cheil-common-folder')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                >
+                  {lang === 'ko' ? '공통 AI로 폴더 자료 작업' : 'Work on folder sources'}
+                </button>
+                <button className="set-btn" onClick={() => void window.aiOfficeAgent?.open()}>
+                  {lang === 'ko' ? '고급 폴더 자동 실행 ↗' : 'Advanced folder automation ↗'}
+                </button>
+              </section>
             )}
             {navSection === 'aiModel' && (
               <AiSection
@@ -1723,6 +1849,7 @@ export function SettingsModal({
                 }
               />
             )}
+            {navSection === 'aiModel' && <CommonFolderWork />}
             {section === 'general' && (
               <>
                 <h3 className="set-pane-title">{t('setSecGeneral')}</h3>
@@ -1901,7 +2028,9 @@ export function SettingsModal({
             )}
             {section === 'about' && (
               <>
-                <h3 className="set-pane-title">{t('setSecAbout')}</h3>
+                <h3 className="set-pane-title">
+                  {lang === 'ko' ? '설치 및 운영 정보' : 'Installation & operation'}
+                </h3>
                 <Field
                   label={t('versionLabel')}
                   value={
@@ -1913,72 +2042,46 @@ export function SettingsModal({
                   }
                 />
                 {RELEASE_IS_BETA && <div className="set-field-desc">{t('betaTooltip')}</div>}
-                {updateState && (
-                  <div className="set-field">
-                    <div className="set-field-text">
-                      <label className="set-field-label">{t('setUpdateAvailableLabel')}</label>
-                    </div>
-                    <button
-                      type="button"
-                      className="set-update-btn"
-                      onClick={() => void window.aiOffice.openUpdateDialog?.()}
-                    >
-                      {updateState.phase === 'downloading'
-                        ? t('setUpdateDownloading', {
-                            percent: Math.round(updateState.percent),
-                          })
-                        : updateState.phase === 'downloaded'
-                          ? t('setUpdateRestart')
-                          : t('setUpdateTo', { version: updateState.version })}
-                    </button>
-                  </div>
-                )}
+                <p className="set-field-desc" data-testid="cheil-manual-updates">
+                  {productCopy(lang).manual}
+                </p>
+                <section className="cheil-about-purpose">
+                  <h4>
+                    {lang === 'ko'
+                      ? '캠페인 업무를 이어주는 작업 공간'
+                      : 'A workspace for campaign work'}
+                  </h4>
+                  <p>
+                    {lang === 'ko'
+                      ? 'CheilOffice는 광고대행사의 문서 작성, 캠페인 자료 관리와 업무 지식 활용을 한곳에서 이어가기 위한 내부 업무 도구입니다.'
+                      : 'CheilOffice is an internal workspace connecting agency documents, campaign materials and work knowledge.'}
+                  </p>
+                  <dl>
+                    <dt>{lang === 'ko' ? '문서와 캠페인' : 'Documents & campaigns'}</dt>
+                    <dd>
+                      {lang === 'ko'
+                        ? '업무 양식으로 초안을 만들고 캠페인별 자료를 정리합니다.'
+                        : 'Draft with work templates and organize campaign materials.'}
+                    </dd>
+                    <dt>My Wiki</dt>
+                    <dd>
+                      {lang === 'ko'
+                        ? '원자료와 정리된 업무 지식을 보관하고 변경 제안을 검토합니다.'
+                        : 'Keep sources and work knowledge, and review proposed changes.'}
+                    </dd>
+                    <dt>{lang === 'ko' ? '연결형 AI' : 'Connected AI'}</dt>
+                    <dd>
+                      {lang === 'ko'
+                        ? '사용자가 연결한 AI로 문서·위키 질문과 폴더 자료 작업을 수행합니다. 연결 방식에 따라 이용 조건과 비용이 달라집니다.'
+                        : 'Use your connected AI across documents, Wiki and folder drafts. Access and costs depend on the connection.'}
+                    </dd>
+                  </dl>
+                </section>
                 <div className="set-field">
                   <div className="set-field-text">
-                    <label className="set-field-label">{t('updateChannel')}</label>
-                  </div>
-                  <Dropdown
-                    className="set-dd"
-                    value={channel}
-                    ariaLabel={t('updateChannel')}
-                    options={CHANNEL_OPTIONS.map((opt) => ({
-                      value: opt.value,
-                      label: t(opt.labelKey),
-                    }))}
-                    onPick={(v) => {
-                      const next = v === 'beta' ? 'beta' : 'stable'
-                      setChannel(next)
-                      void window.aiOffice.setUpdateChannel(next)
-                    }}
-                  />
-                </div>
-                <Field
-                  label={t('setGithub')}
-                  value={`github.com/${PRODUCT_REPO_SLUG}`}
-                  action={
-                    <button
-                      className="set-btn"
-                      onClick={() => void window.aiOffice.openGitHubRepo?.()}
-                    >
-                      {t('viewOnGitHub')}
-                    </button>
-                  }
-                />
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('setFeedback')}</label>
-                    <div className="set-field-desc">{t('setFeedbackDesc')}</div>
-                  </div>
-                  <button
-                    className="set-btn"
-                    onClick={() => void window.aiOffice.openFeedbackSurvey?.()}
-                  >
-                    {t('feedbackOpen')}
-                  </button>
-                </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('setLicenses')}</label>
+                    <label className="set-field-label">
+                      {PRODUCT_NAME} · {t('setLicenses')}
+                    </label>
                     <div className="set-field-desc">{t('setLicensesDesc')}</div>
                   </div>
                   <button
@@ -1988,27 +2091,17 @@ export function SettingsModal({
                     {t('setLicensesOpen')}
                   </button>
                 </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('setRightsContact')}</label>
-                    <div className="set-field-desc">{t('setRightsContactDesc')}</div>
-                    <div className="set-field-value">{PRODUCT_CONTACT_EMAIL}</div>
+                <details className="cheil-legal-details">
+                  <summary>
+                    {PRODUCT_NAME} · {t('setLicenses')}
+                  </summary>
+                  <div className="cheil-legal-text">
+                    <p>{t('setBasedOn')}</p>
+                    <p>{t('setHwpNotice')}</p>
+                    <p>{t('setTrademarks')}</p>
+                    <p>{t('setDisclaimer')}</p>
                   </div>
-                  <button
-                    className="set-btn"
-                    onClick={() => void window.aiOffice.openRightsContact?.()}
-                  >
-                    {t('setRightsContactSend')}
-                  </button>
-                </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <div className="set-field-desc">{t('setBasedOn')}</div>
-                    <div className="set-field-desc">{t('setHwpNotice')}</div>
-                    <div className="set-field-desc">{t('setTrademarks')}</div>
-                    <div className="set-field-desc">{t('setDisclaimer')}</div>
-                  </div>
-                </div>
+                </details>
               </>
             )}
           </div>

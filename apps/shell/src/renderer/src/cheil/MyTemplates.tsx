@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Lang } from '@genoffice/i18n'
 import { cheilBlankOf } from '@genoffice/ui'
 import { useI18n } from '../locale'
+import { DocumentStyles } from './DocumentStyles'
+import { styleWords } from './style-words'
 import {
   CHEIL_CAMPAIGN_BRIDGE_KEY,
   type CampaignFailReason,
@@ -97,15 +99,25 @@ function bridge(): CheilCampaignApi | undefined {
 /** a value to blank; `own` when the person added it */
 type Row = MyTemplateCandidate & { on: boolean; own?: boolean }
 
-export function MyTemplates({ badge }: { badge: (ext: string) => React.ReactElement }) {
+export function MyTemplates({
+  badge,
+  onOpenStyles,
+}: {
+  badge: (ext: string) => React.ReactElement
+  onOpenStyles?: () => void
+}) {
   const { lang } = useI18n()
   const w = words(lang)
+  // Cheil fork: keep personal templates and styles visible but unavailable.
+  const disabled = true
   const api = bridge()
   const [templates, setTemplates] = useState<MyTemplate[] | null>(null)
   const [review, setReview] = useState<{ name: string; rows: Row[] } | null>(null)
   const [extra, setExtra] = useState({ find: '', blank: '' })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  // Cheil fork: preserve document templates and offer appearance extraction alongside them.
+  const [showStyles, setShowStyles] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!api) return
@@ -118,6 +130,7 @@ export function MyTemplates({ badge }: { badge: (ext: string) => React.ReactElem
   }, [refresh])
 
   if (!api) return null
+  if (!disabled && showStyles) return <DocumentStyles onBack={() => setShowStyles(false)} />
 
   const titleOf = (name: string) => name.replace(/\.[^.]+$/, '')
 
@@ -184,6 +197,7 @@ export function MyTemplates({ badge }: { badge: (ext: string) => React.ReactElem
   return (
     <section
       className="quick-start cheil-my-templates"
+      aria-disabled={disabled}
       aria-label={w.label}
       data-testid="cheil-my-templates"
     >
@@ -191,8 +205,16 @@ export function MyTemplates({ badge }: { badge: (ext: string) => React.ReactElem
         <span className="section-label">{w.label}</span>
         <button
           className="cheil-campaign-add"
+          data-testid="cheil-style-mode"
+          disabled={disabled || busy || !!review}
+          onClick={() => (onOpenStyles ? onOpenStyles() : setShowStyles(true))}
+        >
+          {styleWords(lang).extract}
+        </button>
+        <button
+          className="cheil-campaign-add"
           data-testid="cheil-my-template-add"
-          disabled={busy}
+          disabled={disabled || busy}
           onClick={() => void add()}
         >
           + {w.add}
@@ -212,6 +234,7 @@ export function MyTemplates({ badge }: { badge: (ext: string) => React.ReactElem
               key={t.name}
               className="quick-card cheil-my-template-card"
               data-testid="cheil-my-template-card"
+              disabled={disabled}
               onClick={() => void api.myTemplateOpen(t.name)}
             >
               {badge(t.name.split('.').pop() ?? '')}

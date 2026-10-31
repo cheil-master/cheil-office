@@ -1,3 +1,4 @@
+import cheilWindowIcon from '../assets/cheil-app-icon.png?asset'
 /**
  * The PDF tools window (decision 0030): a small separate BrowserWindow above
  * the shell window, opened from Home's "PDF tools" card. The user picks a task,
@@ -526,6 +527,7 @@ export function openPdfToolsWindow(): void {
   const lang = d.lang()
   const parent = d.parentWindow()
   const next = new BrowserWindow({
+      icon: cheilWindowIcon,
     width: 760,
     height: 720,
     minWidth: 520,

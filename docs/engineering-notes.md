@@ -8,7 +8,7 @@
 - **`npm run lint`가 수천 건의 구문 오류를 낸다.** 저장소 안에 다른 작업 사본(작업 트리)을 두면 그 안의 tsconfig까지 읽혀서 그렇다. → 그 폴더를 빼고 돌린다(`npx eslint . --ignore-pattern "<폴더>/**"`).
 - **`cargo`를 못 찾는다.** 이 PC에서는 Rust가 설치돼 있어도 PATH에 없다. → `export PATH="$HOME/.cargo/bin:$PATH"`.
 - **설치 파일 만들기가 엑셀 처리 프로그램을 못 찾고 멈춘다.** 빌드 설정은 `apps/sheets/native/xlsx-engine/target/x86_64-pc-windows-gnu/release/xlsx-sidecar.exe`를 찾는데, 이 PC의 Rust 빌드는 `target/release/`에 만든다. → 만들기 전에 그 파일을 앞의 경로로 복사한다.
-- **설치본(`release/win-unpacked`)을 띄우면 아무 창 없이 바로 끝난다.** 설치된 이음오피스가 켜져 있으면, 설치본은 같은 데이터 폴더와 단일 실행 잠금을 쓰므로 바로 끝나고 실행 인자를 켜져 있는 앱에 넘긴다. 설치본은 `GENOFFICE_USER_DATA`를 일부러 듣지 않는다. → 사용자의 앱을 끄지 말고 `--user-data-dir=<임시 폴더>`를 붙여 띄운다(Playwright `electron.launch`의 `args`에도 같다).
+- **설치본(`release/win-unpacked`)을 띄우면 아무 창 없이 바로 끝난다.** 설치된 CheilOffice가 켜져 있으면, 설치본은 같은 데이터 폴더와 단일 실행 잠금을 쓰므로 바로 끝나고 실행 인자를 켜져 있는 앱에 넘긴다. 설치본은 `GENOFFICE_USER_DATA`를 일부러 듣지 않는다. → 사용자의 앱을 끄지 말고 `--user-data-dir=<임시 폴더>`를 붙여 띄운다(Playwright `electron.launch`의 `args`에도 같다).
 - **WebAssembly 파일을 찾는 코드가 개발 실행에서만 맞다.** 묶어 빌드한 코드 옆에는 `node_modules`가 없다. 단위 테스트는 `node_modules`에서 돌아 이 차이를 보지 못한다. → 새 WebAssembly 의존성은 `extraResources`로 `resources/wasm`에 넣고, 빌드한 앱(가능하면 설치본)에서 한 번 돌려 본다.
 - **설치 파일 만들기가 GitHub에 올리려다 실패한다.** 빌드 설정에 릴리스 올리기 대상이 항상 들어 있다. → `npm run dist:win -- -- --publish never`. `--`를 두 번 써야 인자가 끝까지 전달된다.
 - **새로 띄우는 창이 빈 채로 뜬다.** 껍데기 앱의 별도 창(드라이브 고르기, 문서 고르기)은 `apps/shell/electron.vite.config.ts`의 preload 목록과 renderer 입력 목록 양쪽에 넣어야 한다. 한쪽만 넣으면 화면이 비어 나오고 오류도 잘 보이지 않는다. → 개발 모드에서도 다시 빌드한 뒤 확인한다.
@@ -68,7 +68,7 @@
 - **한컴의 `draw:equation`은 수식이 아니다.** 도형의 계산식이다. 한컴 수식 개체는 `draw:object`로 온다.
 - **`<table:table\b`로 표를 찾으면 행과 칸까지 걸린다.** `\b`는 `-` 앞에서도 끊겨 `table:table-row`에 맞는다. → `<table:table(?=[\s>/])`처럼 다음 글자를 정한다.
 - **한컴을 자동으로 돌릴 때 ODT 저장 형식 이름은 `"ODF"`다.** `"ODT"`는 실패한다(`hwp.SaveAs(path, "ODF", "")`, 한글 2024 공식 자동화). docx로 저장하는 형식 이름은 찾지 못했다.
-- **암호 ODT는 시험 파일도 만들 수 없다.** 한컴은 암호 ODT를 만들지 못하고, 다른 곳에서 만든 암호 ODT를 열려고 하면 멈춘다. 그래서 이음오피스도 암호 ODT는 열지 않고 "암호를 푼 뒤 다시 열어 달라"고 알린다.
+- **암호 ODT는 시험 파일도 만들 수 없다.** 한컴은 암호 ODT를 만들지 못하고, 다른 곳에서 만든 암호 ODT를 열려고 하면 멈춘다. 그래서 CheilOffice도 암호 ODT는 열지 않고 "암호를 푼 뒤 다시 열어 달라"고 알린다.
 - **ODT 문서를 저장한 뒤에도 되돌려 쓰는 기준은 연 때의 ODT다.** 방금 저장한 ODT로 기준을 다시 만들면 ODF 쓰기가 만든 모양이 편집 화면과 달라(굵게, 글자 크기, 문단 나누기) 화면이 다시 그려지고 되돌리기 기록이 지워진다. 편집기의 비교 기준만 docx 문서처럼 옮긴다.
 - **한컴은 ODT의 줄 간격을 다른 숫자로 보여 준다.** 한컴은 ODF의 비율 줄 간격에 글꼴별 배수를 곱해 읽는다(`115%` → SimSun 150%, Calibri 183%, Times New Roman 194%). 한컴이 자기 문서를 ODT로 낼 때는 반대로 나눠 쓴다(한글 160% → `117%`). 그래서 새 ODT를 한컴에서 열면 줄 간격 숫자가 docx와 다르고, 라틴 글이 대부분인 문서는 쪽 수가 늘어난다. 같은 docx를 한컴이 직접 열어도 쪽 수가 거의 같이 늘어난다. → 표준값(docx 값 그대로)을 적는다. 한컴에 맞춘 보정값은 LibreOffice 등에서 줄 간격을 좁히므로 쓰지 않는다(사용자 결정, 2026-10-16).
 - **한컴 확인 도구는 `tools/odt-hancom/`에 있다.** 받은 ODT를 고친 사본 만들기, 한컴으로 읽어 쪽·표·개체·누름틀·서식 적기, ODF 검사, 판정까지 한다(사용법은 그 폴더의 `README.md`). 한컴 한글 2024가 설치된 Windows에서만 돈다.

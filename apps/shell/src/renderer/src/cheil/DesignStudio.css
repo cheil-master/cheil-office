@@ -1,0 +1,150 @@
+/* Cheil fork: app chrome uses theme tokens; document palette swatches are data. */
+.cheil-design-studio {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 24px;
+  background: var(--surface);
+  color: var(--text);
+}
+.cheil-design-studio h2 {
+  margin: 12px 0;
+  font-size: 26px;
+  letter-spacing: -0.7px;
+}
+.cheil-design-kicker {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+.cheil-design-studio header p {
+  max-width: 780px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.cheil-design-workflow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.cheil-design-workflow > div {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+}
+.cheil-design-workflow b {
+  grid-row: span 2;
+  color: var(--accent);
+  font-size: 20px;
+}
+.cheil-design-workflow span {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cheil-design-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr);
+  gap: 28px;
+}
+.cheil-design-studio label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cheil-design-studio input:not([type='checkbox']),
+.cheil-design-studio select,
+.cheil-design-studio textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font: inherit;
+}
+.cheil-design-studio textarea {
+  resize: vertical;
+  min-height: 250px;
+  line-height: 1.7;
+  font-weight: 400;
+}
+.cheil-design-studio button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.cheil-design-studio button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cheil-design-studio .cheil-design-create {
+  width: 100%;
+  padding: 15px;
+  background: var(--accent);
+  color: var(--surface);
+  font-weight: 700;
+}
+.cheil-design-recipes {
+  display: flex;
+  gap: 8px;
+}
+.cheil-design-recipes span {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.cheil-design-draft p {
+  color: var(--text-muted);
+  line-height: 1.65;
+  font-size: 13px;
+}
+.cheil-design-notice {
+  padding: 12px;
+  border-left: 2px solid var(--accent);
+}
+.cheil-design-swatches {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.cheil-design-swatches span {
+  width: 40px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.cheil-design-rules p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.cheil-design-rules details {
+  margin-bottom: 12px;
+}
+.cheil-design-studio .cheil-pinterest {
+  margin-top: 18px;
+  padding: 12px;
+}
+.cheil-design-studio .cheil-pinterest-pins {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cheil-design-studio .cheil-design-pin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 1000px) {
+  .cheil-design-columns {
+    grid-template-columns: 1fr;
+  }
+}

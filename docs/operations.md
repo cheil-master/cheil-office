@@ -27,7 +27,7 @@ npm run native:build -w @genoffice/sheets   # 엑셀 처리 프로그램(Rust) �
 | 전체 빌드만                       | `npm run build:all`                 | 화면 확인 스크립트(`npm run test:e2e`)는 이 결과물을 띄운다         |
 | 껍데기 앱만 다시 빌드             | `npm run build -w @genoffice/shell` | 편집기 뒷단(`apps/*/src/main`)을 고친 뒤에는 이것까지 해야 반영된다 |
 
-개발·시험 실행은 설치본과 다른 데이터 폴더(`%APPDATA%\IeumOffice-Dev`)를 쓴다. 설치본은 `%APPDATA%\IeumOffice`다.
+개발·시험 실행은 설치본과 다른 데이터 폴더(`%APPDATA%\CheilOffice-Dev`)를 쓴다. 설치본은 `%APPDATA%\CheilOffice`다.
 
 ## 검사
 
@@ -89,7 +89,7 @@ cd apps/shell && npx vitest run tests/<파일>.test.ts   # 파일 하나만
 드라이브 연결(결정 0033)에는 저장소 주인의 Google Cloud 프로젝트가 있어야 한다. Google API 약관에 동의하는 일이라 주인만 한다.
 
 1. [Google Cloud 콘솔](https://console.cloud.google.com/)에서 프로젝트를 만들고 **Google Drive API**를 켠다.
-2. **Google 인증 플랫폼 → 브랜딩**: 앱 이름(이음오피스), 지원 이메일, 홈페이지(`https://ieumoffice.vercel.app`), 개인정보 처리방침(`PRIVACY.md`를 소개 사이트에 올린 주소). 승인된 도메인에 홈페이지 도메인을 넣는다.
+2. **Google 인증 플랫폼 → 브랜딩**: 앱 이름(CheilOffice), 지원 이메일, 홈페이지(`https://ieumoffice.vercel.app`), 개인정보 처리방침(`PRIVACY.md`를 소개 사이트에 올린 주소). 승인된 도메인에 홈페이지 도메인을 넣는다.
 3. **대상**: 사용자 유형 "외부". 처음에는 게시 상태를 "테스트"로 두고 시험할 Google 계정을 테스트 사용자로 넣는다(100명까지). 테스트 상태의 로그인은 7일마다 끊긴다.
 4. **데이터 액세스**: 범위 `https://www.googleapis.com/auth/drive` 하나를 넣는다. 제한 등급이다.
 5. **클라이언트**: 유형 "데스크톱 앱"으로 만들고 클라이언트 ID와 비밀값을 받는다.
@@ -105,7 +105,7 @@ OpenRouter 무료 연결에서 고를 수 있는 모델은 `packages/ai-provider
 1. **목록 확인(매주, 자동).** `.github/workflows/free-models.yml`이 월요일 오전 9시에 OpenRouter의 공개 모델 목록과 비교한다. 키를 쓰지 않고 무료 요청도 쓰지 않는다. 앱이 보여 주는 모델이 사라졌거나 도구 호출 지원이 꺼졌으면, 또는 시험해 볼 새 무료 모델이 있으면 실행이 실패로 끝나고 실행 결과 요약에 보고서가 남는다. 실패한 예약 실행은 GitHub이 저장소 주인에게 메일로 알린다. 이 PC에서는 `npm run free-models:check`로 같은 보고서를 본다.
 2. **앱에서 시험(사람이).** `npm run build:all` 뒤 `npm run free-models:trial`. 후보마다 도구 하나짜리 짧은 요청을 보내고, 통과하면 빌드된 앱의 워드 편집기에서 두 요청(문단 넣기, 제목 바꾸고 요약 목록 넣기)을 시킨 뒤 결과를 표로 낸다. 모델 이름을 붙이면 그 모델만, `--listed`를 붙이면 앱이 지금 보여 주는 모델을 다시 시험한다.
 
-- 시험은 설치된 앱에 저장된 OpenRouter 키(`%APPDATA%/IeumOffice/ai-settings.json`)로 하고 그 키의 하루 무료 요청을 쓴다. 키는 화면에 찍히지 않는다. 모델 하나에 짧은 확인 1번, 앱 시험 약 12번이 든다. 남은 수가 모자라면 그 모델은 건너뛴다.
+- 시험은 설치된 앱에 저장된 OpenRouter 키(`%APPDATA%/CheilOffice/ai-settings.json`)로 하고 그 키의 하루 무료 요청을 쓴다. 키는 화면에 찍히지 않는다. 모델 하나에 짧은 확인 1번, 앱 시험 약 12번이 든다. 남은 수가 모자라면 그 모델은 건너뛴다.
 - 통과한 모델은 실행기가 알려 주는 대로 `OPENROUTER_FREE_MODELS`에 더한다. 순서가 곧 새 연결의 기본 모델 순위이므로 맨 앞은 함부로 바꾸지 않는다.
 - 떨어진 모델은 실행기가 `tools/free-models-rejected.json`에 날짜·이유와 함께 적는다. 거기 있는 모델은 매주 확인에서 후보로 다시 나오지 않는다. 다시 시험하려면 그 줄을 지운다.
 - 앱이 보여 주는 모델이 사라졌다는 보고가 오면 목록에서 빼고 새 버전을 낸다. 새 버전이 나가기 전까지는 그 모델을 고른 사용자가 실패를 본다.
@@ -120,7 +120,7 @@ npm run native:build -w @genoffice/sheets
 npm run dist:win -- -- --publish never
 ```
 
-- 결과물은 `apps/shell/release`에 생긴다. 설치 파일 `IeumOffice-Setup-<버전>.exe`와 `latest.yml`.
+- 결과물은 `apps/shell/release`에 생긴다. 설치 파일 `CheilOffice-Setup-<버전>.exe`와 `latest.yml`.
 - `--publish never`를 빼면 빌드 도구가 GitHub에 올리려 한다.
 - 스캔 문서 글자 인식 도우미(`win-ocr.exe`)가 이 과정에서 컴파일된다. Windows SDK가 없으면 여기서 멈춘다.
 - 설치 파일에는 서명이 없다. 설치할 때 Windows가 "알 수 없는 게시자" 경고를 띄운다.
@@ -154,7 +154,7 @@ npm run growth:report    # 전일 대비 증감과 7일 추이 보기
 저장소 주인에게 Mac이 없으므로 GitHub Actions에서 만든다.
 
 1. GitHub 저장소의 Actions 탭 → **macOS build** → **Run workflow**. 가지는 릴리스 태그가 가리킬 커밋이 있는 가지를 고른다.
-2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac-arm64`를 내려받는다. 안에 `IeumOffice-<버전>-arm64.dmg`, `IeumOffice-<버전>-arm64-mac.zip`, `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
+2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-mac-arm64`를 내려받는다. 안에 `CheilOffice-<버전>-arm64.dmg`, `CheilOffice-<버전>-arm64-mac.zip`, `latest-mac.yml`(베타 버전 번호면 `beta-mac.yml`)이 있다.
 
 - 빌드는 ad hoc 서명이 되었는지, 엑셀 처리 프로그램과 글자 인식 도우미가 Apple Silicon용으로 들어갔는지 검사하고, 만든 앱을 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 dmg, zip, `latest-mac.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Mac 설치 파일"이다.
@@ -165,7 +165,7 @@ npm run growth:report    # 전일 대비 증감과 7일 추이 보기
 GitHub Actions에서 만든다.
 
 1. GitHub 저장소의 Actions 탭 → **Linux build** → **Run workflow**. 가지는 릴리스 태그가 가리킬 커밋이 있는 가지를 고른다.
-2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-linux-x64`를 내려받는다. 안에 `IeumOffice-<버전>.AppImage`, `ieumoffice_<버전>_amd64.deb`, `ieumoffice-<버전>.x86_64.rpm`, `latest-linux.yml`(베타 버전 번호면 `beta-linux.yml`)이 있다.
+2. 끝나면 실행 결과의 Artifacts에서 `ieumoffice-linux-x64`를 내려받는다. 안에 `CheilOffice-<버전>.AppImage`, `ieumoffice_<버전>_amd64.deb`, `ieumoffice-<버전>.x86_64.rpm`, `latest-linux.yml`(베타 버전 번호면 `beta-linux.yml`)이 있다.
 
 - 빌드는 앱 실행 파일, 엑셀 처리 프로그램, 터미널 명령어가 실행 가능하게 들어갔는지 검사하고, deb의 의존성이 Ubuntu 24.04(64비트 time_t 전환으로 `t64` 이름이 쓰이는 곳)에서도 풀리는지 확인한 뒤, 만든 앱을 Xvfb 아래에서 창 없이 띄워 Markdown·CSV 파일을 PDF로 내보내 본다. 하나라도 실패하면 결과를 올리지 않는다.
 - 비밀 값을 쓰지 않는다. **release_tag**를 적고 `main`에서 실행하면, 빌드가 통과한 뒤 그 태그의 이미 공개된 릴리스에 AppImage, deb, rpm, `latest-linux.yml`을 붙인다(빌드한 버전과 태그가 같을 때만). 비워 두면 결과물만 남는다. 순서는 `docs/releasing.ko.md`의 "Linux 설치 파일"이다.
@@ -177,7 +177,7 @@ GitHub Actions에서 만든다.
 
 1. **공개 배포 전에 Anthropic 상업 약관에 동의했는지 확인한다.** 저장소 주인이 직접 해야 하는 일이고, 동의하지 않았으면 여기서 멈춘다.
 2. 버전 번호를 올리고 설치 파일을 만든다.
-3. GitHub 릴리스를 `v<버전>` 태그로 만들고 `IeumOffice-Setup-<버전>.exe`와 `latest.yml`을 올린다. 초안이 아니라 공개로 낸다.
+3. GitHub 릴리스를 `v<버전>` 태그로 만들고 `CheilOffice-Setup-<버전>.exe`와 `latest.yml`을 올린다. 초안이 아니라 공개로 낸다.
 4. 설치된 앱은 켠 직후 한 번, 그 뒤 4시간마다 릴리스를 확인한다.
 
 ## 원본의 개선 받아오기

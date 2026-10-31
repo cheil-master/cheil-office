@@ -194,7 +194,7 @@ async function run(
   const viaApp = appTarget(from, to)
   if (viaApp) {
     const r = await exportViaApp(input, viaApp, output, { env: ctx.env, log: ctx.log })
-    return { detail: { via: 'ieumoffice --headless-export', summary: r.summary } }
+    return { detail: { via: 'cheiloffice --headless-export', summary: r.summary } }
   }
   if (from === 'pdf' && (to === 'md' || to === 'epub')) {
     return pdfReflow(input, to, output, args, ctx)
@@ -245,7 +245,7 @@ async function docxToMarkdown(docx: Uint8Array, ctx: CommandContext): Promise<Pr
       ctx.warn({
         code: 'images_dropped',
         message: `${exported.skipped.images} image(s) have no Markdown form and were dropped`,
-        suggestion: 'use `ieumoffice docs read --html` when the images matter',
+        suggestion: 'use `cheiloffice docs read --html` when the images matter',
       })
     }
     return {
@@ -318,7 +318,7 @@ async function runOdt(
     const r = await withTempDocx(output, stem, docxBytes, (docx) =>
       exportViaApp(docx, target, output, { env: ctx.env, log: ctx.log }),
     )
-    return { detail: { via: 'ieumoffice --headless-export', summary: r.summary, odt_report } }
+    return { detail: { via: 'cheiloffice --headless-export', summary: r.summary, odt_report } }
   }
   let docx: Uint8Array
   const detail: Record<string, unknown> = {}
@@ -331,7 +331,7 @@ async function runOdt(
       await exportViaApp(input, 'docx', path, { env: ctx.env, log: ctx.log })
       return new Uint8Array(readFileSync(path))
     })
-    detail.via = 'ieumoffice --headless-export'
+    detail.via = 'cheiloffice --headless-export'
   }
   const { odtBytes, report } = await docxBytesToOdt(docx)
   return {
@@ -372,7 +372,7 @@ async function pdfReflow(
       code: 'pages_as_images',
       message:
         'every page is a picture without readable text, so the result holds page images only',
-      suggestion: `read the pages with \`ieumoffice pdf ai-read ${basename(input)} --pages <list>\` first, then convert again`,
+      suggestion: `read the pages with \`cheiloffice pdf ai-read ${basename(input)} --pages <list>\` first, then convert again`,
     })
   }
   const source = {

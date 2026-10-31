@@ -88,7 +88,7 @@ import {
   type ResolveFailure,
 } from './edit-queue'
 import { createFilesSkill } from './files-skill'
-import { useGenerateHandoff } from './generate-handoff'
+import { useGenerateHandoff, designHandoffInstructions } from './generate-handoff'
 import { createElectronTransport, type TransportHooks } from './transport'
 import {
   blockedRunOf,
@@ -1519,6 +1519,9 @@ export function AiPanel({
           /* fail-open */
         }
       },
+      referenceInstructions: () =>
+        slidesRef.current.length === 0 ? designHandoffInstructions() : '',
+      saveDesignReference: (value) => window.slidesApi.saveDesignReference(value),
       saveStyleTemplate: async (name, data) => {
         try {
           return await window.slidesApi.saveStyleTemplate(name, data)
@@ -1990,6 +1993,22 @@ export function AiPanel({
     persistMessage('user', shown, undefined, sentAtts, scope, skillUse.chips)
     void collectImageAttachments(sentAtts)
       .then(async (images) => {
+        // Cheil fork: a reference workflow cannot silently continue with missing visual inputs.
+        if (
+          sentAtts.some((a) => /^reference-\d+\./.test(a.name)) &&
+          images.length < sentAtts.filter((a) => ATTACHMENT_IMAGE_EXTS.has(a.ext)).length
+        ) {
+          runStartingRef.current = false
+          setBusy(false)
+          setChat((prev) =>
+            prev.map((e) =>
+              e.role === 'assistant' && e.streaming
+                ? { ...e, streaming: false, text: t('aiReadFailed', { name: 'reference' }) }
+                : e,
+            ),
+          )
+          return
+        }
         // AI Beautify sends the current slide's rendering along, so the model sees what it edits;
         // the note rides on the model instruction only — the chat bubble stays the localized preset text
         // the skill text rides with this request only; the bubble and the record keep the chips

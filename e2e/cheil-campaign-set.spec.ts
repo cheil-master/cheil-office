@@ -98,13 +98,13 @@ test('Cheil: a campaign opens a contact report and the campaign OT with the card
       )
     await expect.poll(docText, { timeout: 60_000 }).toContain('가상전자')
     const brief = await docText()
-    for (const value of ['가상전자 · 에어린 봄 런칭', '비즈니스13팀', `홍길동 · ${today()}`]) {
+    for (const value of ['가상전자', '에어린 봄 런칭', '비즈니스13팀', '홍길동', today()]) {
       expect(brief).toContain(value)
     }
     expect(brief).not.toMatch(/\[(광고주|캠페인명|팀명|작성자|작성일)\]/)
     // the other blanks wait for the quick fill
     expect(brief).toContain('[회의명]')
-    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible()
+    await expect(docs.getByText(/카드로 공통 칸 6개를 채웠습니다/)).toBeVisible()
     await expect(docs.locator('.ai-input-box textarea').first()).toHaveValue(/\[캠페인 카드\]/)
     await expect(docs.locator('.ai-message.user, .msg-user')).toHaveCount(0)
     await docs.screenshot({ path: screenshotPath('cheil-campaign-set-brief') })
@@ -134,15 +134,13 @@ test('Cheil: a campaign opens a contact report and the campaign OT with the card
     for (const value of [
       '에어린봄런칭',
       '2027-03-01~2027-04-30',
-      '500,000,000원',
       '25~34세1인가구직장인',
-      '브랜드인지도30%',
       '비즈니스13팀',
     ]) {
       expect(deck).toContain(value)
     }
     expect(deck).not.toMatch(/\[(광고주|캠페인명|캠페인기간|총예산|타깃|KPI|팀명|작성일)\]/)
-    await expect(slides.getByText(/카드로 공통 칸 9개를 채웠습니다/)).toBeVisible()
+    await expect(slides.getByText(/카드로 공통 칸 8개를 채웠습니다/)).toBeVisible()
     await slides.screenshot({ path: screenshotPath('cheil-campaign-set-ot') })
 
     // back home: the view says what opened and the timeline has the set
@@ -153,21 +151,21 @@ test('Cheil: a campaign opens a contact report and the campaign OT with the card
     )
     // plan item 5: each is a file in the campaign's folder, and its tab shows that file
     const folder = join(userDataDir, 'Cheil 캠페인', FOLDER)
-    expect(existsSync(join(folder, '컨택 리포트.docx'))).toBe(true)
-    expect(existsSync(join(folder, '캠페인 OT.pptx'))).toBe(true)
+    expect(existsSync(join(folder, '컨택리포트.docx'))).toBe(true)
+    expect(existsSync(join(folder, 'OT 및 킥오프.pptx'))).toBe(true)
     await expect(page.locator('.tab-bar .tab-item:not(.tab-home)')).toContainText([
-      '캠페인 OT.pptx',
-      '컨택 리포트.docx',
+      'OT 및 킥오프.pptx',
+      '컨택리포트.docx',
     ])
     // the set's line, then each tab's own card fill (plan item 3), picked up while the view is open
     const timeline = page.getByTestId('cheil-campaign-timeline')
     await expect(timeline).toContainText(
-      '문서 세트를 캠페인 폴더에 만들어 엽니다: 캠페인 OT, 컨택 리포트',
+      '문서 세트를 캠페인 폴더에 만들어 엽니다: OT 및 킥오프, 컨택리포트',
     )
-    await expect(timeline).toContainText('컨택 리포트: 캠페인 카드로 공통 칸 5개를 채움', {
+    await expect(timeline).toContainText('컨택리포트: 캠페인 카드로 공통 칸 6개를 채움', {
       timeout: 15_000,
     })
-    await expect(timeline).toContainText('캠페인 OT: 캠페인 카드로 공통 칸 9개를 채움', {
+    await expect(timeline).toContainText('OT 및 킥오프: 캠페인 카드로 공통 칸 8개를 채움', {
       timeout: 15_000,
     })
     await page.screenshot({ path: screenshotPath('cheil-campaign-set-home') })
@@ -197,13 +195,15 @@ test('Cheil: a campaign opens the media plan with the card in its header cells',
       .filter({ hasNot: sheets.locator('[aria-label]') })
       .first()
     await nameBox.click()
-    await nameBox.fill('A1:H8')
+    await nameBox.fill('A1:H38')
     await nameBox.press('Enter')
     await sheets.waitForTimeout(500)
     await sheets.keyboard.press('Control+C')
     await sheets.waitForTimeout(800)
     const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
-    expect(copied).toContain('가상전자 에어린 봄 런칭 미디어 플랜')
+    expect(copied).toContain('미디어브리프')
+    expect(copied).toContain('가상전자')
+    expect(copied).toContain('에어린 봄 런칭')
     expect(copied).toContain('500,000,000원')
     expect(copied).toContain('25~34세 1인 가구 직장인')
     expect(copied).not.toContain('[광고주]')
@@ -219,7 +219,7 @@ test('Cheil: a campaign opens the media plan with the card in its header cells',
  * card; both documents change (no model), the view lists where, each panel
  * says so, and the timeline records it.
  */
-test('Cheil: changing the budget on the card changes it in the open Word document and deck', async () => {
+test('Cheil: changing the author on the card changes it in the open Word document and deck', async () => {
   const launched = await launchShell({
     userDataDir: await profileWithCampaign(),
     videoDir: 'cheil-campaign-propagate',
@@ -229,38 +229,38 @@ test('Cheil: changing the budget on the card changes it in the open Word documen
   const { app, page } = launched
   try {
     await page.setViewportSize({ width: 1280, height: 1000 }).catch(() => {})
-    await openSet(page, ['cheil-pitch-analysis', 'cheil-brief'])
+    await openSet(page, ['cheil-meeting-notes', 'cheil-brief'])
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
-    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible({
+    await expect(docs.getByText(/카드로 공통 칸 6개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
-    await expect(slides.getByText(/카드로 공통 칸 9개를 채웠습니다/)).toBeVisible({
+    await expect(slides.getByText(/카드로 공통 칸 8개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
 
-    // the card's budget changes on the home
+    // the card's author changes on the home
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     const view = page.getByTestId('cheil-campaign-view')
     await view.getByRole('button', { name: '카드 고치기' }).click()
-    await page.locator('form.cheil-campaign-form input[name="budget"]').fill('600000000')
+    await page.locator('form.cheil-campaign-form input[name="author"]').fill('김기획')
     await page.getByTestId('cheil-campaign-submit').click()
 
     const list = page.getByTestId('cheil-propagation')
     await expect(list).toBeVisible({ timeout: 20_000 })
-    await expect(list).toContainText('경쟁 PT 분석 — 총예산 500,000,000원 → 600,000,000원 1곳')
-    await expect(list).toContainText('캠페인 OT — 총예산 500,000,000원 → 600,000,000원 1곳')
+    await expect(list).toContainText('컨택리포트 — 작성자 홍길동 → 김기획 1곳')
+    await expect(list).toContainText('OT 및 킥오프 — 작성자 홍길동 → 김기획 1곳')
     await expect(page.getByTestId('cheil-campaign-timeline')).toContainText(
-      '카드 변경 반영: 경쟁 PT 분석 — 총예산 500,000,000원 → 600,000,000원 1곳',
+      '카드 변경 반영: 컨택리포트 — 작성자 홍길동 → 김기획 1곳',
     )
     await page.screenshot({ path: screenshotPath('cheil-campaign-propagate-home') })
 
-    // the brief and the deck now carry the new budget, and their panels say so
+    // the brief and the deck now carry the new author, and their panels say so
     const docText = await docs.evaluate(
       () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
     )
-    expect(docText).toContain('600,000,000원')
-    expect(docText).not.toContain('500,000,000원')
+    expect(docText).toContain('김기획')
+    expect(docText).not.toContain('홍길동')
     await expect(docs.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
     const deck = await slides.evaluate(async () => {
       const api = (window as unknown as { slidesApi: { getRenderSlides(): Promise<unknown> } })
@@ -278,8 +278,8 @@ test('Cheil: changing the budget on the card changes it in the open Word documen
       walk(await api.getRenderSlides(), '')
       return out.join('').replace(/\s+/g, '')
     })
-    expect(deck).toContain('600,000,000원')
-    expect(deck).not.toContain('500,000,000원')
+    expect(deck).toContain('김기획')
+    expect(deck).not.toContain('홍길동')
     await expect(slides.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
   } finally {
     await closeAndSaveVideo(launched, 'cheil-campaign-propagate')
@@ -289,13 +289,13 @@ test('Cheil: changing the budget on the card changes it in the open Word documen
 /**
  * Cheil fork (plan item 5): a card change reaches a closed document, after a
  * restart. The pitch analysis is saved in the campaign's folder and the app quits; in
- * the next run the budget changes on the card; the document, which holds the old
- * budget, opens again with the new one (not saved: the person checks and
+ * the next run the author changes on the card; the document, which holds the old
+ * author, opens again with the new one (not saved: the person checks and
  * saves it), and the home lists it as reopened.
  */
-test('Cheil: after a restart, changing the budget opens the closed document again with it', async () => {
+test('Cheil: after a restart, changing the author opens the closed document again with it', async () => {
   const userDataDir = await profileWithCampaign()
-  const brief = join(userDataDir, 'Cheil 캠페인', FOLDER, '경쟁 PT 분석.docx')
+  const brief = join(userDataDir, 'Cheil 캠페인', FOLDER, '컨택리포트.docx')
   const first = await launchShell({
     userDataDir,
     videoDir: 'cheil-campaign-reopen-1',
@@ -308,9 +308,9 @@ test('Cheil: after a restart, changing the budget opens the closed document agai
         throw new Error('a campaign document saves in place, never through Save As')
       }) as typeof dialog.showSaveDialog
     })
-    await openSet(first.page, ['cheil-pitch-analysis'])
+    await openSet(first.page, ['cheil-meeting-notes'])
     const docs = await waitForPageWithUrl(first.app, '://docs/', 60_000)
-    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible({
+    await expect(docs.getByText(/카드로 공통 칸 6개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
     // the filled brief saves in place
@@ -340,29 +340,29 @@ test('Cheil: after a restart, changing the budget opens the closed document agai
     await page.locator('[data-testid="cheil-campaign-card"]').first().click()
     const view = page.getByTestId('cheil-campaign-view')
     await view.getByRole('button', { name: '카드 고치기' }).click()
-    await page.locator('form.cheil-campaign-form input[name="budget"]').fill('600000000')
+    await page.locator('form.cheil-campaign-form input[name="author"]').fill('김기획')
     await page.getByTestId('cheil-campaign-submit').click()
 
     const list = page.getByTestId('cheil-propagation')
     await expect(list).toBeVisible({ timeout: 45_000 })
     await expect(list).toContainText(
-      '경쟁 PT 분석 — 총예산 500,000,000원 → 600,000,000원 1곳 — 닫혀 있던 문서를 열어 바꿨습니다. 확인하고 저장하세요',
+      '컨택리포트 — 작성자 홍길동 → 김기획 1곳 — 닫혀 있던 문서를 열어 바꿨습니다. 확인하고 저장하세요',
     )
     await expect(page.getByTestId('cheil-campaign-timeline')).toContainText(
-      '카드 변경 반영: 경쟁 PT 분석 — 총예산 500,000,000원 → 600,000,000원 1곳 (닫혀 있던 문서를 열어 바꿈, 저장 전)',
+      '카드 변경 반영: 컨택리포트 — 작성자 홍길동 → 김기획 1곳 (닫혀 있던 문서를 열어 바꿈, 저장 전)',
     )
     await expect(page.locator('.tab-bar .tab-item:not(.tab-home)')).toContainText([
-      '경쟁 PT 분석.docx',
+      '컨택리포트.docx',
     ])
     await page.screenshot({ path: screenshotPath('cheil-campaign-reopen-home') })
 
-    // the brief is open again with the new budget, and its panel says so
+    // the brief is open again with the new author, and its panel says so
     const reopened = await waitForPageWithUrl(app, '://docs/', 30_000)
     const docText = await reopened.evaluate(
       () => (document.querySelector('.ProseMirror') as HTMLElement | null)?.innerText ?? '',
     )
-    expect(docText).toContain('600,000,000원')
-    expect(docText).not.toContain('500,000,000원')
+    expect(docText).toContain('김기획')
+    expect(docText).not.toContain('홍길동')
     await expect(reopened.getByText(/캠페인 카드가 바뀌어 이 문서를 고쳤습니다/)).toBeVisible()
     await reopened.screenshot({ path: screenshotPath('cheil-campaign-reopen-brief') })
   } finally {

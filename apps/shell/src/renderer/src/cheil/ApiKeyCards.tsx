@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import type { AiSettings } from '@genoffice/ai-provider/browser'
 import type { Lang } from '@genoffice/i18n'
+import { productCopy } from './product-copy'
 import { Dropdown } from '@genoffice/ui'
 import { changeAiSettings, readAiSettings } from '../settings-ai'
 import {
@@ -30,7 +31,7 @@ import {
 const WORDS = {
   ko: {
     title: '내 API 키로 연결',
-    desc: '가지고 있는 Claude·GPT·Solar API 키를 넣으면 그 AI로 문서를 채우고 고칩니다. 키는 이 PC의 설정 파일에만 저장되고, 쓴 만큼 각 회사에 요금이 나갑니다. 대외비·개인정보가 보이는 요청은 보내지 않습니다.',
+    desc: '가지고 있는 Claude·GPT·Gemini·Solar API 키를 넣으면 그 AI로 문서를 채우고 고칩니다. 키는 이 PC의 설정 파일에만 저장되고, 쓴 만큼 각 회사에 요금이 나갑니다. 대외비·개인정보가 보이는 요청은 보내지 않습니다.',
     keyLabel: (name: string) => `${name} API 키`,
     keyFrom: (where: string) => `${where}에서 발급`,
     model: '모델',
@@ -43,7 +44,7 @@ const WORDS = {
   },
   en: {
     title: 'Connect your own API key',
-    desc: 'Paste a Claude, GPT or Solar API key and that AI fills and edits your documents. The key is kept only in this PC’s settings file, and each company bills you for what you use. Requests that show confidential or personal information are not sent.',
+    desc: 'Paste a Claude, GPT, Gemini or Solar API key and that AI fills and edits your documents. The key is kept only in this PC’s settings file, and each company bills you for what you use. Requests that show confidential or personal information are not sent.',
     keyLabel: (name: string) => `${name} API key`,
     keyFrom: (where: string) => `made at ${where}`,
     model: 'Model',
@@ -62,9 +63,7 @@ const words = (lang: Lang): Words => (lang === 'ko' ? WORDS.ko : (WORDS.en as un
 
 /** The first-run guide's lead line on its connect page: the API key first, a subscription below */
 export function apiConnectLead(lang: Lang): string {
-  return lang === 'ko'
-    ? '가지고 있는 Claude·GPT·Solar API 키를 넣으면 바로 씁니다. 키는 이 PC에만 저장되고, 쓴 만큼 각 회사에 요금이 나갑니다. Claude·ChatGPT 구독이 있으면 아래에서 연결해도 됩니다.'
-    : 'Paste a Claude, GPT or Solar API key to start. The key stays on this PC, and each company bills you for what you use. With a Claude or ChatGPT subscription, connect it below instead.'
+  return productCopy(lang).offline
 }
 
 function KeyMark() {

@@ -45,6 +45,7 @@ const SCHEME_KEYS: Record<SlideTemplateScheme, StringKey> = {
 const NO_IMAGES = new Map<string, HTMLImageElement>()
 
 interface SavedStyleEntry {
+  topic?: string
   name: string
   createdAt: string
 }
@@ -67,7 +68,7 @@ function useSavedStyles(): SavedStyleEntry[] {
         setSaved(
           list
             .filter((s) => s && typeof s.name === 'string' && s.name)
-            .map((s) => ({ name: s.name, createdAt: String(s.createdAt ?? '') })),
+            .map((s) => ({ name: s.name, topic: s.topic, createdAt: String(s.createdAt ?? '') })),
         )
       } catch {
         /* a stale preload or an unreadable folder: no saved group */
@@ -194,7 +195,7 @@ function SavedCard({
       onClick={onPick}
     >
       <span className="ai-tpl-card-name" id={`${uid}-name`}>
-        {entry.name}
+        {entry.name.startsWith('ref-') ? entry.topic || entry.name : entry.name}
       </span>
       {date && (
         <span className="ai-tpl-card-date" id={`${uid}-date`}>

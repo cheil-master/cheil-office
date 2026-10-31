@@ -75,7 +75,7 @@ function installApi(settings: AiSettings): void {
   } as unknown as HomeApi
 }
 
-async function click(button: HTMLButtonElement): Promise<void> {
+async function click(button: HTMLElement): Promise<void> {
   await act(async () => {
     button.click()
     await Promise.resolve()
@@ -93,10 +93,7 @@ async function openAiPane(): Promise<void> {
     )
     await Promise.resolve()
   })
-  const nav = Array.from(host.querySelectorAll<HTMLButtonElement>('.set-nav-item')).find(
-    (button) => button.textContent?.trim() === 'AI',
-  )
-  await click(nav!)
+  await click(host.querySelector<HTMLElement>('.cheil-extra-connections > summary')!)
   await click(host.querySelector<HTMLButtonElement>('.set-adv-toggle')!)
   await act(async () => {
     await Promise.resolve()

@@ -9,7 +9,8 @@ import { brandText, PRODUCT_NAME } from '@genoffice/i18n'
  */
 
 /** the terminal command, and the launcher file in <resources>/cli (Windows: `<name>.cmd`) */
-export const CLI_COMMAND = 'ieumoffice'
+// Cheil fork: new public command; legacy launchers remain as aliases.
+export const CLI_COMMAND = 'cheiloffice'
 
 /** the bundled CLI entry beside the launchers: a file inside the app, not a registered name */
 export const CLI_BUNDLE_FILE = 'genoffice.cjs'
@@ -21,7 +22,8 @@ export const MCP_SERVER_NAME = CLI_COMMAND
 export const SKILL_NAME = CLI_COMMAND
 
 /** per-user folder under the home directory: launcher record, CLI audit log */
-export const HOME_DIR_NAME = `.${CLI_COMMAND}`
+// Preserve existing launcher records and audit history across this rename.
+export const HOME_DIR_NAME = '.ieumoffice'
 
 /** the installed app binary (`<name>.exe` on Windows, `<name>.app/Contents/MacOS/<name>` on macOS) */
 export const APP_BINARY_NAME = PRODUCT_NAME

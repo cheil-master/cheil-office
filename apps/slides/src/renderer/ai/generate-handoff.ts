@@ -17,6 +17,7 @@
  *
  * The ribbon's presets are a different way in and are not touched here.
  */
+import { templateSelectionState } from './template-selection-state'
 import { useEffect, useRef } from 'react'
 import type { AttachmentAddResult, SlidesApi } from '../../shared/ipc'
 
@@ -30,10 +31,13 @@ interface HandoffState {
   applied: boolean
   /** a request was taken here and no run was recorded as its start yet */
   reportOpen: boolean
+  designInstructions?: string
 }
 
 const freshState = (): HandoffState => ({ take: null, applied: false, reportOpen: false })
 let state = freshState()
+/** Cheil fork: trusted orchestration context, kept out of the user composer. */
+export const designHandoffInstructions = (): string => state.designInstructions ?? ''
 
 /** tests only: a fresh renderer */
 export function resetGenerateHandoffForTest(): void {
@@ -75,6 +79,10 @@ export function useGenerateHandoff(panel: GenerateHandoffPanel): void {
     const s = state
     void takeOnce().then(async (handoff) => {
       if (!alive || !handoff || s.applied) return
+      s.designInstructions = handoff.designInstructions
+      const selectedDesign = handoff.designStyleKey
+        ? await templateSelectionState.select('saved', handoff.designStyleKey)
+        : null
       let added: AttachmentAddResult
       try {
         added = await window.desktop.addAttachmentPaths(handoff.materials.map((m) => m.path))
@@ -91,7 +99,13 @@ export function useGenerateHandoff(panel: GenerateHandoffPanel): void {
       p.fill(handoff.text)
       // the request was to make it from the materials: with none attached, the
       // composer keeps the text (and the notice names what was refused) for the user
-      if (added.accepted.length > 0 && handoff.text.trim()) p.send(handoff.text.trim())
+      if (
+        added.accepted.length > 0 &&
+        (!handoff.designReference || added.rejected.length === 0) &&
+        (!handoff.designStyleKey || selectedDesign?.key === handoff.designStyleKey) &&
+        handoff.text.trim()
+      )
+        p.send(handoff.text.trim())
     })
     return () => {
       alive = false

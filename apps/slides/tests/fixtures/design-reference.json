@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "Editorial reference",
+  "sources": ["https://www.pinterest.com/pin/123/"],
+  "palette": {
+    "background": "#F3EFE5",
+    "ink": "#18251E",
+    "accent": "#D7F35D",
+    "secondary": "#D3D9D0"
+  },
+  "typography": "A bold sans serif title at 60px; 28px body; short labels at 18px. Use a CJK sans fallback, never infer an exact font from pixels.",
+  "composition": "Use 64px outer margins, asymmetric 60/40 cover, aligned columns for comparison and a wide ordered path for process. One dominant headline per page.",
+  "shapes": "A single bright capsule frames the core benefit. Flat rules separate comparable criteria. Small circles mark steps; no unrelated decorations.",
+  "avoid": "No original photos, logos, copy or artwork. Avoid repeated empty cards and tiny body text.",
+  "layouts": {
+    "cover": "Place a bold two-line title on the left and an oversized benefit capsule on the right, with generous negative space.",
+    "comparison": "Two clearly named options share aligned criterion rows. Highlight only the recommended direction in a tinted column, keeping label baselines aligned.",
+    "process": "Arrange three numbered actions along a horizontal connector. Keep action and result adjacent and add one shared outcome at the bottom."
+  }
+}

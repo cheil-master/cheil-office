@@ -24,3 +24,5 @@ src: url('@genoffice/ui/fonts/Carlito-Regular.ttf');
 ```ts
 import carlitoRegular from '@genoffice/ui/fonts/Carlito-Regular.ttf?asset'
 ```
+
+Cheil fork: Pretendard Variable 1.3.9 is bundled unmodified for application UI. Its OFL license is Pretendard-OFL.txt; the font is loaded locally by tokens.css. Document fonts and saved formatting are unchanged.

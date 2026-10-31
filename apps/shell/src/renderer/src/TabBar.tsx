@@ -1,10 +1,12 @@
+// Cheil fork: compact brand chrome; tab behavior and 40px host bounds are preserved.
+import { CheilBrand } from './cheil/CheilBrand'
+import { designWords } from './cheil/design-words'
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import type { SplitHint, SplitViewState } from '../../shared/split-view-api'
 import type { TabsApi, TabSummary } from '../../shared/tabs-api'
 import { TEAR_OFF_SLACK, insertionIndexForX, isBeyondBand } from '../../shared/tab-drag-geometry'
 import { notifyFilesChanged } from './file-events'
-import { productName } from '@genoffice/i18n'
 import { useI18n } from './locale'
 import iconDocx from './assets/file-docx.svg'
 import iconXlsx from './assets/file-xlsx.svg'
@@ -377,26 +379,7 @@ export function TabBar({ split }: TabBarProps) {
   return (
     <div className="tab-bar">
       <div className="tab-bar-drag-spacer" />
-      {!IS_MAC && (
-        <button
-          className="tab-app-menu-btn"
-          title={t('appMenu')}
-          aria-label={t('appMenu')}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect()
-            void window.aiOfficeTabs.showAppMenu(Math.round(rect.left), Math.round(rect.bottom))
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M4 7h16M4 12h16M4 17h16"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      )}
+      <CheilBrand />
       <div
         className={`tab-strip ${dragVisual ? 'dragging' : ''} ${dockX !== null ? 'dock-target' : ''}`}
         ref={stripRef}
@@ -438,7 +421,7 @@ export function TabBar({ split }: TabBarProps) {
               className={`tab-item ${tab.kind === 'home' ? 'tab-home' : ''} ${tab.active ? 'active' : ''} ${dragVisual?.id === tab.id ? 'drag-source' : ''}${pane}`}
               // long file names ellipsize in the strip — hover reveals the
               // full title (the close button's own tooltip still wins there)
-              title={tab.kind === 'home' ? productName(lang) : tab.title}
+              title={tab.kind === 'home' ? designWords(lang).home : tab.title}
               style={dragStyle}
               onContextMenu={(event) => {
                 event.preventDefault()
@@ -530,7 +513,7 @@ export function TabBar({ split }: TabBarProps) {
                 />
               ) : (
                 <span className="tab-title">
-                  {tab.kind === 'home' ? productName(lang) : tab.title}
+                  {tab.kind === 'home' ? designWords(lang).home : tab.title}
                 </span>
               )}
               {tab.closable && (
@@ -604,6 +587,26 @@ export function TabBar({ split }: TabBarProps) {
           />
         </svg>
       </button>
+      {!IS_MAC && (
+        <button
+          className="tab-app-menu-btn"
+          title={t('appMenu')}
+          aria-label={t('appMenu')}
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            void window.aiOfficeTabs.showAppMenu(Math.round(rect.left), Math.round(rect.bottom))
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
       <div className="tab-bar-caption-spacer" />
     </div>
   )

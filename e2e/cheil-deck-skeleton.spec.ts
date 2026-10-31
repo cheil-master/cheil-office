@@ -33,9 +33,9 @@ const PROPOSAL = resolve(
   'shell',
   'resources',
   'builtin-skills',
-  'cheil-proposal',
+  'cheil-brief',
   'assets',
-  '캠페인 제안서.pptx',
+  'OT 및 킥오프.pptx',
 )
 
 async function readBody(req: IncomingMessage): Promise<string> {
@@ -56,18 +56,17 @@ test('Cheil: my PPT template makes a deck from its samples, as long as the conte
         slides: [
           { sample: 1, fill: {} },
           {
-            sample: 3,
+            sample: 2,
             fill: {
-              '[과제를 한 문장으로: 무엇을 누구에게서 얼마나]':
-                '1인 가구 직장인의 봄 공기 걱정 덜기',
-              '[광고주가 풀려는 사업 문제]': '봄 성수기 점유율',
+              '[이번 캠페인 핵심 과제]': '1인 가구 직장인의 봄 공기 걱정 덜기',
+              '[캠페인 배경]': '봄 성수기 점유율',
             },
           },
           {
-            sample: 3,
-            fill: { '[과제를 한 문장으로: 무엇을 누구에게서 얼마나]': '첫 구매 이유 만들기' },
+            sample: 2,
+            fill: { '[이번 캠페인 핵심 과제]': '첫 구매 이유 만들기' },
           },
-          { sample: 12, fill: { '[맺음: 핵심 메시지 한 번 더]': '숨 쉬는 봄' } },
+          { sample: 12, fill: { '[이번 회의에서 결정할 사항]': '숨 쉬는 봄' } },
         ],
       })
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -168,9 +167,9 @@ test('Cheil: my PPT template makes a deck from its samples, as long as the conte
     expect(made[1]).toContain('봄성수기점유율')
     expect(made[2]).toContain('첫구매이유만들기')
     // a blank the model left stays for the person
-    expect(made[2]).toContain('[광고주가풀려는사업문제]')
+    expect(made[2]).toContain('[캠페인배경]')
     expect(made[3]).toContain('숨쉬는봄')
-    expect(made[3]).toContain('비즈니스13팀')
+    expect(made[0]).toContain('비즈니스13팀')
     expect(asked).toEqual(['deck'])
     await slides.screenshot({ path: screenshotPath('cheil-deck-skeleton') })
   } finally {

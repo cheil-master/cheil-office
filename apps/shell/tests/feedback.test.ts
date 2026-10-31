@@ -70,12 +70,12 @@ describe('the diagnostics block', () => {
   })
 })
 
-describe('the survey address', () => {
-  it('is the published Google Form, not a repository or a local path', () => {
-    expect(FEEDBACK_SURVEY_URL).toMatch(/^https:\/\/(docs\.google\.com\/forms\/d\/e\/|forms\.gle\/)/)
-    expect(FEEDBACK_SURVEY_URL).not.toMatch(/REPLACE|example\.com/)
-    expect(FEEDBACK_SURVEY_URL).not.toMatch(/github\.com/)
-    expect(FEEDBACK_SURVEY_URL).not.toMatch(/[\\/](Users|home)[\\/]/)
+describe('the product support address', () => {
+  it('opens only the Cheil project issue form after manual confirmation', () => {
+    expect(FEEDBACK_SURVEY_URL).toBe('https://github.com/cheil-master/cheil-office/issues/new')
+    expect(FEEDBACK_SURVEY_URL).not.toMatch(/pblsketch|google\.com\/forms/)
+    expect(feedbackText('ko', 'dialogBody')).toContain('CheilOffice')
+    expect(feedbackText('ko', 'btnOpen')).toBe('프로젝트 열기')
   })
 })
 

@@ -15,7 +15,7 @@ import { AI_PROVIDERS } from '@genoffice/ai-provider/browser'
 import type { AiProviderId, AiSettings } from '@genoffice/ai-provider/browser'
 
 export interface CheilApiChoice {
-  id: Extract<AiProviderId, 'anthropic' | 'openai' | 'upstage'>
+  id: Extract<AiProviderId, 'anthropic' | 'openai' | 'upstage' | 'gemini'>
   /** the name people know */
   name: string
   /** whose API it is, and where the key is made */
@@ -26,6 +26,7 @@ export interface CheilApiChoice {
 export const CHEIL_API_CHOICES: readonly CheilApiChoice[] = [
   { id: 'anthropic', name: 'Claude', vendor: 'Anthropic', console: 'console.anthropic.com' },
   { id: 'openai', name: 'GPT', vendor: 'OpenAI', console: 'platform.openai.com' },
+  { id: 'gemini', name: 'Gemini', vendor: 'Google', console: 'aistudio.google.com' },
   { id: 'upstage', name: 'Solar', vendor: 'Upstage', console: 'console.upstage.ai' },
 ]
 

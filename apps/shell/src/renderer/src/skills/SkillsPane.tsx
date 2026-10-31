@@ -57,6 +57,7 @@ export function SkillsPane() {
   const api = userSkillsApi()
   const [views, setViews] = useState<UserSkillView[] | null>(null)
   const [query, setQuery] = useState('')
+  const [workFilter, setWorkFilter] = useState<'all' | 'enabled' | 'templates'>('all')
   const [notice, setNotice] = useState<SkillsNotice | null>(null)
   /** a status line while a slow call runs */
   const [busyKey, setBusyKey] = useState<SkillsStringKey | null>(null)
@@ -104,6 +105,31 @@ export function SkillsPane() {
     return (
       <>
         <h3 className="set-pane-title">{s('navLabel')}</h3>
+        <section className="cheil-skill-overview">
+          <span>CHEILOFFICE · WORKFLOW</span>
+          <h4>
+            {lang === 'ko' ? '반복되는 캠페인 업무를 나만의 절차로' : 'Reusable campaign workflows'}
+          </h4>
+          <p>
+            {lang === 'ko'
+              ? '컨택리포트 정리, 제안서 초안, 결과보고 검토처럼 반복되는 업무의 작성 기준과 절차를 관리합니다. 스킬은 AI 연결과 별개이며, 실행 가능한 도구와 권한은 작업 환경에 따라 달라집니다.'
+              : 'Manage reusable instructions for reports, proposals and reviews. Skills use your AI connection and available tool permissions.'}
+          </p>
+          <div role="group" aria-label="스킬 보기">
+            {(['all', 'enabled', 'templates'] as const).map((id, i) => (
+              <button
+                key={id}
+                className="set-btn"
+                aria-pressed={workFilter === id}
+                onClick={() => setWorkFilter(id)}
+              >
+                {lang === 'ko'
+                  ? ['전체 절차', '사용 중', '양식 포함'][i]
+                  : ['All', 'Enabled', 'Templates'][i]}
+              </button>
+            ))}
+          </div>
+        </section>
         <p className="set-field-desc skl-intro">{s('intro')}</p>
         <p className="set-field-desc">{s('empty')}</p>
       </>
@@ -236,7 +262,12 @@ export function SkillsPane() {
     void window.aiOffice?.openHelp?.(SKILLS_HELP_TOPIC)
   }
 
-  const groups = views ? groupSkills(views, query, lang) : []
+  const filteredViews = views?.filter(
+    (view) =>
+      workFilter === 'all' ||
+      (workFilter === 'enabled' ? view.enabled : !!(view.template && view.templateExists)),
+  )
+  const groups = filteredViews ? groupSkills(filteredViews, query, lang) : []
   const hidden = views ? hiddenBuiltinCount(views) : 0
 
   const confirmText = (view: UserSkillView, kind: RowConfirm['kind']) => {
@@ -286,7 +317,32 @@ export function SkillsPane() {
         </div>
       </div>
 
-      <p className="set-field-desc skl-intro">
+      <section className="cheil-skill-overview">
+          <span>CHEILOFFICE · WORKFLOW</span>
+          <h4>
+            {lang === 'ko' ? '반복되는 캠페인 업무를 나만의 절차로' : 'Reusable campaign workflows'}
+          </h4>
+          <p>
+            {lang === 'ko'
+              ? '컨택리포트 정리, 제안서 초안, 결과보고 검토처럼 반복되는 업무의 작성 기준과 절차를 관리합니다. 스킬은 AI 연결과 별개이며, 실행 가능한 도구와 권한은 작업 환경에 따라 달라집니다.'
+              : 'Manage reusable instructions for reports, proposals and reviews. Skills use your AI connection and available tool permissions.'}
+          </p>
+          <div role="group" aria-label="스킬 보기">
+            {(['all', 'enabled', 'templates'] as const).map((id, i) => (
+              <button
+                key={id}
+                className="set-btn"
+                aria-pressed={workFilter === id}
+                onClick={() => setWorkFilter(id)}
+              >
+                {lang === 'ko'
+                  ? ['전체 절차', '사용 중', '양식 포함'][i]
+                  : ['All', 'Enabled', 'Templates'][i]}
+              </button>
+            ))}
+          </div>
+        </section>
+<p className="set-field-desc skl-intro">
         {s('intro')}{' '}
         <button
           type="button"

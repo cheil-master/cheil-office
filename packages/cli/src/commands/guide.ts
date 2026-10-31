@@ -45,10 +45,10 @@ export const guideCommand: CommandDef = {
       throw new CliError(
         EXIT.usage,
         'guides available for: slides, docs, sheets',
-        { usage: 'ieumoffice guide slides | ieumoffice guide docs | ieumoffice guide sheets' },
+        { usage: 'cheiloffice guide slides | cheiloffice guide docs | cheiloffice guide sheets' },
         {
           reason: domain === undefined ? 'missing_argument' : 'invalid_argument',
-          suggestion: 'run `ieumoffice guide slides|docs|sheets`',
+          suggestion: 'run `cheiloffice guide slides|docs|sheets`',
         },
       )
     }
@@ -83,7 +83,7 @@ export const guideCommand: CommandDef = {
           reason: 'invalid_argument',
           suggestion: guess
             ? `did you mean ${guess}?`
-            : `run \`ieumoffice guide ${domain}\` for the groups and ops`,
+            : `run \`cheiloffice guide ${domain}\` for the groups and ops`,
         },
       )
     }
@@ -123,13 +123,13 @@ async function load(
       if (index) return docs.opSignatureIndex()
       if (group) return docs.opGuide(group)!
       return [
-        'Op groups (ieumoffice guide slides <group> prints one; ieumoffice guide slides <op> prints one op):',
+        'Op groups (cheiloffice guide slides <group> prints one; cheiloffice guide slides <op> prints one op):',
         docs.opGuideCatalog(),
         '',
-        'Building a new deck: `ieumoffice guide slides design` (the staged workflow: style sheet, outline, one page file at a time, build, QC) and `ieumoffice guide slides spec` (the outline and page spec JSON for `ieumoffice slides check` and `ieumoffice create --type pptx --spec`).',
+        'Building a new deck: `cheiloffice guide slides design` (the staged workflow: style sheet, outline, one page file at a time, build, QC) and `cheiloffice guide slides spec` (the outline and page spec JSON for `cheiloffice slides check` and `cheiloffice create --type pptx --spec`).',
         '',
         'Every op: { "op": "<name>", "target": { "slide": <index|"s_n">, "el"?: "e_*" }, ...fields }.',
-        'Units are EMU (914400 per inch; suffixes in/cm/mm/pt/px accepted); font sizes are pt. `ieumoffice slides read <file>` lists ids and geometry.',
+        'Units are EMU (914400 per inch; suffixes in/cm/mm/pt/px accepted); font sizes are pt. `cheiloffice slides read <file>` lists ids and geometry.',
         'Vocabulary:',
         docs.opVocabulary(),
       ].join('\n')
@@ -153,8 +153,8 @@ function slidesCatalog(docs: SlidesOpDocs): OpCatalog {
 
 function docsGuideText(catalog: OpCatalog, htmlRules: string, group?: string): string {
   const lines = [
-    'Word ops (ieumoffice docs apply --ops): a JSON array; every entry has "op".',
-    'Targets: { "blockIndexes": [..] } or { "nodeType": "docHeading"|"docParagraph"|"docListItem"|"image", "headingLevel"? }; get indexes from `ieumoffice docs read`.',
+    'Word ops (cheiloffice docs apply --ops): a JSON array; every entry has "op".',
+    'Targets: { "blockIndexes": [..] } or { "nodeType": "docHeading"|"docParagraph"|"docListItem"|"image", "headingLevel"? }; get indexes from `cheiloffice docs read`.',
     'Field notation: bare = string, n = number, bool = boolean, ? = optional, a|b = one of.',
     '',
     ...renderGroups(catalog, group),
@@ -199,7 +199,7 @@ async function templatesGuide(id: string | undefined, json: boolean): Promise<Co
     })
     return {
       summary: [
-        'Built-in deck templates (`ieumoffice guide slides templates <id>` prints one as a style sheet to save as deck/style.md):',
+        'Built-in deck templates (`cheiloffice guide slides templates <id>` prints one as a style sheet to save as deck/style.md):',
         ...lines,
       ].join('\n'),
       ...(json ? { detail: { templates: all.map(brief) } } : {}),
@@ -217,12 +217,12 @@ async function templatesGuide(id: string | undefined, json: boolean): Promise<Co
         reason: 'invalid_argument',
         suggestion: guess
           ? `did you mean ${guess}?`
-          : 'run `ieumoffice guide slides templates` for the list',
+          : 'run `cheiloffice guide slides templates` for the list',
       },
     )
   }
   const shipped = branded(
-    `These fonts ship with GenOffice: ${fontList(t).join(', ')}; a deck that names them shows in them in the app and in \`ieumoffice slides render\`.`,
+    `These fonts ship with GenOffice: ${fontList(t).join(', ')}; a deck that names them shows in them in the app and in \`cheiloffice slides render\`.`,
   )
   return {
     summary: `${t.styleSheet}\n\n${shipped}`,

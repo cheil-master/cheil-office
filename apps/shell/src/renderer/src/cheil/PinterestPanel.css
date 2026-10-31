@@ -1,0 +1,42 @@
+/* Cheil fork: responsive Pinterest board and image previews. */
+.cheil-pinterest {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-block: 16px;
+  overflow-wrap: anywhere;
+}
+.cheil-pinterest-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 10px;
+}
+.cheil-pinterest-boards button {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: start;
+}
+.cheil-pinterest-boards button[aria-pressed='true'] {
+  outline: 2px solid var(--accent);
+}
+.cheil-pinterest-pins {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+.cheil-pinterest-pins figure {
+  margin: 0;
+  min-width: 0;
+}
+.cheil-pinterest-pins img {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.cheil-pinterest-pins figcaption {
+  font-size: 12px;
+  max-height: 3em;
+  overflow: hidden;
+}

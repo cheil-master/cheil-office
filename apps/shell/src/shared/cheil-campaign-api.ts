@@ -231,6 +231,17 @@ export type CampaignResult<T = object> =
   ({ ok: true } & T) | { ok: false; reason: CampaignFailReason }
 
 export interface CheilCampaignApi {
+  usage(): Promise<import('./ai-usage').HomeAiUsage>
+
+  folderWork(
+    request: import('./folder-work').FolderWorkRequest,
+  ): Promise<import('./folder-work').FolderWorkReply>
+
+  /** Cheil fork: own wiki, independent of optional Obsidian export. */
+  wiki(
+    request: import('./cheil-wiki-api').WikiRequest,
+  ): Promise<import('./cheil-wiki-api').WikiReply>
+
   list(): Promise<CampaignResult<{ campaigns: CampaignSummary[] }>>
   create(card: CheilCampaignCard): Promise<CampaignResult<{ campaign: CampaignDetail }>>
   get(id: string): Promise<CampaignResult<{ campaign: CampaignDetail }>>

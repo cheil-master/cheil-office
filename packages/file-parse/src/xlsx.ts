@@ -212,7 +212,10 @@ function joinRowCells(cells: readonly string[]): string {
 }
 
 /** extract sheet text from an xlsx: one "# SheetName" section per sheet, cells joined with " | " */
-export async function xlsxToText(bytes: Uint8Array): Promise<string> {
+export async function xlsxToText(
+  bytes: Uint8Array,
+  options: { rowNumbers?: boolean } = {},
+): Promise<string> {
   // The declared-size pass below is advisory; this metered gate is the one that
   // holds when a part lies about its size (GH #759).
   await assertZipInflatesWithinLimits(bytes)
@@ -287,7 +290,9 @@ export async function xlsxToText(bytes: Uint8Array): Promise<string> {
         if (!slot) cells.push('')
         else for (let j = slot.length - 1; j >= 0; j--) cells.push(slot[j])
       }
-      lines.push(joinRowCells(cells))
+      lines.push(
+        (options.rowNumbers ? `[row ${String(row['@_r'] ?? '')}] ` : '') + joinRowCells(cells),
+      )
     }
     if (hasData) sheetsWithData += 1
     else if (path && worksheet.worksheet?.drawing) {

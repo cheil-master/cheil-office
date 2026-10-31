@@ -4,6 +4,8 @@
  * to avoid renderer CORS), search tools, and the slides-only ai:* channels
  * (image generation, media analysis, style templates).
  */
+import { designReferenceStore } from './design-reference-store'
+import { designStyleText } from '../shared/design-reference'
 import { app, ipcMain, nativeImage, net, webContents } from 'electron'
 import {
   appendFileSync,
@@ -494,6 +496,18 @@ export function registerSlidesOnlyAiIpc(): void {
     },
   )
 
+  // Cheil fork: persist analyzed visual rules only from a Slides editor session.
+  const referenceStore = () =>
+    designReferenceStore(join(app.getPath('userData'), 'style-templates'))
+  ipcMain.handle('slides:save-design-reference', (event, value: unknown) => {
+    if (!sessions.has(event.sender.id)) return { ok: false, error: 'invalid-editor' }
+    try {
+      return { ok: true, key: referenceStore().save(value).key }
+    } catch {
+      return { ok: false, error: 'invalid-design-reference' }
+    }
+  })
+
   // ── Style template save: stored in userData/style-templates/<name>.json
   const STYLE_TEMPLATES_DIR = () => join(app.getPath('userData'), 'style-templates')
   /** A saved style's `basedOn` as it is stored and answered: a non-empty id, or nothing */
@@ -542,27 +556,33 @@ export function registerSlidesOnlyAiIpc(): void {
     (): Array<{ name: string; topic: string; createdAt: string }> => {
       try {
         const dir = STYLE_TEMPLATES_DIR()
-        if (!existsSync(dir)) return []
+        const references = referenceStore()
+          .list()
+          .map((r) => ({ name: r.key, topic: r.name, createdAt: r.createdAt }))
+        if (!existsSync(dir)) return references
         const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
-        return files
-          .map((f) => {
-            try {
-              const raw = readJson<{
-                name?: string
-                topic?: string
-                createdAt?: string
-                styleSkill?: string
-              }>(join(dir, f), {})
-              return {
-                name: raw.name ?? f.replace(/\.json$/, ''),
-                topic: raw.topic ?? '',
-                createdAt: raw.createdAt ?? '',
+        return [
+          ...references,
+          ...files
+            .map((f) => {
+              try {
+                const raw = readJson<{
+                  name?: string
+                  topic?: string
+                  createdAt?: string
+                  styleSkill?: string
+                }>(join(dir, f), {})
+                return {
+                  name: raw.name ?? f.replace(/\.json$/, ''),
+                  topic: raw.topic ?? '',
+                  createdAt: raw.createdAt ?? '',
+                }
+              } catch {
+                return null
               }
-            } catch {
-              return null
-            }
-          })
-          .filter(Boolean) as Array<{ name: string; topic: string; createdAt: string }>
+            })
+            .filter(Boolean),
+        ] as Array<{ name: string; topic: string; createdAt: string }>
       } catch {
         return []
       }
@@ -586,6 +606,10 @@ export function registerSlidesOnlyAiIpc(): void {
       try {
         const dir = STYLE_TEMPLATES_DIR()
         const safeName = name.replace(/[/\\:*?"<>|]/g, '_').slice(0, 64)
+        if (/^ref-[a-f0-9-]{36}$/.test(name)) {
+          const saved = referenceStore().load(name)
+          return { ok: true, styleSkill: designStyleText(saved.design), topic: saved.name }
+        }
         const filePath = join(dir, `${safeName}.json`)
         if (!existsSync(filePath)) return { ok: false, error: tm('errTplMissing', { name }) }
         const raw = readJson<{

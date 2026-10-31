@@ -10,6 +10,8 @@
 
 import { brandText, LANGS } from '@genoffice/i18n'
 import { topicTitle } from './help-titles'
+import { cheilHelpBody } from './product-help'
+import type { Lang } from '@genoffice/i18n'
 
 export type HelpGroupId = 'start' | 'apps' | 'ai' | 'manage'
 
@@ -469,6 +471,8 @@ export function helpLangSuffix(lang: string): string {
  */
 export async function helpBody(id: string, lang: string): Promise<string | null> {
   const own = helpLangSuffix(lang)
+  const cheil = cheilHelpBody(id, own as Lang)
+  if (cheil) return cheil
   const direct = bodies[`./topics/${id}.${own}.md`]
   if (direct) return brandText((await direct()) as string, own)
   const english = bodies[`./topics/${id}.en.md`]

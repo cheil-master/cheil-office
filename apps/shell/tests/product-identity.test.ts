@@ -247,13 +247,13 @@ describe('repository coordinates', () => {
   })
 
   it('names the same repository in the package metadata', () => {
-    expect(GITHUB_REPO_URL).toBe('https://github.com/pblsketch/openoffice')
+    expect(GITHUB_REPO_URL).toBe('https://github.com/cheil-master/cheil-office')
     expect(shellPackage.homepage).toBe(GITHUB_REPO_URL)
     expect((rootPackage.repository as { url: string }).url).toBe(`git+${GITHUB_REPO_URL}.git`)
   })
 
   it('credits the maintainer of this product in the Linux package metadata', () => {
-    const maintainer = 'pblsketch <pblsketch@users.noreply.github.com>'
+    const maintainer = 'CheilOffice project'
     expect(config.linux.maintainer).toBe(maintainer)
     expect(config.linux.vendor).toBe(maintainer)
   })

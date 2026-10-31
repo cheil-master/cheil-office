@@ -1,3 +1,4 @@
+import { recordAiRequest, recordAiTokens, recordAiWindows } from './usage-ledger'
 import type { AgentMessage, AgentToolDef } from '@genoffice/agent-core'
 import { assertCheilEgressAllowed, requestTextOf } from './cheil-grade'
 import { withOutputCapFallback } from './output-cap'
@@ -31,6 +32,19 @@ export async function streamForProvider(
   const { baseUrl } = endpoint
   // Cheil fork: nothing client-confidential or personal leaves this PC
   assertCheilEgressAllowed(baseUrl, requestTextOf(messages))
+  recordAiRequest(provider)
+  const downstream = cb
+  cb = {
+    ...downstream,
+    onUsage: (usage) => {
+      recordAiTokens(provider, usage)
+      downstream.onUsage?.(usage)
+    },
+    onSubscriptionUsage: (usage) => {
+      recordAiWindows(provider, usage)
+      downstream.onSubscriptionUsage?.(usage)
+    },
+  }
   if (endpoint.model) config = { ...config, model: endpoint.model }
   if (endpoint.protocol === 'codex-app-server') {
     return streamCodexAppServer(config, system, messages, tools, maxTokens, cb)

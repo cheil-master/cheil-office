@@ -49,7 +49,7 @@ async function ollamaProfile(): Promise<string> {
 /** a money amount ("3,000만 원", "5억", "50,000,000원"): the notes hold none, so any is made up */
 const MONEY_RE = /\d[\d,.]*\s*(억|만\s*원|원)/
 
-test('Cheil: the local model fills a brief template', async () => {
+test('Cheil: the local model fills a contact report template', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
   const launched = await launchShell({
@@ -61,11 +61,11 @@ test('Cheil: the local model fills a brief template', async () => {
   const { app, page } = launched
   const started = Date.now()
   try {
-    await page.getByTestId('cheil-template-cheil-brief').click()
+    await page.getByTestId('cheil-template-cheil-meeting-notes').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const composer = docs.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/브리프를 채워 줘/, { timeout: 60_000 })
-    await composer.fill(`아래 OT 메모로 이 브리프를 채워 줘.\n${NOTES}`)
+    await expect(composer).toHaveValue(/컨택리포트를 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 OT 메모로 이 컨택리포트를 채워 줘.\n${NOTES}`)
     await composer.press('Enter')
     // the run shows as busy, then ends
     await expect(docs.locator('.ai-input-box')).toBeVisible()
@@ -103,7 +103,7 @@ test('Cheil: the local model fills a brief template', async () => {
   }
 })
 
-test('Cheil: the local model fills a proposal deck in one call', async () => {
+test('Cheil: the local model fills a kickoff deck in one call', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
   const launched = await launchShell({
@@ -116,7 +116,7 @@ test('Cheil: the local model fills a proposal deck in one call', async () => {
   const started = Date.now()
   const dumpEventsRef: { current: (() => Promise<unknown>) | null } = { current: null }
   try {
-    await page.getByTestId('cheil-template-cheil-proposal').click()
+    await page.getByTestId('cheil-template-cheil-brief').click()
     const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
     // diagnostics: why a slides view goes away mid-run
     const events: string[] = []
@@ -135,8 +135,8 @@ test('Cheil: the local model fills a proposal deck in one call', async () => {
       )
     dumpEventsRef.current = dumpEvents
     const composer = slides.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/제안서 양식을 채워 줘/, { timeout: 60_000 })
-    await composer.fill(`아래 OT 메모로 이 제안서 양식을 채워 줘. 팀명: 기획 3팀\n${NOTES}`)
+    await expect(composer).toHaveValue(/OT 및 킥오프 양식을 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 OT 메모로 이 OT 및 킥오프 양식을 채워 줘. 팀명: 기획 3팀\n${NOTES}`)
     await composer.press('Enter')
     await expect(slides.locator('.ai-stop-btn')).toBeVisible({ timeout: 30_000 })
     await expect
@@ -183,13 +183,15 @@ test('Cheil: the local model fills a proposal deck in one call', async () => {
 })
 
 const QUOTE = [
-  '가상전자 에어린 봄 캠페인 매체 견적(블루윈드미디어, 2026-10-21)',
-  '- 유튜브 인스트림: 2026-11-01~2026-11-30, 30,000,000원, 예상 노출 6,000,000, 예상 클릭 60,000',
-  '- 인스타그램 피드: 2026-11-01~2026-11-21, 15,000,000원, 예상 노출 3,000,000, 예상 클릭 45,000',
-  '- 네이버 GFA: 2026-11-10~2026-11-30, 10,000,000원, 예상 노출 2,500,000 (클릭 추정치 없음)',
+  '가상전자 에어린 봄 캠페인 미디어브리프',
+  '- 총예산: 55,000,000원, VAT 별도',
+  '- 기간: 2026-11-01~2026-11-30',
+  '- 핵심 타깃: 25~34세 1인 가구',
+  '- 목적: 공기청정기 신제품 인지도 확대',
+  '- 요청: 유튜브와 인스타그램 중심 매체 전략 제안',
 ].join('\n')
 
-test('Cheil: the local model fills the media plan workbook in one call', async () => {
+test('Cheil: the local model fills the media brief workbook in one call', async () => {
   test.skip(process.env.CHEIL_REAL_OLLAMA !== '1', 'set CHEIL_REAL_OLLAMA=1 to run on Ollama')
   test.setTimeout(30 * 60_000)
   const launched = await launchShell({
@@ -204,8 +206,8 @@ test('Cheil: the local model fills the media plan workbook in one call', async (
     await page.getByTestId('cheil-template-cheil-media-plan').click()
     const sheets = await waitForPageWithUrl(app, '://sheets/', 60_000)
     const composer = sheets.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/미디어 플랜을 채워 줘/, { timeout: 60_000 })
-    await composer.fill(`아래 매체 견적으로 이 미디어 플랜을 채워 줘.\n${QUOTE}`)
+    await expect(composer).toHaveValue(/미디어브리프를 채워 줘/, { timeout: 60_000 })
+    await composer.fill(`아래 매체 견적으로 이 미디어브리프를 채워 줘.\n${QUOTE}`)
     await composer.press('Enter')
     await expect(sheets.locator('.ai-stop-btn')).toBeVisible({ timeout: 30_000 })
     await expect
@@ -223,33 +225,23 @@ test('Cheil: the local model fills the media plan workbook in one call', async (
       .filter({ hasNot: sheets.locator('[aria-label]') })
       .first()
     await nameBox.click()
-    await nameBox.fill('A1:L8')
+    await nameBox.fill('A1:H46')
     await nameBox.press('Enter')
     await sheets.waitForTimeout(500)
     await sheets.keyboard.press('Control+C')
     await sheets.waitForTimeout(800)
     const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
-    // the sources sheet: its tab is plain DOM
-    await sheets.getByText('가정·출처', { exact: true }).last().click()
-    await sheets.waitForTimeout(1_000)
-    await nameBox.click()
-    await nameBox.fill('A1:C14')
-    await nameBox.press('Enter')
-    await sheets.waitForTimeout(500)
-    await sheets.keyboard.press('Control+C')
-    await sheets.waitForTimeout(800)
-    const sources = await app.evaluate(({ clipboard }) => clipboard.readText())
     const out = `${ARTIFACTS_DIR}/cheil-ollama-sheet-result.txt`
     await mkdir(dirname(out), { recursive: true })
     await writeFile(
       out,
-      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n--- A1:L8 ---\n${copied}\n\n--- 가정·출처 A1:C14 ---\n${sources}\n\n--- window ---\n${panelText}`,
+      `elapsed ${Math.round((Date.now() - started) / 1000)}s\n\n--- A1:H46 ---\n${copied}\n\n--- window ---\n${panelText}`,
       'utf8',
     )
-    expect(panelText).toMatch(/'미디어 플랜' [1-9]\d*줄/)
-    expect(copied).toContain('유튜브')
-    expect(copied).toMatch(/30,?000,?000/)
-    expect(copied).not.toContain('[매체]')
+    expect(panelText).toMatch(/양식 칸 \d+개 중 [1-9]\d*개/)
+    expect(copied).toContain('가상전자')
+    expect(copied).toMatch(/55,?000,?000/)
+    expect(copied).not.toContain('[광고주]')
   } finally {
     await closeAndSaveVideo(launched, 'cheil-ollama-sheet')
   }

@@ -8,7 +8,8 @@
  * no body yet still needs a title so the sidebar never shows an empty row.
  */
 
-import { brandText } from '@genoffice/i18n'
+import { brandText, type Lang } from '@genoffice/i18n'
+import { PRODUCT_COPY, productCopy } from '../../cheil/product-copy'
 import type { HelpGroupId } from './help-registry'
 
 /** The languages the manual has titles for; `@genoffice/i18n`'s list, minus none. */
@@ -680,6 +681,11 @@ export function groupTitle(id: HelpGroupId, lang: string): string {
  *  is never pretty, so a language added without its titles shows up as a gap
  *  rather than as a blank row. */
 export function topicTitle(id: string, lang: string): string {
+  // Cheil fork: the sidebar names actual connection and developer sections.
+  const own = productCopy((lang in PRODUCT_COPY ? lang : 'en') as Lang)
+  if (id === 'subscription') return own.programs
+  if (id === 'ai-models') return own.ai
+  if (id === 'mcp') return own.developer
   const row = TOPIC_TITLES[id]
   // the table spells the product name as upstream does; show this product's
   return brandText((row?.[lang as HelpTitleLang] ?? row?.en ?? id) as string, lang)

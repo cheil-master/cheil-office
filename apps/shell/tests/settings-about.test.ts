@@ -104,12 +104,17 @@ describe('Settings → About', () => {
     expect(text.match(/GenOffice/g)).toHaveLength(1)
   })
 
-  it('opens the bundled license notices and starts a mail to the rights contact', async () => {
+  it('opens product notices and the user-approved contact address', async () => {
     await openAbout()
-    expect(host.textContent).toContain(PRODUCT_CONTACT_EMAIL)
+    expect(PRODUCT_CONTACT_EMAIL).toBe('champ.lee@samsung.com')
+    expect(host.textContent).not.toContain('pblsketch@gmail.com')
+    expect(host.textContent).toContain('champ.lee@samsung.com')
+    await act(async () => {
+      buttonLabeled(strings.en.setRightsContactSend).click()
+      await Promise.resolve()
+    })
     await act(async () => {
       buttonLabeled(strings.en.setLicensesOpen).click()
-      buttonLabeled(strings.en.setRightsContactSend).click()
       await Promise.resolve()
     })
     expect(openLicenseNotices).toHaveBeenCalledTimes(1)

@@ -1,0 +1,320 @@
+/* Cheil fork: independent formula tasks, input and explanation side by side. */
+.cheil-tool > .cheil-formula {
+  max-width: 1180px;
+  width: 100%;
+}
+.cheil-formula-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.cheil-formula-version {
+  flex: 0 0 180px;
+}
+.cheil-formula label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.cheil-formula textarea,
+.cheil-formula input:not([type='checkbox']),
+.cheil-formula select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.cheil-formula textarea {
+  resize: vertical;
+}
+.cheil-formula .btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+.cheil-formula .btn:not(.btn-primary) {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.cheil-formula .btn:not(.btn-primary):hover:not(:disabled) {
+  background: var(--surface-subtle);
+}
+.cheil-formula .btn[aria-selected='true'],
+.cheil-formula .btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cheil-formula-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.cheil-formula-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 24px;
+}
+.cheil-formula-workspace > section {
+  min-width: 0;
+}
+.cheil-formula-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.cheil-formula-fields:disabled {
+  opacity: 0.7;
+}
+.cheil-formula-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cheil-formula-code {
+  font-family: Consolas, monospace !important;
+}
+.cheil-formula-send {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin-top: 20px;
+}
+.cheil-formula-send span {
+  flex: 1 1 180px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cheil-formula-examples {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cheil-formula-examples > div,
+.cheil-formula-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cheil-formula-examples .btn {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.cheil-formula-examples details {
+  margin-top: 10px;
+}
+.cheil-formula-examples details .btn {
+  margin-top: 8px;
+}
+.cheil-formula-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cheil-formula-result {
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+  overflow-wrap: anywhere;
+}
+.cheil-formula-result h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 22px 0 9px;
+}
+.cheil-formula-result > h3:first-child {
+  margin-top: 0;
+}
+.cheil-formula-result h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.cheil-formula-result p,
+.cheil-formula-result li {
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+.cheil-formula-result pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  margin: 10px 0 14px;
+}
+.cheil-formula-result code {
+  font:
+    13px/1.7 Consolas,
+    monospace;
+}
+.cheil-formula-result mark {
+  background: var(--accent-soft);
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+}
+.cheil-formula-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.cheil-formula-heading h3 {
+  margin: 0;
+}
+.cheil-formula-help,
+.cheil-formula-result .cheil-formula-help {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.cheil-formula-empty {
+  padding: 10px 0;
+  color: var(--text-muted);
+}
+.cheil-formula-empty h3 {
+  margin-top: 0;
+  color: var(--text-secondary);
+}
+.cheil-formula-comparison > div > span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.cheil-formula-parts {
+  padding-left: 20px;
+}
+.cheil-formula-parts .btn {
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.cheil-formula-parts p {
+  margin: 5px 0 12px;
+}
+.cheil-formula-alternatives > section {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+.cheil-formula-questions h3 {
+  margin-top: 0;
+}
+.cheil-formula-questions label {
+  margin-top: 16px;
+}
+.cheil-formula-grid-scroll {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.cheil-formula-grid-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.cheil-formula-grid-scroll th,
+.cheil-formula-grid-scroll td {
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+.cheil-formula-grid-scroll th {
+  font-weight: 400;
+  font-size: 12px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+.cheil-formula-grid-scroll th:first-child {
+  width: 36px;
+}
+.cheil-formula-grid-scroll input:not([type='checkbox']) {
+  border: 0;
+  border-radius: 0;
+  padding: 3px;
+  font-size: 12px;
+}
+.cheil-formula label.cheil-formula-check {
+  flex-direction: row;
+  align-items: center;
+  margin: 12px 0 6px;
+}
+.cheil-formula-check input {
+  flex-shrink: 0;
+}
+.cheil-formula-function-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.cheil-formula-function-list .btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+.cheil-formula-function-list strong {
+  flex: 0 0 92px;
+  font-family: Consolas, monospace;
+}
+.cheil-formula-function-list span {
+  font-size: 12px;
+}
+.cheil-formula-compat {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+@media (max-width: 1000px) {
+  .cheil-formula-workspace {
+    grid-template-columns: 1fr;
+  }
+  .cheil-formula-result {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding: 20px 0 0;
+  }
+  .cheil-formula-function-list {
+    max-height: 300px;
+  }
+}
+@media (max-width: 600px) {
+  .cheil-formula-topline {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .cheil-formula-version {
+    flex: auto;
+    width: 100%;
+  }
+  .cheil-formula-top {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .cheil-formula-tabs .btn {
+    flex: 1 1 28%;
+  }
+}

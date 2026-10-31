@@ -1,3 +1,15 @@
+import { onSubscriptionLoginChange } from '@genoffice/ai-provider/subscription'
+import { readCodexAccountUsage } from '@genoffice/ai-provider/codex-app-server'
+import { localAiUsage, clearAiUsage } from '@genoffice/ai-provider/usage-ledger'
+import { createFolderWork } from './cheil/folder-work'
+// Cheil fork: browser-side hstry collection and the local daily journal.
+import { registerJournalIpc } from './cheil/journal-ipc'
+// Cheil fork: wiki extraction and approved, scoped answer previews.
+import cheilWindowIcon from './assets/cheil-app-icon.png?asset'
+import { readWikiText } from './cheil/wiki-extract'
+import { createWikiKakao } from './cheil/wiki-kakao'
+import { createWikiAnswers } from './cheil/wiki-answer'
+import { executeCheilChat, previewWikiChatTarget } from '../../../docs/src/main/docs-main'
 import { execSync, spawn } from 'node:child_process'
 import {
   existsSync,
@@ -12,7 +24,7 @@ import {
 } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { release } from 'node:os'
-import { basename, dirname, extname, join, resolve } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import {
   BrowserWindow,
   Menu,
@@ -110,12 +122,25 @@ import { registerResultStoreIpc } from './result-store-ipc'
 import { createCampaignStore, localTime } from './cheil/campaign-store'
 import { createKnowledgeBase, KNOWLEDGE_EXTENSIONS } from './cheil/knowledge'
 import { registerCheilCampaignIpc } from './cheil/campaign-ipc'
+import { createWikiStore } from './cheil/wiki-store'
+import { createWikiCloudOcr } from './cheil/wiki-cloud-ocr'
+import { renderWikiPages } from './cheil/wiki-extract'
+import { createHash as wikiOcrHash } from 'node:crypto'
+import { readFile as wikiOcrRead } from 'node:fs/promises'
+import { registerWikiIpc } from './cheil/wiki-ipc'
 import {
   campaignDocumentOf,
   campaignDocumentTitle,
   isCampaignDocumentName,
 } from './cheil/campaign-files'
 import { createMyTemplates } from './cheil/my-templates'
+import { registerWorkTemplatesIpc } from './cheil/work-templates-ipc'
+// Cheil fork: approved style screen and optional Work tools logo lookup.
+import { createPinterestService } from './cheil/pinterest-service'
+import { analyzeReferenceImage } from './cheil/reference-image'
+import { registerStyleIpc } from './cheil/style-ipc'
+import { registerQrIpc } from './cheil/qr-ipc'
+import { readDocumentStyle } from './cheil/style-extract'
 import { createObsidianLink } from './cheil/obsidian'
 import { cheilToday } from '../../../../packages/ui/src/cheil-fields'
 import { FEEDBACK_SURVEY_URL, feedbackDetails, feedbackText, platformLabel } from './feedback'
@@ -3768,6 +3793,7 @@ function refreshTitleBarOverlay(): void {
 
 function createShellWindow(): void {
   const win = new BrowserWindow({
+    icon: cheilWindowIcon,
     width: 1360,
     height: 900,
     minWidth: 720,
@@ -3793,6 +3819,17 @@ function createShellWindow(): void {
     },
   })
   shellWindow = win
+  // Cheil fork: distinguish explicitly named development previews from other live windows.
+  const previewLabel = !app.isPackaged
+    ? process.env.GENOFFICE_PREVIEW_LABEL?.trim().slice(0, 120)
+    : undefined
+  if (previewLabel) {
+    win.setTitle(previewLabel)
+    win.on('page-title-updated', (event) => {
+      event.preventDefault()
+      win.setTitle(previewLabel)
+    })
+  }
   nativeTheme.on('updated', refreshTitleBarOverlay)
   win.once('closed', () => nativeTheme.off('updated', refreshTitleBarOverlay))
   // dragging the window by the tab strip's blank (draggable) area produces no
@@ -5227,6 +5264,8 @@ function registerHomeIpc(): void {
   })
 
   ipcMain.handle(HOME_CHANNELS.openRightsContact, () => {
+    // Cheil fork: never open the upstream maintainer's mailbox as product support.
+    if (!PRODUCT_CONTACT_EMAIL) return
     const url = safeExternalUrl(`mailto:${PRODUCT_CONTACT_EMAIL}`, {
       allowedProtocols: ['mailto:'],
     })
@@ -7135,8 +7174,8 @@ registerIntegrationsIpc({
     ? join(process.resourcesPath, 'cli')
     : join(APPS_ROOT, '..', 'packages', 'cli', 'bin'),
   skillPath: app.isPackaged
-    ? join(process.resourcesPath, 'cli', 'skills', 'ieumoffice', 'SKILL.md')
-    : join(APPS_ROOT, '..', 'skills', 'ieumoffice', 'SKILL.md'),
+    ? join(process.resourcesPath, 'cli', 'skills', 'cheiloffice', 'SKILL.md')
+    : join(APPS_ROOT, '..', 'skills', 'cheiloffice', 'SKILL.md'),
   cliPackageJson: app.isPackaged
     ? join(process.resourcesPath, 'cli', 'package.json')
     : join(APPS_ROOT, '..', 'packages', 'cli', 'package.json'),
@@ -7253,6 +7292,27 @@ const cheilMyTemplates = createMyTemplates({
       'Cheil 양식',
     ),
 })
+// Cheil fork: ready-to-use work templates stay separate from the disabled blank-making library.
+registerWorkTemplatesIpc({
+  ipc: ipcMain,
+  isHome: (sender) => sender === shellWindow?.webContents,
+  root: () => join(app.getPath('userData'), 'work-templates'),
+  readText: (path) => cheilReadText(path),
+  openCopy: async (source) => (await templateTabs.openDocumentTemplate(source)).ok,
+  // Cheil fork: deletion affects only the saved template copy and stays recoverable in the trash.
+  trashFile: (path) => shell.trashItem(path),
+  pickDocument: async () => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: 'Word · PowerPoint · Excel', extensions: ['docx', 'pptx', 'xlsx'] }],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+})
 const cheilCampaigns = createCampaignStore({
   root: cheilCampaignsRoot,
   writeFile: (path, bytes) => atomicWriteFile(path, bytes),
@@ -7318,6 +7378,206 @@ function cheilCampaignDocuments(campaignId: string) {
       }
     })
 }
+// Cheil fork: a separate Markdown store; old Obsidian exports remain untouched.
+let cheilWikiRootCache: string | undefined
+const cheilWikiRoot = () => {
+  if (cheilWikiRootCache) return cheilWikiRootCache
+  const configured = readAppSettings(APP_SETTINGS_PATH()).cheilWikiRoot
+  cheilWikiRootCache =
+    process.env.CHEIL_WIKI_DIR ||
+    (typeof configured === 'string' && isAbsolute(configured) ? configured : '') ||
+    join(
+      process.env.GENOFFICE_USER_DATA ? app.getPath('userData') : app.getPath('documents'),
+      'Cheil 위키',
+    )
+  return cheilWikiRootCache
+}
+const cheilWiki = createWikiStore({
+  root: cheilWikiRoot,
+  readText: readWikiText,
+  campaignExists: async (id) => (await cheilCampaigns.get(id)).ok,
+})
+// Cheil fork: folder jobs share the same provider resolver and outbound protections.
+const commonFolderWork = createFolderWork({
+  extract: readWikiText,
+  chat: executeCheilChat,
+  pick: async () => {
+    const picked = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+})
+ipcMain.handle('cheil:folder-work', async (event, req) => {
+  if (
+    !shellWindow ||
+    shellWindow.isDestroyed() ||
+    event.sender !== shellWindow.webContents ||
+    !req ||
+    typeof req !== 'object'
+  )
+    return { ok: false, error: 'Invalid sender' }
+  return commonFolderWork(req)
+})
+// Cheil fork: deduplicate concurrent metadata requests, not account data persisted on disk.
+onSubscriptionLoginChange((provider) => clearAiUsage(provider))
+let usageReading: Promise<import('../shared/ai-usage').HomeAiUsage> | null = null
+ipcMain.handle('cheil:ai-usage', async (event) => {
+  if (!shellWindow || shellWindow.isDestroyed() || event.sender !== shellWindow.webContents)
+    throw Error('Invalid sender')
+  if (usageReading) return usageReading
+  usageReading = (async () => {
+    const result: import('../shared/ai-usage').HomeAiUsage = {
+      updatedAt: Date.now(),
+      local: localAiUsage(),
+    }
+    const status = sharedSubscriptionStatuses().codex
+    if (status?.state === 'ready' || (status?.state === 'metered' && status.meteredAccepted)) {
+      try {
+        result.codex = await readCodexAccountUsage(readStoredAiSettings().providers.codex?.cliPath)
+      } catch {
+        result.codex = {
+          windows: [],
+          updatedAt: Date.now(),
+          error: '계정 한도를 조회하지 못했습니다. 다시 확인해 주세요.',
+        }
+      }
+    }
+    return result
+  })()
+  try {
+    return await usageReading
+  } finally {
+    usageReading = null
+  }
+})
+registerWikiIpc({
+  ipc: ipcMain,
+  kakao: createWikiKakao(() => join(app.getPath('userData'), 'cheil-kakao.enc')),
+  ocr: createWikiCloudOcr({
+    request: cheilWiki.request,
+    render: renderWikiPages,
+    fingerprint: async (path) =>
+      wikiOcrHash('sha256')
+        .update(await wikiOcrRead(path))
+        .digest('hex'),
+    apply: cheilWiki.applyOcr,
+  }),
+  answers: createWikiAnswers({
+    request: cheilWiki.request,
+    target: previewWikiChatTarget,
+    chat: executeCheilChat,
+  }),
+  isHome: (sender) =>
+    !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
+  store: cheilWiki,
+  root: cheilWikiRoot,
+  pickRoot: async () => {
+    const options: OpenDialogOptions = { properties: ['openDirectory', 'createDirectory'] }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+  setRoot: async (path) => {
+    writeAppSetting(APP_SETTINGS_PATH(), 'cheilWikiRoot', path)
+    cheilWikiRootCache = path
+  },
+  openFolder: (path) => shell.openPath(path),
+  openExternal: (url) => shell.openExternal(url),
+  pickFiles: async () => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Documents', extensions: [...KNOWLEDGE_EXTENSIONS] }],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? [] : picked.filePaths
+  },
+})
+// Cheil fork: QR data stays local and exports use a native save dialog.
+// Cheil fork: only the home window can open link creation.
+registerQrIpc({
+  ipc: ipcMain,
+  isHome: (sender) =>
+    !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
+  copyImage: (png) => clipboard.writeImage(nativeImage.createFromBuffer(png)),
+  pickSave: async (format) => {
+    const options = {
+      defaultPath: join(app.getPath('documents'), `qr-code.${format}`),
+      filters: [{ name: format.toUpperCase(), extensions: [format] }],
+      properties: ['showOverwriteConfirmation' as const],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showSaveDialog(shellWindow, options)
+        : await dialog.showSaveDialog(options)
+    return picked.canceled ? null : (picked.filePath ?? null)
+  },
+})
+registerStyleIpc({
+  openDesign: (handoff) => {
+    revealShellWindow()
+    ensureTabManager().openGenerateTargetTab(handoff)
+  },
+  referenceImage: analyzeReferenceImage,
+  readDraft: async (path) => (await readWikiText(path))?.body ?? null,
+  pinterest: createPinterestService(),
+  ipc: ipcMain,
+  isHome: (sender) =>
+    !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
+  root: () => join(app.getPath('userData'), 'document-styles'),
+  pickFile: async (extensions) => {
+    const options: OpenDialogOptions = {
+      properties: ['openFile'],
+      filters: [{ name: extensions.join(' · '), extensions }],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showOpenDialog(shellWindow, options)
+        : await dialog.showOpenDialog(options)
+    return picked.canceled ? null : (picked.filePaths[0] ?? null)
+  },
+  pickSave: async (extension) => {
+    const options = {
+      defaultPath: join(app.getPath('documents'), `styled-document.${extension}`),
+      filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
+      properties: ['showOverwriteConfirmation' as const],
+    }
+    const picked =
+      shellWindow && !shellWindow.isDestroyed()
+        ? await dialog.showSaveDialog(shellWindow, options)
+        : await dialog.showSaveDialog(options)
+    return picked.canceled ? null : (picked.filePath ?? null)
+  },
+  extract: readDocumentStyle,
+  openDocument: (path) => openDocumentPath(path),
+  openExternal: async (url) => {
+    await shell.openExternal(url)
+  },
+})
+// Cheil fork: recording is off until enabled; the listener owns no browser credentials.
+const cheilJournal = registerJournalIpc({
+  ipc: ipcMain,
+  root: () => join(app.getPath('userData'), 'llm-journal'),
+  extensionDir: () =>
+    app.isPackaged
+      ? join(process.resourcesPath, 'llm-journal-extension')
+      : join(app.getAppPath(), 'resources', 'llm-journal-extension'),
+  isHome: (sender) =>
+    !!shellWindow && !shellWindow.isDestroyed() && sender === shellWindow.webContents,
+  copy: (text) => clipboard.writeText(text),
+  openFolder: (path) => shell.openPath(path),
+  openDocument: (path) => openDocumentPath(path),
+  onQuit: (close) => {
+    app.on('before-quit', close)
+  },
+})
+void app
+  .whenReady()
+  .then(() => cheilJournal.start())
+  .catch(() => {})
 registerCheilCampaignIpc({
   ipc: ipcMain,
   store: cheilCampaigns,

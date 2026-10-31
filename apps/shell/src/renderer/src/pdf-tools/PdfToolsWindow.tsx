@@ -52,7 +52,6 @@ const GROUPS: { label: PdfToolsStringKey; tools: PdfToolId[] }[] = [
     label: 'groupOrganize',
     tools: ['merge', 'split', 'extract', 'reverse', 'rotate', 'blankPages'],
   },
-  { label: 'groupPrint', tools: ['duplex', 'nup', 'pageSize', 'splitPages'] },
   { label: 'groupDecorate', tools: ['overlay'] },
   { label: 'groupClean', tools: ['stripAnnots'] },
   { label: 'groupConvert', tools: ['imagesToPdf', 'toText'] },
@@ -229,6 +228,8 @@ function ToolIcon({ tool }: { tool: PdfToolId | PdfEditorToolId }) {
 export function PdfToolsWindow({ lang }: { lang: Lang }) {
   const api = window.aiOfficePdfTools
   const t = (key: PdfToolsStringKey, params?: Params) => pdfToolsText(lang, key, params)
+  // Cheil fork: one task group at a time, with a dedicated work area.
+  const [activeGroup, setActiveGroup] = useState(0)
   const [view, setView] = useState<View>({ kind: 'home' })
   const [inputs, setInputs] = useState<PdfToolInput[]>([])
   /** overlay: the PDF whose page goes behind or over the document */
@@ -347,6 +348,16 @@ export function PdfToolsWindow({ lang }: { lang: Lang }) {
   // the latest render's handlers, so the effect itself runs once
   const startRef = useRef<(start: PdfToolsStart) => void>(() => {})
   startRef.current = (start) => {
+    if (['duplex', 'nup', 'pageSize', 'splitPages'].includes(start.tool)) {
+      openTool({ kind: 'home' })
+      return
+    }
+    setActiveGroup(
+      Math.max(
+        0,
+        GROUPS.findIndex((g) => g.tools.includes(start.tool)),
+      ),
+    )
     openTool({ kind: 'tool', tool: start.tool })
     setInputs(start.inputs)
     setRejected(start.rejected.map((r) => t(REJECT_TEXT[r.problem], { name: r.name })))
@@ -363,109 +374,160 @@ export function PdfToolsWindow({ lang }: { lang: Lang }) {
   return (
     <div className="pt">
       <header className="pt-head">
+        <span className="pt-brand">CheilOffice · PDF</span>
         <h1 className="pt-title">{t('windowTitle')}</h1>
         <p className="pt-intro">{t('intro')}</p>
         <p className="pt-local">{t('localNote')}</p>
       </header>
-      <main className="pt-body">
-        {view.kind === 'home' && (
-          <>
-            {GROUPS.map((group) => (
-              <section className="pt-section" key={group.label}>
-                <h2 className="pt-label">{t(group.label)}</h2>
-                <div className="pt-cards">
-                  {group.tools.map((tool) => (
-                    <button
-                      key={tool}
-                      type="button"
-                      className="pt-card"
-                      onClick={() => openTool({ kind: 'tool', tool })}
-                    >
-                      <ToolIcon tool={tool} />
-                      <span className="pt-card-text">
-                        <span className="pt-card-title">{t(TOOL_TEXT[tool][0])}</span>
-                        <span className="pt-card-desc">{t(TOOL_TEXT[tool][1])}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ))}
+      <div className="pt-layout">
+        <nav className="pt-nav" aria-label={t('windowTitle')}>
+          {GROUPS.map((group, index) => (
+            <button
+              type="button"
+              key={group.label}
+              className="pt-nav-item"
+              aria-current={activeGroup === index ? 'page' : undefined}
+              disabled={busy}
+              onClick={() => {
+                setActiveGroup(index)
+                openTool({ kind: 'home' })
+              }}
+            >
+              <span>{t(group.label)}</span>
+              <small>{group.tools.length}</small>
+            </button>
+          ))}
+          <button
+            type="button"
+            className="pt-nav-item"
+            aria-current={activeGroup === GROUPS.length ? 'page' : undefined}
+            disabled={busy}
+            onClick={() => {
+              setActiveGroup(GROUPS.length)
+              openTool({ kind: 'home' })
+            }}
+          >
+            <span>{t('groupEditor')}</span>
+            <small>{EDITOR_TOOLS.length}</small>
+          </button>
+          <p className="pt-nav-note">{t('localNote')}</p>
+        </nav>
+        <main className="pt-body">
+          {view.kind === 'home' && (
+            <>
+              <ol className="pt-workflow">
+                <li>
+                  <b>01</b>
+                  {t('pickFiles')}
+                </li>
+                <li>
+                  <b>02</b>
+                  {t('run')}
+                </li>
+                <li>
+                  <b>03</b>
+                  {t('openResult')}
+                </li>
+              </ol>
+              {GROUPS.filter((_, index) => index === activeGroup).map((group) => (
+                <section className="pt-section" key={group.label}>
+                  <h2 className="pt-label">{t(group.label)}</h2>
+                  <div className="pt-cards">
+                    {group.tools.map((tool) => (
+                      <button
+                        key={tool}
+                        type="button"
+                        className="pt-card"
+                        onClick={() => openTool({ kind: 'tool', tool })}
+                      >
+                        <ToolIcon tool={tool} />
+                        <span className="pt-card-text">
+                          <span className="pt-card-title">{t(TOOL_TEXT[tool][0])}</span>
+                          <span className="pt-card-desc">{t(TOOL_TEXT[tool][1])}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+              {activeGroup === GROUPS.length && (
+                <section className="pt-section">
+                  <h2 className="pt-label">{t('groupEditor')}</h2>
+                  <div className="pt-cards">
+                    {EDITOR_TOOLS.map((tool) => (
+                      <button
+                        key={tool}
+                        type="button"
+                        className="pt-card pt-card-editor"
+                        onClick={() => openTool({ kind: 'editor', tool })}
+                      >
+                        <ToolIcon tool={tool} />
+                        <span className="pt-card-text">
+                          <span className="pt-card-title">{t(TOOL_TEXT[tool][0])}</span>
+                          <span className="pt-card-desc">{t(TOOL_TEXT[tool][1])}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {view.kind === 'editor' && (
             <section className="pt-section">
-              <h2 className="pt-label">{t('groupEditor')}</h2>
-              <div className="pt-cards">
-                {EDITOR_TOOLS.map((tool) => (
-                  <button
-                    key={tool}
-                    type="button"
-                    className="pt-card pt-card-editor"
-                    onClick={() => openTool({ kind: 'editor', tool })}
-                  >
-                    <ToolIcon tool={tool} />
-                    <span className="pt-card-text">
-                      <span className="pt-card-title">{t(TOOL_TEXT[tool][0])}</span>
-                      <span className="pt-card-desc">{t(TOOL_TEXT[tool][1])}</span>
-                    </span>
-                  </button>
-                ))}
+              <button type="button" className="pt-back" onClick={() => openTool({ kind: 'home' })}>
+                <span className="pt-back-arrow">←</span> {t('back')}
+              </button>
+              <h2 className="pt-tool-title">{t(TOOL_TEXT[view.tool][0])}</h2>
+              <p className="pt-hint">{t(TOOL_TEXT[view.tool][1])}</p>
+              <p className="pt-hint">{t('editorHint')}</p>
+              <div className="pt-actions">
+                <button
+                  type="button"
+                  className="pt-btn pt-btn-primary"
+                  onClick={() => void api.openInEditor()}
+                >
+                  {t('openInEditor')}
+                </button>
               </div>
             </section>
-          </>
-        )}
+          )}
 
-        {view.kind === 'editor' && (
-          <section className="pt-section">
-            <button type="button" className="pt-back" onClick={() => openTool({ kind: 'home' })}>
-              <span className="pt-back-arrow">←</span> {t('back')}
-            </button>
-            <h2 className="pt-tool-title">{t(TOOL_TEXT[view.tool][0])}</h2>
-            <p className="pt-hint">{t(TOOL_TEXT[view.tool][1])}</p>
-            <p className="pt-hint">{t('editorHint')}</p>
-            <div className="pt-actions">
-              <button
-                type="button"
-                className="pt-btn pt-btn-primary"
-                onClick={() => void api.openInEditor()}
-              >
-                {t('openInEditor')}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {view.kind === 'tool' && (
-          <ToolPanel
-            lang={lang}
-            tool={view.tool}
-            t={t}
-            inputs={inputs}
-            background={background}
-            blank={blank}
-            progress={progress}
-            onCancelRun={() => void api.cancelRun()}
-            onFindBlank={() => void findBlank()}
-            onCancelFind={() => void api.cancelFind()}
-            onChooseBlank={(chosen) => setBlank((prev) => ({ ...prev, chosen }))}
-            rejected={rejected}
-            options={options}
-            busy={busy}
-            outcome={outcome}
-            onBack={() => openTool({ kind: 'home' })}
-            onPick={() => void pick(view.tool)}
-            onPickBackground={() => void pickBackground()}
-            onRemoveBackground={() => setBackground(null)}
-            onRemove={(id) => {
-              setInputs((prev) => prev.filter((i) => i.id !== id))
-              setBlank(NO_BLANK)
-            }}
-            onMove={move}
-            onOptions={set}
-            onRun={() => void runTool(view.tool)}
-            onOpen={(id) => void api.openResult(id)}
-            onReveal={(id) => void api.revealResult(id)}
-          />
-        )}
-      </main>
+          {view.kind === 'tool' && (
+            <ToolPanel
+              lang={lang}
+              tool={view.tool}
+              t={t}
+              inputs={inputs}
+              background={background}
+              blank={blank}
+              progress={progress}
+              onCancelRun={() => void api.cancelRun()}
+              onFindBlank={() => void findBlank()}
+              onCancelFind={() => void api.cancelFind()}
+              onChooseBlank={(chosen) => setBlank((prev) => ({ ...prev, chosen }))}
+              rejected={rejected}
+              options={options}
+              busy={busy}
+              outcome={outcome}
+              onBack={() => openTool({ kind: 'home' })}
+              onPick={() => void pick(view.tool)}
+              onPickBackground={() => void pickBackground()}
+              onRemoveBackground={() => setBackground(null)}
+              onRemove={(id) => {
+                setInputs((prev) => prev.filter((i) => i.id !== id))
+                setBlank(NO_BLANK)
+              }}
+              onMove={move}
+              onOptions={set}
+              onRun={() => void runTool(view.tool)}
+              onOpen={(id) => void api.openResult(id)}
+              onReveal={(id) => void api.revealResult(id)}
+            />
+          )}
+        </main>
+      </div>
       <footer className="pt-foot">
         <button type="button" className="pt-btn" onClick={() => void api.close()}>
           {t('close')}

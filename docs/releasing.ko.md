@@ -1,6 +1,6 @@
 # 새 버전 내는 절차 (Windows, Mac 베타)
 
-이음오피스(IeumOffice)의 새 버전을 만들어 GitHub에 올리는 순서입니다. 위에서부터 차례대로 하면 됩니다.
+CheilOffice(CheilOffice)의 새 버전을 만들어 GitHub에 올리는 순서입니다. 위에서부터 차례대로 하면 됩니다.
 
 설치된 앱은 공개 저장소 `pblsketch/openoffice`의 **릴리스(Releases)** 를 보고 스스로 업데이트합니다. 그래서 "새 버전을 낸다"는 것은 설치 파일을 만들어 그 저장소의 릴리스에 올리는 일입니다. 따로 운영하는 서버나 비밀 키는 없습니다.
 
@@ -101,9 +101,9 @@ npm run dist:win -- -- --publish never
 
 | 파일                                    | 설명                                                                                                    | 릴리스에 올리나                                                                |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `IeumOffice-Setup-<버전>.exe`           | 설치 파일                                                                                               | **올린다 (필수)**                                                              |
+| `CheilOffice-Setup-<버전>.exe`           | 설치 파일                                                                                               | **올린다 (필수)**                                                              |
 | `latest.yml`                            | 설치된 앱이 읽는 안내 파일. 버전 번호, 설치 파일 이름, 파일이 손상되지 않았는지 확인하는 값이 들어 있다 | **올린다 (필수)**                                                              |
-| `IeumOffice-Setup-<버전>.exe.blockmap`  | 바뀐 부분만 받게 해 주는 보조 파일                                                                      | 올려도 되고 안 올려도 된다. 이 앱은 항상 설치 파일 전체를 받으므로 쓰지 않는다 |
+| `CheilOffice-Setup-<버전>.exe.blockmap`  | 바뀐 부분만 받게 해 주는 보조 파일                                                                      | 올려도 되고 안 올려도 된다. 이 앱은 항상 설치 파일 전체를 받으므로 쓰지 않는다 |
 | `win-unpacked` 폴더, `builder-*.yml` 등 | 만드는 과정에서 생긴 것                                                                                 | 올리지 않는다                                                                  |
 
 올리기 전에 확인합니다.
@@ -111,18 +111,18 @@ npm run dist:win -- -- --publish never
 1. `latest.yml`을 메모장으로 열어 `version:` 이 3번에서 정한 번호인지 봅니다.
 2. 같은 파일의 `path:` 에 적힌 이름이 설치 파일 이름과 **글자 하나까지** 같은지 봅니다.
 3. 설치 파일을 실행해 설치하고, 앱이 뜨는지, 설정 → 정보의 버전이 새 번호인지 봅니다.
-4. 탐색기에서 `.odt` 파일을 오른쪽 단추로 눌러 "연결 프로그램"에 이음오피스가 있는지, 골랐을 때 워드 탭으로 열리는지 봅니다. `.odt`를 두 번 눌렀을 때 열리는 프로그램(한컴 등)은 설치 전과 같아야 합니다. _(확인 필요: ODT 등록을 더한 뒤 아직 설치본으로 확인하지 않았습니다. 확인한 뒤 이 표시를 지워 주세요.)_
+4. 탐색기에서 `.odt` 파일을 오른쪽 단추로 눌러 "연결 프로그램"에 CheilOffice가 있는지, 골랐을 때 워드 탭으로 열리는지 봅니다. `.odt`를 두 번 눌렀을 때 열리는 프로그램(한컴 등)은 설치 전과 같아야 합니다. _(확인 필요: ODT 등록을 더한 뒤 아직 설치본으로 확인하지 않았습니다. 확인한 뒤 이 표시를 지워 주세요.)_
 
 지켜야 할 것:
 
 - **설치 파일과 `latest.yml`은 반드시 같은 빌드에서 나온 한 쌍**이어야 합니다. 설치 파일만 다시 만들고 `latest.yml`은 예전 것을 올리면, 설치된 앱이 "파일이 손상되었다"고 판단해 업데이트에 실패합니다.
 - 파일 이름을 바꾸지 않습니다.
 
-> **확인함(0.12.2, 2026-10-20):** `apps/shell/release`에 `IeumOffice-Setup-<버전>.exe`, `IeumOffice-Setup-<버전>.exe.blockmap`, `latest.yml`, `builder-debug.yml`, `win-unpacked`가 생깁니다. 위 표의 이름과 같습니다.
+> **확인함(0.12.2, 2026-10-20):** `apps/shell/release`에 `CheilOffice-Setup-<버전>.exe`, `CheilOffice-Setup-<버전>.exe.blockmap`, `latest.yml`, `builder-debug.yml`, `win-unpacked`가 생깁니다. 위 표의 이름과 같습니다.
 
 ## 6. GitHub 릴리스 만들기
 
-1. <https://github.com/pblsketch/openoffice/releases/new> 를 엽니다.
+1. <https://github.com/cheil-master/cheil-office/releases/new> 를 엽니다.
 2. **태그**: `v` + 버전 번호. 예: 버전이 `0.11.1`이면 `v0.11.1`. "Choose a tag"에 직접 적고 "Create new tag on publish"를 고릅니다. 대상(Target)은 3번에서 올린 커밋이 있는 브랜치입니다.
 3. **제목**: 알아보기 쉬운 이름(예: `v0.11.1`). **설명**: 바뀐 점.
    - 설명은 웹 페이지와 **앱의 업데이트 창** 모두에 그대로 나옵니다(앱은 본문을 번역하지 않습니다).
@@ -147,7 +147,7 @@ npm run dist:win -- -- --publish never
 올린 뒤 바로 확인합니다. 브라우저에서 아래 주소를 열었을 때 `latest.yml`이 내려받아지면 됩니다.
 
 ```
-https://github.com/pblsketch/openoffice/releases/latest/download/latest.yml
+https://github.com/cheil-master/cheil-office/releases/latest/download/latest.yml
 ```
 
 (릴리스가 하나도 없던 2026-10-13에는 이 주소가 "404 찾을 수 없음"이었습니다.)
@@ -225,9 +225,9 @@ Mac판은 Apple 개발자 서명 없는 베타로 냅니다(결정 0031). Window
 
 | 파일                                          | 설명                                                                   | 릴리스에 올리나                |
 | --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| `IeumOffice-<버전>-arm64.dmg`                 | Mac 사용자가 받는 설치 파일                                            | **올린다 (필수)**              |
+| `CheilOffice-<버전>-arm64.dmg`                 | Mac 사용자가 받는 설치 파일                                            | **올린다 (필수)**              |
 | `latest-mac.yml` (베타 번호면 `beta-mac.yml`) | Mac 앱이 새 버전을 알아보는 안내 파일. Windows의 `latest.yml`과 다르다 | **올린다 (필수)**              |
-| `IeumOffice-<버전>-arm64-mac.zip`             | 같은 앱을 zip으로 묶은 것. `latest-mac.yml`이 이 파일을 가리킨다       | **올린다** (안내 파일과 한 쌍) |
+| `CheilOffice-<버전>-arm64-mac.zip`             | 같은 앱을 zip으로 묶은 것. `latest-mac.yml`이 이 파일을 가리킨다       | **올린다** (안내 파일과 한 쌍) |
 | `*.blockmap`                                  | 보조 파일                                                              | 올리지 않아도 된다             |
 
 4. 6번에서 만든(또는 만들) 릴리스를 "Edit"하여 위 파일을 끌어다 놓고 저장합니다. Windows 파일과 이름이 겹치지 않으므로 함께 둡니다.
@@ -251,14 +251,14 @@ Linux판(64비트 x64)도 베타로 냅니다. Windows·Mac 설치 파일과 **�
 
 | 파일                                              | 설명                                                                     | 릴리스에 올리나   |
 | ------------------------------------------------- | ------------------------------------------------------------------------ | ----------------- |
-| `IeumOffice-<버전>.AppImage`                      | 설치 없이 실행하는 단일 파일. 스스로 업데이트한다                        | **올린다 (필수)** |
-| `ieumoffice_<버전>_amd64.deb`                     | Ubuntu·Debian용 패키지(`/opt/IeumOffice`에 설치, `/usr/bin/ieumoffice`)  | **올린다 (필수)** |
+| `CheilOffice-<버전>.AppImage`                      | 설치 없이 실행하는 단일 파일. 스스로 업데이트한다                        | **올린다 (필수)** |
+| `ieumoffice_<버전>_amd64.deb`                     | Ubuntu·Debian용 패키지(`/opt/CheilOffice`에 설치, `/usr/bin/ieumoffice`)  | **올린다 (필수)** |
 | `ieumoffice-<버전>.x86_64.rpm`                    | Fedora·RHEL·openSUSE용 패키지                                            | **올린다**        |
 | `latest-linux.yml` (베타 번호면 `beta-linux.yml`) | Linux 앱이 새 버전을 알아보는 안내 파일. `AppImage` 자동 업데이트에 쓴다 | **올린다 (필수)** |
 
 알아 둘 것:
 
-- **`AppImage`는 스스로 업데이트하고, `deb`·`rpm`은 새 버전을 알려 주기만 합니다.** `deb`·`rpm`으로 설치한 앱은 `/opt/IeumOffice`가 관리자 권한 폴더여서 스스로 덮어쓰지 않고, 업데이트 창에서 "다운로드 페이지 열기"로 안내합니다. `latest-linux.yml`을 올려 두어야 새 버전을 알아봅니다.
+- **`AppImage`는 스스로 업데이트하고, `deb`·`rpm`은 새 버전을 알려 주기만 합니다.** `deb`·`rpm`으로 설치한 앱은 `/opt/CheilOffice`가 관리자 권한 폴더여서 스스로 덮어쓰지 않고, 업데이트 창에서 "다운로드 페이지 열기"로 안내합니다. `latest-linux.yml`을 올려 두어야 새 버전을 알아봅니다.
 - Linux판의 동작은 저장소 주인이 직접 확인할 수 없습니다. Linux 사용자에게서 들어온 보고를 `docs/tracking/status.md`에 적습니다.
 
 ## 13. 소개 사이트에 업데이트 소식 올리기 (정식 공개 뒤, 매번)
@@ -284,7 +284,7 @@ Linux판(64비트 x64)도 베타로 냅니다. Windows·Mac 설치 파일과 **�
 3. npm run native:build -w @genoffice/sheets
 4. xlsx-sidecar.exe 를 target\x86_64-pc-windows-gnu\release 로 복사
 5. npm run dist:win -- -- --publish never
-6. apps/shell/release 의 IeumOffice-Setup-<버전>.exe 와 latest.yml 확인 (설치해서 .odt "연결 프로그램"도)
+6. apps/shell/release 의 CheilOffice-Setup-<버전>.exe 와 latest.yml 확인 (설치해서 .odt "연결 프로그램"도)
 7. GitHub 릴리스: 태그 v<버전>, 두 파일 올리기, pre-release 체크(먼저 혼자 확인) → Publish
 8. 옛 버전 앱에서 채널을 "베타 버전"으로 바꿔 업데이트 확인
 9. (Mac) Actions → macOS build → Run workflow → 결과의 dmg, zip, latest-mac.yml 을 같은 릴리스에 올리기

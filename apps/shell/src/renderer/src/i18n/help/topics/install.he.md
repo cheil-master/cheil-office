@@ -1,6 +1,6 @@
 # התקנת GenOffice
 
-כל גרסה מתפרסמת ב[עמוד ההפצות](https://github.com/pblsketch/openoffice/releases/latest) של הפרויקט ב-GitHub. הגרסה הזו מופצת ל-Windows.
+כל גרסה מתפרסמת ב[עמוד ההפצות](https://github.com/cheil-master/cheil-office/releases) של הפרויקט ב-GitHub. הגרסה הזו מופצת ל-Windows.
 
 ## בחירת הקובץ למחשב שלך
 

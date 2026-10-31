@@ -2,20 +2,13 @@
 
 ## Reporting a Vulnerability
 
-Please report suspected vulnerabilities privately via GitHub's
-[private vulnerability reporting](https://github.com/pblsketch/openoffice/security/advisories/new)
-on this repository. Do not open public issues for security reports. IeumOffice
-is maintained by volunteers, so reports are handled on a best-effort basis.
+Report suspected CheilOffice vulnerabilities privately to champ.lee@samsung.com. Do not include credentials or confidential documents in public issues.
 
-IeumOffice is a modified version of GenOffice (see
-[License and acknowledgement](README.en.md#license-and-acknowledgement)). If a
-problem is in code the two projects share (the document engines, for example),
-please consider reporting it to the upstream project as well.
+For the origins and licenses of shared components, see [NOTICE](NOTICE) and [LICENSE](LICENSE). This policy describes the CheilOffice distribution.
 
 ## Trademark and Copyright Reports
 
-Send trademark or copyright infringement reports and licensing questions to
-pblsketch@gmail.com. The same address is in the app under Settings → About.
+Send reports concerning this distribution to champ.lee@samsung.com. Original component notices and licenses remain in NOTICE and the bundled third-party notices.
 
 ## Process Security Posture
 

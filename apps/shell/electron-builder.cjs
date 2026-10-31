@@ -26,9 +26,9 @@ const PRODUCT_NAME = 'CheilOffice'
 // folder that caches the installer and downloaded updates after it
 // (<local app data>/<name>-updater), so a shared name is a shared folder.
 const PACKAGED_APP_NAME = 'cheiloffice'
-const REPO_OWNER = 'pblsketch'
-const REPO_NAME = 'openoffice'
-const MAINTAINER = 'pblsketch <pblsketch@users.noreply.github.com>'
+const REPO_OWNER = 'cheil-master'
+const REPO_NAME = 'cheil-office'
+const MAINTAINER = 'CheilOffice project'
 
 // GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
 // arm64. Off by default: Intel packages must only ever ship signed with the
@@ -494,6 +494,8 @@ const config = {
   },
   files: ['out/**'],
   extraResources: [
+    // Cheil fork: hstry-derived collector, its MIT notice and local-only bridge.
+    { from: 'resources/llm-journal-extension', to: 'llm-journal-extension' },
     // Apache-2.0 §4(a)/(d): every copy carries the license and the NOTICE of
     // the work; NOTICE refers to LICENSE-UNICODE.txt for the Unicode data
     {
@@ -592,6 +594,8 @@ const config = {
       from: '../../packages/cli/dist/genoffice.cjs',
       to: 'cli/genoffice.cjs',
     },
+    { from: '../../packages/cli/bin/cheiloffice', to: 'cli/cheiloffice' },
+    { from: '../../packages/cli/bin/cheiloffice.cmd', to: 'cli/cheiloffice.cmd' },
     {
       from: '../../packages/cli/bin/ieumoffice',
       to: 'cli/ieumoffice',
@@ -607,8 +611,8 @@ const config = {
       to: 'cli/package.json',
     },
     {
-      from: '../../skills/ieumoffice/SKILL.md',
-      to: 'cli/skills/ieumoffice/SKILL.md',
+      from: '../../skills/cheiloffice/SKILL.md',
+      to: 'cli/skills/cheiloffice/SKILL.md',
     },
     // runtime deps the genoffice bundle leaves external (jsdom for the Word/Markdown
     // paths); collected by packages/cli/collect-deps.mjs during its build

@@ -27,7 +27,7 @@ async function templateBlanks(path: string): Promise<string[]> {
   const out: string[] = []
   for (const name of parts) {
     const xml = await zip.file(name)!.async('string')
-    for (const m of xml.matchAll(/<(w:t|a:t|t)(?:\s[^>]*)?>([^<]*)<\/\1>/g)) {
+    for (const m of xml.matchAll(/<((?:\w+:)?t|(?:\w+:)?v)(?:\s[^>]*)?>([^<]*)<\/\1>/g)) {
       // openpyxl writes non-ASCII text as numeric character references
       const text = m[2]!
         .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
@@ -116,7 +116,7 @@ describe('Cheil fork: common template blanks', () => {
           return []
         }
       })
-    expect(templates).toHaveLength(6)
+    expect(templates).toHaveLength(4)
     for (const path of templates) {
       const blanks = await templateBlanks(path)
       expect(blanks.length, path).toBeGreaterThan(0)

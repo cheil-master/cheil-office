@@ -9,6 +9,8 @@ import '@genoffice/ui/dropdown.css'
 import '@genoffice/ui/ai-usage.css'
 import './home.css'
 import './tabbar.css'
+import './cheil/CheilChrome.css'
+import './cheil/WorkspaceLayout.css'
 import { installScreenTips } from '@genoffice/ui'
 
 installScreenTips()

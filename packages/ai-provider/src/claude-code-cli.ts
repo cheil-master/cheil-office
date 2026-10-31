@@ -1,3 +1,4 @@
+import { recordAiWindows } from './usage-ledger'
 /**
  * Bridge to the Claude Code CLI (protocol `claude-code-cli`). Entry point
  * `@genoffice/ai-provider/claude-code-cli`.
@@ -1009,6 +1010,7 @@ async function runClaudeCodeTurn(
           if (!isPlainObject(event.rate_limit_info)) return
           rateLimitInfo = event.rate_limit_info
           const usage = claudeCodeUsage(rateLimitInfo)
+          if(usage.length)recordAiWindows('claude-code',usage)
           if (usage.length > 0) cb.onSubscriptionUsage?.(usage)
           return
         }

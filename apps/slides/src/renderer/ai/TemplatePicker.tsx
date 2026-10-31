@@ -39,10 +39,25 @@ export function TemplatePicker({
   const chipRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
+  const [referenceName, setReferenceName] = useState('')
+  useEffect(() => {
+    let live = true
+    setReferenceName('')
+    if (selection?.kind === 'saved' && selection.key.startsWith('ref-'))
+      void window.slidesApi
+        .loadStyleTemplate(selection.key)
+        .then((r) => {
+          if (live && r.ok) setReferenceName(r.topic ?? '')
+        })
+        .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [selection?.kind, selection?.key])
   const name = selection
     ? selection.kind === 'builtin'
       ? (builtinTemplateById(selection.key)?.name ?? selection.key)
-      : selection.key
+      : referenceName || selection.key
     : null
 
   // While the start screen shows its gallery, no second one opens here

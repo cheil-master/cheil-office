@@ -5,7 +5,8 @@
  * PDF tools. Counting, the spelling rules, amounts and dates run on this PC;
  * the mail draft, the closer spelling check and translation ask a model once
  * through the shared `ai:chat` (the confidentiality line), with numbers and
- * dates kept on this PC.
+ * dates kept on this PC. Cheil fork: formula assistance preserves references
+ * and constants in its request, through the same confidentiality gate.
  */
 import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
@@ -21,6 +22,11 @@ import {
 } from '../../../shared/cheil-campaign-api'
 import { MailDraft, words as campaignWords } from './MyCampaigns'
 import { KnowledgeBase } from './KnowledgeBase'
+import { FormulaTool } from './FormulaTool'
+import { QrTool } from './QrTool'
+import { LlmJournalPanel } from './LlmJournalPanel'
+import { journalWords } from './journal-words'
+import { qrWords } from './qr-words'
 import { applySpellingFixes, countText, findSpellingIssues } from './tools/text-tools'
 import {
   addWorkdays,
@@ -44,16 +50,18 @@ import {
   type TranslateLang,
 } from './tools/ai-tools'
 
-export type WorkToolId = 'knowledge' | 'mail' | 'spelling' | 'money' | 'dates' | 'translate'
+export type WorkToolId =
+  'journal' | 'knowledge' | 'mail' | 'spelling' | 'money' | 'formula' | 'dates' | 'translate' | 'qr'
 
 const WORDS = {
   ko: {
     section: '업무 도구',
     tools: {
-      knowledge: '내 지식 베이스',
+      knowledge: 'My Wiki',
       mail: '메일 초안',
       spelling: '맞춤법·글자수',
       money: '금액·부가세',
+      formula: '엑셀 수식 도우미',
       dates: '날짜 계산',
       translate: '번역',
       pdf: 'PDF 도구',
@@ -125,10 +133,11 @@ const WORDS = {
   en: {
     section: 'Work tools',
     tools: {
-      knowledge: 'Knowledge base',
+      knowledge: 'My Wiki',
       mail: 'Mail draft',
       spelling: 'Spelling · count',
       money: 'Amount · VAT',
+      formula: 'Excel formulas',
       dates: 'Dates',
       translate: 'Translate',
       pdf: 'PDF tools',
@@ -236,12 +245,15 @@ async function askOnce(
 // ── nav ──────────────────────────────────────────────────────────────────
 
 const ICON_PATHS: Record<WorkToolId | 'pdf', string> = {
+  journal: 'M3 2h10v12H3zM5 5h6M5 8h6M5 11h4',
+  qr: 'M2 2h4v4H2zM10 2h4v4h-4zM2 10h4v4H2zM10 10h2v2h2v2h-4z',
   knowledge:
     'M3 2.5h8.5a1 1 0 011 1v10h-8.5a1 1 0 01-1-1zM3 12.5a1 1 0 011-1h8.5M5.5 5h4.5M5.5 7.5h3',
   mail: 'M2 4h12v8H2zM2 4l6 4.5L14 4',
   spelling: 'M2.5 12L5.5 4l3 8M3.6 9.2h3.8M10 9.5l1.6 1.6L14 7.5',
   money:
     'M2 4.5h12v7H2zM8 6v4M6.6 7.2c0-.7.6-1.2 1.4-1.2s1.4.5 1.4 1.1M9.4 8.8c0 .7-.6 1.2-1.4 1.2s-1.4-.5-1.4-1.2',
+  formula: 'M3 2h10v12H3zM5 5h6M5 8h2M9 8h2M5 11h2M9 11h2',
   dates: 'M2.5 3.5h11v10h-11zM2.5 6.5h11M5.5 2v3M10.5 2v3',
   translate:
     'M2 3.5h6M5 2v1.5M3.5 3.5c.4 2 1.8 3.6 3.5 4.5M6.5 3.5c-.4 2-1.8 3.6-3.5 4.5M8.5 14l2.5-6 2.5 6M9.3 12h3.4',
@@ -266,14 +278,25 @@ function ToolIcon({ id }: { id: WorkToolId | 'pdf' }): ReactElement {
 export function WorkToolsNav({
   active,
   onPick,
+  onPdf,
 }: {
   active: WorkToolId | null
   onPick: (tool: WorkToolId) => void
+  onPdf?: () => void
 }) {
   const { lang } = useI18n()
   const w = toolWords(lang)
   if (!bridge()) return null
-  const tools: WorkToolId[] = ['knowledge', 'mail', 'spelling', 'money', 'dates', 'translate']
+  const tools: WorkToolId[] = [
+    'journal',
+    'mail',
+    'spelling',
+    'money',
+    'formula',
+    'dates',
+    'translate',
+    'qr',
+  ]
   const pdf = (window as { aiOfficePdfToolsHome?: { open(): Promise<unknown> } })
     .aiOfficePdfToolsHome
   return (
@@ -287,11 +310,24 @@ export function WorkToolsNav({
           onClick={() => onPick(tool)}
         >
           <ToolIcon id={tool} />
-          <span className="nav-label">{w.tools[tool]}</span>
+          <span className="nav-label">
+            {tool === 'journal'
+              ? journalWords(lang).title
+              : tool === 'qr'
+                ? qrWords(lang).title
+                : w.tools[tool]}
+          </span>
         </button>
       ))}
       {pdf ? (
-        <button className="nav-item" data-tool="pdf" onClick={() => void pdf.open()}>
+        <button
+          className="nav-item"
+          data-tool="pdf"
+          onClick={() => {
+            onPdf?.()
+            void pdf.open()
+          }}
+        >
           <ToolIcon id="pdf" />
           <span className="nav-label">{w.tools.pdf}</span>
         </button>
@@ -309,12 +345,18 @@ export function WorkToolView({ tool }: { tool: WorkToolId }) {
   if (!api) return null
   // the knowledge base lays out its own page (a drop zone, the filed notes and the search)
   if (tool === 'knowledge') return <KnowledgeBase lang={lang} api={api} />
+  if (tool === 'qr') return <QrTool />
+  if (tool === 'journal') return <LlmJournalPanel />
   return (
     <main className="content cheil-tool" data-testid={`cheil-tool-${tool}`}>
       <h2 className="cheil-tool-title">{w.tools[tool]}</h2>
       {tool === 'mail' ? <MailTool lang={lang} api={api} w={w} /> : null}
       {tool === 'spelling' ? <SpellingTool api={api} w={w} /> : null}
       {tool === 'money' ? <MoneyTool w={w} /> : null}
+      {/* Cheil fork: general formula assistance through the existing AI gate. */}
+      {tool === 'formula' ? (
+        <FormulaTool lang={lang} ask={(system, user) => askOnce(api, system, user)} />
+      ) : null}
       {tool === 'dates' ? <DateTool w={w} /> : null}
       {tool === 'translate' ? <TranslateTool api={api} w={w} /> : null}
     </main>

@@ -1,6 +1,6 @@
 # Instalace GenOffice
 
-Každá verze je zveřejněna na [stránce Releases](https://github.com/pblsketch/openoffice/releases/latest) projektu na GitHubu. Tato verze vychází pro Windows.
+Každá verze je zveřejněna na [stránce Releases](https://github.com/cheil-master/cheil-office/releases) projektu na GitHubu. Tato verze vychází pro Windows.
 
 ## Vyberte soubor pro svůj počítač
 

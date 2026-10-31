@@ -135,7 +135,7 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
     bytes: Uint8Array,
     fileName: string,
     title: string,
-    handoff: (target: HandoffEditor) => SkillHandoff,
+    handoff?: (target: HandoffEditor) => SkillHandoff,
   ): Promise<UserSkillsResult<{ tabId: string; contents: CopyTabContents }>> {
     const editor = handoffEditorForFile(fileName)
     if (!editor) return fail('bad-template')
@@ -152,7 +152,7 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
       await deps.removeDir(dir).catch(() => undefined)
       return fail('failed')
     }
-    queueSkillHandoffFor(opened.contents, handoff(editor))
+    if (handoff) queueSkillHandoffFor(opened.contents, handoff(editor))
     if (!opened.ownsCopy) {
       opened.contents.once('destroyed', () => {
         void deps.removeDir(dir).catch(() => undefined)
@@ -162,6 +162,21 @@ export function createTemplateTabs(deps: TemplateTabsDeps) {
   }
 
   return {
+    /** Cheil fork: reuse an imported work template as an untitled copy, without an AI request. */
+    async openDocumentTemplate(source: {
+      path: string
+      fileName: string
+    }): Promise<UserSkillsResult<{ tabId: string }>> {
+      try {
+        const bytes = await deps.readFile(source.path)
+        const title = source.fileName.slice(0, -extname(source.fileName).length)
+        const opened = await openWithHandoff(bytes, source.fileName, title)
+        return opened.ok ? { ok: true, tabId: opened.tabId } : opened
+      } catch {
+        return fail('no-template')
+      }
+    },
+
     /**
      * Spec 5.7: the template of the skill a request names, copied into a new
      * tab of its editor, with the request and every chip handed over.

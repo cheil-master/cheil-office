@@ -1,0 +1,536 @@
+/* Cheil fork: compact wiki reader using the product's existing theme tokens. */
+.cheil-wiki {
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  color: var(--text);
+}
+.cheil-wiki h2,
+.cheil-wiki h3,
+.cheil-wiki p {
+  margin: 0;
+}
+.cheil-wiki-head,
+.cheil-wiki-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cheil-wiki-head {
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.cheil-wiki-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 270px) minmax(0, 1fr);
+  gap: 24px;
+}
+.cheil-wiki-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: start;
+  max-height: 70vh;
+  overflow: auto;
+}
+.cheil-wiki input:not([type='checkbox']),
+.cheil-wiki textarea,
+.cheil-wiki select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font: inherit;
+}
+.cheil-wiki textarea {
+  resize: vertical;
+  line-height: 1.65;
+}
+.cheil-wiki-row {
+  text-align: start;
+  padding: 13px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+.cheil-wiki-row strong,
+.cheil-wiki-row span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.cheil-wiki-row span,
+.cheil-wiki-meta {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.cheil-wiki-row:hover,
+.cheil-wiki-row.active {
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+}
+.cheil-wiki-row:hover span,
+.cheil-wiki-row.active span {
+  color: inherit;
+}
+.cheil-wiki-reader {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cheil-wiki-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.85;
+  padding: 18px 0;
+}
+.cheil-wiki-editor,
+.cheil-wiki-import {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cheil-wiki-import {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  margin-bottom: 18px;
+}
+.cheil-wiki-import .btn,
+.cheil-wiki-editor .btn {
+  align-self: start;
+}
+.cheil-wiki-message {
+  white-space: pre-wrap;
+  padding: 12px 0;
+}
+.cheil-wiki-options {
+  padding: 12px;
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+.cheil-wiki summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 7px 0;
+}
+.cheil-wiki-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 9px 0;
+}
+.cheil-wiki-evidence {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cheil-wiki-ask {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cheil-wiki-ask > p {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.cheil-wiki-ask > .btn {
+  align-self: start;
+}
+.cheil-wiki-answer {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+.cheil-wiki-answer li p {
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow: auto;
+}
+.cheil-wiki-empty {
+  padding: 30px 0;
+  color: var(--text-dim);
+}
+.cheil-wiki-embedded {
+  padding: 16px 0;
+}
+.cheil-wiki-embedded .cheil-wiki-grid {
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  gap: 16px;
+}
+@media (max-width: 800px) {
+  .cheil-wiki {
+    padding: 16px;
+  }
+  .cheil-wiki-grid,
+  .cheil-wiki-embedded .cheil-wiki-grid {
+    grid-template-columns: 1fr;
+  }
+  .cheil-wiki-list {
+    max-height: 260px;
+  }
+}
+
+/* Cheil fork: readable, bounded source preview in both themes. */
+.cheil-wiki-preview {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-block: 12px;
+}
+.cheil-wiki-preview ol {
+  max-height: 360px;
+  overflow: auto;
+}
+.cheil-wiki-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 12px;
+}
+.cheil-wiki-preview label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-block: 12px;
+}
+
+/* Cheil fork: keep endpoint/key labels readable in the compact wiki pane. */
+.cheil-wiki-ocr fieldset {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.cheil-wiki-ocr fieldset > label {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+.cheil-wiki-ocr fieldset > label input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.cheil-wiki-ocr figure {
+  margin: 16px 0;
+}
+.cheil-wiki-ocr p {
+  overflow-wrap: anywhere;
+}
+
+/* Cheil fork: clear library, reading and question hierarchy across workspace sizes. */
+.cheil-wiki {
+  container-type: inline-size;
+}
+.cheil-wiki .cheil-wiki-head {
+  align-items: flex-start;
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+.cheil-wiki-heading {
+  display: grid;
+  gap: 8px;
+}
+.cheil-wiki-heading h2 {
+  font-size: 28px;
+  letter-spacing: -0.6px;
+}
+.cheil-wiki-heading p {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.cheil-wiki .cheil-wiki-grid {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.cheil-wiki .cheil-wiki-list {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  max-height: 72vh;
+  min-width: 0;
+  gap: 12px;
+}
+.cheil-wiki-library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.cheil-wiki-library-head h3 {
+  font-size: 15px;
+}
+.cheil-wiki-library-head span {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.cheil-wiki-list-empty {
+  padding: 22px 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+.cheil-wiki-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.cheil-wiki .cheil-wiki-reader {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  min-height: 380px;
+}
+.cheil-wiki .cheil-wiki-reader > .cheil-wiki-actions {
+  position: static;
+  background: transparent;
+  padding: 0 0 16px;
+}
+.cheil-wiki-reader > .cheil-wiki-actions h3 {
+  flex-basis: 100%;
+  font-size: 24px;
+  line-height: 1.4;
+}
+.cheil-wiki-reader > .cheil-wiki-actions .btn {
+  font-size: 12px;
+  padding: 7px 12px;
+}
+.cheil-wiki .cheil-wiki-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 36px 12px;
+  text-align: center;
+}
+.cheil-wiki-empty h3 {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.5;
+}
+.cheil-wiki-empty p {
+  max-width: 400px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.cheil-wiki-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+}
+.cheil-wiki-empty-icon svg {
+  width: 32px;
+  height: 32px;
+}
+.cheil-wiki-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 28px;
+  padding: 24px 0 0;
+  margin: 4px 0 0;
+  list-style: none;
+  counter-reset: wiki-step;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.cheil-wiki-steps li {
+  counter-increment: wiki-step;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cheil-wiki-steps li::before {
+  content: counter(wiki-step);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.cheil-wiki .cheil-wiki-ask {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  background: var(--surface);
+  gap: 12px;
+}
+.cheil-wiki-ask h3 {
+  font-size: 18px;
+}
+.cheil-wiki .cheil-wiki-ask-scope {
+  font-size: 12px;
+  color: var(--text);
+}
+.cheil-wiki .cheil-wiki-import {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  gap: 16px;
+}
+.cheil-wiki :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+@container (max-width: 720px) {
+  .cheil-wiki .cheil-wiki-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cheil-wiki .cheil-wiki-list {
+    max-height: 300px;
+  }
+  .cheil-wiki .cheil-wiki-reader {
+    padding: 18px;
+    min-height: 300px;
+  }
+  .cheil-wiki .cheil-wiki-ask {
+    padding: 18px;
+  }
+  .cheil-wiki .cheil-wiki-empty {
+    padding: 20px 0;
+  }
+}
+
+/* Cheil fork: compact knowledge catalog and import controls. */
+.cheil-wiki-structure {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+.cheil-wiki-structure nav:empty {
+  display: none;
+}
+.cheil-wiki-structure fieldset {
+  min-width: 0;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.cheil-wiki-structure dialog p {
+  overflow-wrap: anywhere;
+}
+
+/* Cheil fork: bounded, readable change review. */
+.cheil-wiki-review-item {
+  border-top: 1px solid var(--border);
+  padding: 18px 0;
+  display: grid;
+  gap: 10px;
+}
+.cheil-wiki-review-item pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  margin: 0;
+}
+
+/* Cheil fork: compact review versions with a single selected detail view. */
+.cheil-wiki-review-version {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: start;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.cheil-wiki-review-version[aria-pressed='true'] {
+  border-color: currentColor;
+  border-inline-start-width: 4px;
+}
+.cheil-wiki-review-version time,
+.cheil-wiki-review-version small {
+  font-size: 12px;
+}
+.cheil-wiki-review-older {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.cheil-wiki-review-history {
+  margin-block: 16px;
+}
+.cheil-wiki-review-item > summary,
+.cheil-wiki-review-create > summary,
+.cheil-wiki-review-history summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+
+/* Cheil fork: sources first; review workflow and applied log stay folded. */
+.cheil-wiki-section {
+  border-top: 1px solid var(--border);
+  padding-block: 8px;
+}
+.cheil-wiki-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 8px;
+}
+.cheil-wiki-section .btn {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+.cheil-wiki-section pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Cheil fork: ask the wiki before browsing its documents. */
+.cheil-wiki > .cheil-wiki-ask {
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 18px 22px;
+}
+.cheil-wiki > .cheil-wiki-ask > :is(h3, p, section, div) {
+  grid-column: 1 / -1;
+}
+.cheil-wiki > .cheil-wiki-ask > textarea {
+  min-width: 0;
+  width: 100%;
+}
+.cheil-wiki > .cheil-wiki-ask > .btn {
+  align-self: end;
+}
+@container (max-width: 720px) {
+  .cheil-wiki > .cheil-wiki-ask {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

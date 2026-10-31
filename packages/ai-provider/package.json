@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./browser": "./src/browser.ts",
+    "./usage-ledger": "./src/usage-ledger.ts",
     "./codex-app-server": "./src/codex-app-server.ts",
     "./custom-models": "./src/custom-models.ts",
     "./free-connect": "./src/free-connect.ts",

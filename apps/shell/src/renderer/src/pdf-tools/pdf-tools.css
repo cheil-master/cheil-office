@@ -459,3 +459,183 @@ body {
   padding: 10px 22px;
   border-top: 1px solid var(--border-subtle);
 }
+
+/* Cheil fork: purpose navigation and a focused PDF workbench. */
+.pt-head {
+  padding: 24px 30px 20px;
+  background: var(--surface);
+}
+.pt-brand {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.pt-title {
+  font-size: 26px;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+.pt-head > .pt-local {
+  display: none;
+}
+.pt-layout {
+  display: grid;
+  grid-template-columns: 215px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.pt-nav {
+  overflow-y: auto;
+  padding: 22px 14px;
+  border-inline-end: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+.pt-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 12px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.pt-nav-item[aria-current='page'] {
+  color: var(--text-primary);
+  background: var(--surface);
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 6px #00000008;
+  font-weight: 700;
+}
+.pt-nav-item small {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 6px;
+}
+.pt-nav-item:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.pt-nav-note {
+  margin: 26px 12px 0;
+  color: var(--text-tertiary);
+  line-height: 1.7;
+  font-size: 11px;
+}
+.pt-body {
+  padding: 26px 30px;
+  background: var(--surface);
+  gap: 24px;
+}
+.pt-workflow {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 20px;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.pt-workflow li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.pt-workflow b {
+  color: var(--text-primary);
+  font-size: 11px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  padding: 7px;
+}
+.pt-label {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+.pt-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.pt-card {
+  padding: 20px 16px;
+  min-height: 110px;
+  border-radius: 12px;
+  gap: 14px;
+  position: relative;
+}
+.pt-card-icon {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  width: 42px;
+  height: 42px;
+  padding: 7px;
+  background: var(--surface-subtle);
+}
+.pt-card-title {
+  font-size: 14px;
+}
+.pt-card-desc {
+  line-height: 1.6;
+}
+.pt-tool-title {
+  font-size: 22px;
+  margin-top: 12px;
+}
+.pt-section > .pt-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.pt-foot {
+  padding-inline: 30px;
+}
+@media (max-width: 700px) {
+  .pt-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+  .pt-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow: visible;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 12px;
+  }
+  .pt-nav-item {
+    width: auto;
+    flex: 1 1 150px;
+    margin: 0;
+  }
+  .pt-nav-note {
+    display: none;
+  }
+  .pt-body {
+    overflow: visible;
+    padding: 20px;
+  }
+  .pt-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Cheil fork: product accent, independent of document content. */
+:root { --accent: #466b13; --accent-hover: #35520e; --accent-soft: #eff9df; --pt-highlight: #b7ff57; --pt-on-accent: #18230a; }
+[data-theme='dark'] { --accent: #b7ff57; --accent-hover: #c9ff85; --accent-soft: #2a381b; --pt-on-accent: #18230a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']):not([data-theme='dark']) { --accent: #b7ff57; --accent-hover: #c9ff85; --accent-soft: #2a381b; --pt-on-accent: #18230a; } }
+.pt-btn-primary { background: var(--pt-highlight); color: var(--pt-on-accent); border-color: transparent; }
+.pt-nav-item[aria-current='page'] { border-inline-start: 4px solid var(--accent); }

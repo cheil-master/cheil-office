@@ -1,3 +1,4 @@
+import { codexQuotaWindows } from './codex-quota'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -1499,4 +1500,12 @@ function defaultModelFor(client: CodexAppServerClient): Promise<string> {
     if (defaultModels.get(client) === reading) defaultModels.delete(client)
   })
   return reading
+}
+
+/** Cheil fork: official account metadata query; no thread, prompt or model turn. */
+export async function readCodexAccountUsage(cliPath?: string) {
+  return withClient(cliPath, async (client) => ({
+    windows: codexQuotaWindows(await client.request('account/rateLimits/read', undefined, 15000)),
+    updatedAt: Date.now(),
+  }))
 }

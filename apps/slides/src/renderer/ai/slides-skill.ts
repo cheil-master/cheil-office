@@ -30,6 +30,7 @@ import {
 } from './template-selection-state'
 import { brandText } from '@genoffice/i18n'
 import { t } from '../i18n/locale'
+import { readDesignReference } from '../../shared/design-reference'
 import systemPrompt from './prompts/system.md?raw'
 import { placeholderInstruction } from './redact'
 import { textForModel, redactLabelsOf } from './redact-view'
@@ -219,6 +220,8 @@ export interface DeckAccess {
    * across pages (see layout-skeleton.ts). `basedOn` is the id of the built-in
    * design template the style was saved from, when it was.
    */
+  referenceInstructions?(): string
+  saveDesignReference?(value: unknown): Promise<{ ok: boolean; key?: string; error?: string }>
   saveStyleTemplate?(
     name: string,
     data: {
@@ -681,6 +684,72 @@ const TOOLS: AgentToolDef[] = [
             "Required when topic/context/briefs carry specific figures (%, money, magnitudes): where they came from — 'user'/'document'/'search' (run web_search or read_url first)/'sample' (disclose to the user)",
         },
       },
+    },
+  },
+  {
+    name: 'define_reference_style',
+    description:
+      'After visually inspecting user-selected reference images, define reusable document design rules. Save BEFORE generate_deck; the saved style becomes the document selection automatically. Describe hierarchy, composition, shape roles and three distinct content-aware recipes, not OCR coordinates or just colors. No original copy, logo or photo reproduction. Never claim to have seen images you cannot access. Use exact Pinterest pin source URLs from the reference brief. For a saved MD, reuse its template instead of redefining it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        version: { type: 'number', enum: [1] },
+        name: { type: 'string' },
+        sources: { type: 'array', items: { type: 'string' }, maxItems: 2 },
+        palette: {
+          type: 'object',
+          properties: Object.fromEntries(
+            ['background', 'ink', 'accent', 'secondary'].map((k) => [k, { type: 'string' }]),
+          ),
+          required: ['background', 'ink', 'accent', 'secondary'],
+        },
+        typography: {
+          type: 'string',
+          description:
+            'Title/body/label sizing in pixels and weight, line spacing, CJK font fallback. Distinguish inferred font category from known font.',
+        },
+        composition: {
+          type: 'string',
+          description:
+            'Margins, alignment, density, focal point and text hierarchy. Transfer principles across different content.',
+        },
+        shapes: {
+          type: 'string',
+          description: 'What each shape communicates, geometry, treatment, and when to omit it.',
+        },
+        avoid: { type: 'string' },
+        layouts: {
+          type: 'object',
+          properties: {
+            cover: {
+              type: 'string',
+              description:
+                'A strong title-led cover with intentional negative space and graphic motif.',
+            },
+            comparison: {
+              type: 'string',
+              description:
+                'Aligned comparison criteria with clear hierarchy; not repeated empty cards.',
+            },
+            process: {
+              type: 'string',
+              description: 'Ordered steps, visible connectors, concise actions, and an outcome.',
+            },
+          },
+          required: ['cover', 'comparison', 'process'],
+        },
+      },
+      required: [
+        'version',
+        'name',
+        'sources',
+        'palette',
+        'typography',
+        'composition',
+        'shapes',
+        'avoid',
+        'layouts',
+      ],
     },
   },
   {
@@ -1150,7 +1219,9 @@ export function createSlidesSkill(access: DeckAccess): AgentSkill {
       // only a document with a selected design template gets this block
       const template = buildTemplateNote(access)
       const comments = buildCommentHint(access)
-      return [outline, progress, template, comments].filter(Boolean).join('\n')
+      return [outline, progress, template, comments, access.referenceInstructions?.()]
+        .filter(Boolean)
+        .join('\n')
     },
     executeTool: (call, signal) => executeTool(access, call, state, signal),
   }
@@ -2812,6 +2883,28 @@ async function executeTool(
         output: groups.map((g) => opGuide(g)!).join('\n\n---\n\n'),
         mutated: false,
         summary: t('aiSumLoadGuide', { names: groups.join(', ') }),
+      }
+    }
+
+    case 'define_reference_style': {
+      if (!access.saveDesignReference)
+        return fail(t('aiFailSaveTemplate'), 'Reference saving is unavailable')
+      try {
+        const design = readDesignReference(call.input)
+        const result = await access.saveDesignReference(design)
+        if (!result.ok || !result.key)
+          return fail(t('aiFailSaveTemplate'), result.error ?? 'Save failed')
+        const selected = await access.templateSelection?.select('saved', result.key)
+        return {
+          output: `Saved reusable Markdown design "${design.name}". Key: ${result.key}. ${selected ? 'Selected for this document.' : `Pass style_template:"${result.key}" to generate_deck.`} Now generate the requested content with distinct cover, comparison and process layouts. Use actual source content; do not insert the reference images.`,
+          mutated: false,
+          summary: t('aiSumSaveTemplate', { name: design.name }),
+        }
+      } catch {
+        return fail(
+          t('aiFailSaveTemplate'),
+          'Invalid reference design. Supply all visual rules and three concrete layout recipes.',
+        )
       }
     }
 

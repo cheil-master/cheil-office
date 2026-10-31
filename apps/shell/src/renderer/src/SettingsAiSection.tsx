@@ -1,3 +1,5 @@
+import { CHEIL_API_CHOICES, apiKeyOf, apiModelOf } from './cheil/api-keys'
+import { ConnectionJourney, type ConnectionFlow } from './cheil/ConnectionJourney'
 import { Fragment, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
@@ -16,6 +18,7 @@ import { AI_SUBSCRIPTION_PROVIDERS, selectAiProvider } from '@genoffice/ai-provi
 import type { AiSettings, AiSubscriptionProviderId } from '@genoffice/ai-provider/browser'
 import { FreeAiCards } from './FreeAiCards'
 import { ApiKeyCards } from './cheil/ApiKeyCards'
+import { programConnectionHint } from './cheil/product-copy'
 import type { TFunc } from './locale'
 import type { SubscriptionConnection } from './subscription-client'
 import {
@@ -185,6 +188,7 @@ export function AiSection({
   const [advancedOpen, setAdvancedOpen] = useState(openTab !== undefined)
   const [tab, setTab] = useState<AdvancedTab>(openTab ?? 'model')
   const [noticeOpen, setNoticeOpen] = useState(false)
+  const [connectionFlow, setConnectionFlow] = useState<ConnectionFlow>('detect')
   /** the automatic-requests switch was pressed while off: the warning is up, nothing is saved yet */
   const [headlessAsked, setHeadlessAsked] = useState(false)
   /** an account action was pressed on a card: its confirmation is up, nothing has run yet */
@@ -255,83 +259,6 @@ export function AiSection({
   return (
     <>
       <h3 className="set-pane-title">{t('setSecAi')}</h3>
-      {/* Cheil fork: the person's own API key comes first */}
-      <ApiKeyCards lang={lang} />
-      <h4 className="set-pane-subtitle set-sub-title cheil-after-api">{t('setSubTitle')}</h4>
-      <div className="set-field-desc set-ai-note">{aiSubscriptionText(lang, 'connectBody')}</div>
-      <div className="set-sub-cards">
-        {AI_SUBSCRIPTION_PROVIDERS.map((provider) => (
-          <Fragment key={provider}>
-            <AiSubscriptionCard
-              status={statuses[provider]}
-              lang={lang}
-              disabled={busy}
-              onInstall={connection.install}
-              onUpdate={connection.update}
-              onCancelLogin={connection.cancelLogin}
-              onLogin={connection.login}
-              onRecheck={connection.recheck}
-              onAcceptMetered={acceptMetered}
-              onOpenInstallHelp={connection.openInstallHelp}
-              showAccount
-              onSwitchAccount={(id) => setAccountAsked({ provider: id, action: 'switch' })}
-              onLogout={(id) => setAccountAsked({ provider: id, action: 'logout' })}
-            />
-            {accountAsked?.provider === provider && (
-              <div
-                className="set-adv-confirm set-sub-confirm"
-                role="alertdialog"
-                aria-label={accountActionLabel}
-                data-provider={provider}
-              >
-                <div className="set-field-desc set-adv-warning">
-                  {t(
-                    accountAsked.action === 'logout'
-                      ? 'setSubLogoutConfirm'
-                      : 'setSubSwitchConfirm',
-                    { program: subscriptionProgramName(provider) },
-                  )}
-                </div>
-                <div className="set-btn-row">
-                  <button className="set-btn" onClick={() => setAccountAsked(null)}>
-                    {t('cancel')}
-                  </button>
-                  <button className="set-btn danger" onClick={runAccountAction}>
-                    {accountActionLabel}
-                  </button>
-                </div>
-              </div>
-            )}
-            {failed[provider] === 'logout' ? (
-              <div className="set-sub-failed" role="alert" data-provider={provider}>
-                <span>{t('setSubLogoutFailed')}</span>
-              </div>
-            ) : (
-              failed[provider] && (
-                <div className="set-sub-failed" role="alert" data-provider={provider}>
-                  <span>
-                    {t(
-                      failed[provider] === 'install' ? 'setSubInstallFailed' : 'setSubLoginFailed',
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    className="set-link"
-                    onClick={() => connection.openInstallHelp(provider)}
-                  >
-                    {aiSubscriptionText(lang, 'actionInstallHelp')}
-                  </button>
-                </div>
-              )
-            )}
-          </Fragment>
-        ))}
-      </div>
-      <h4 className="set-pane-subtitle set-sub-title free-ai-title" id="set-free-ai">
-        {t('setFreeTitle')}
-      </h4>
-      <div className="set-field-desc set-ai-note">{t('setFreeDesc')}</div>
-      <FreeAiCards t={t} />
       {settings && (
         <>
           <div className="set-field">
@@ -383,6 +310,127 @@ export function AiSection({
           )}
         </>
       )}
+      <section className="cheil-connection-inventory" aria-label="등록된 AI 연결">
+        <h4>등록된 AI 연결</h4>
+        <p>
+          여러 연결을 보관하고 작업마다 선택할 수 있습니다. 키 등록은 실제 응답 성공을 의미하지
+          않습니다.
+        </p>
+        {AI_SUBSCRIPTION_PROVIDERS.map((id) => (
+          <div key={id}>
+            <strong>{id === 'codex' ? 'Codex' : 'Claude'} · 계정 연결</strong>
+            <span>
+              {aiSubscriptionText(lang, aiSubscriptionCardView(statuses[id]).statusKey, {
+                plan: statuses[id]?.planName ?? '',
+              })}
+            </span>
+          </div>
+        ))}
+        {settings &&
+          CHEIL_API_CHOICES.filter((c) => apiKeyOf(settings, c.id)).map((c) => (
+            <div key={c.id}>
+              <strong>
+                {c.name} API {settings.provider === c.id ? '· 기본' : ''}
+              </strong>
+              <span>키 등록됨 · {apiModelOf(settings, c.id)} · 응답 확인 필요</span>
+            </div>
+          ))}
+      </section>
+      <ConnectionJourney
+        flow={connectionFlow}
+        onChange={setConnectionFlow}
+        connection={connection}
+      />
+      {/* Cheil fork: preserve native vendor cards and account actions under the chosen setup route. */}
+      <details className="cheil-extra-connections" open>
+        <summary>
+          {lang === 'ko'
+            ? 'API 키·구독 프로그램 연결 관리'
+            : 'Manage API keys & subscription programs'}
+        </summary>
+        {connectionFlow === 'api' && <ApiKeyCards lang={lang} />}
+        {connectionFlow !== 'api' && (
+          <>
+            <h4 className="set-pane-subtitle set-sub-title cheil-after-api">{t('setSubTitle')}</h4>
+            <div className="set-field-desc set-ai-note">{programConnectionHint(lang)}</div>
+            <div className="set-sub-cards">
+              {AI_SUBSCRIPTION_PROVIDERS.map((provider) => (
+                <Fragment key={provider}>
+                  <AiSubscriptionCard
+                    status={statuses[provider]}
+                    lang={lang}
+                    disabled={busy}
+                    onInstall={connection.install}
+                    onUpdate={connection.update}
+                    onCancelLogin={connection.cancelLogin}
+                    onLogin={connection.login}
+                    onRecheck={connection.recheck}
+                    onAcceptMetered={acceptMetered}
+                    onOpenInstallHelp={connection.openInstallHelp}
+                    showAccount
+                    onSwitchAccount={(id) => setAccountAsked({ provider: id, action: 'switch' })}
+                    onLogout={(id) => setAccountAsked({ provider: id, action: 'logout' })}
+                  />
+                  {accountAsked?.provider === provider && (
+                    <div
+                      className="set-adv-confirm set-sub-confirm"
+                      role="alertdialog"
+                      aria-label={accountActionLabel}
+                      data-provider={provider}
+                    >
+                      <div className="set-field-desc set-adv-warning">
+                        {t(
+                          accountAsked.action === 'logout'
+                            ? 'setSubLogoutConfirm'
+                            : 'setSubSwitchConfirm',
+                          { program: subscriptionProgramName(provider) },
+                        )}
+                      </div>
+                      <div className="set-btn-row">
+                        <button className="set-btn" onClick={() => setAccountAsked(null)}>
+                          {t('cancel')}
+                        </button>
+                        <button className="set-btn danger" onClick={runAccountAction}>
+                          {accountActionLabel}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {failed[provider] === 'logout' ? (
+                    <div className="set-sub-failed" role="alert" data-provider={provider}>
+                      <span>{t('setSubLogoutFailed')}</span>
+                    </div>
+                  ) : (
+                    failed[provider] && (
+                      <div className="set-sub-failed" role="alert" data-provider={provider}>
+                        <span>
+                          {t(
+                            failed[provider] === 'install'
+                              ? 'setSubInstallFailed'
+                              : 'setSubLoginFailed',
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          className="set-link"
+                          onClick={() => connection.openInstallHelp(provider)}
+                        >
+                          {aiSubscriptionText(lang, 'actionInstallHelp')}
+                        </button>
+                      </div>
+                    )
+                  )}
+                </Fragment>
+              ))}
+            </div>
+          </>
+        )}
+        <h4 className="set-pane-subtitle set-sub-title free-ai-title" id="set-free-ai">
+          {t('setFreeTitle')}
+        </h4>
+        <div className="set-field-desc set-ai-note">{t('setFreeDesc')}</div>
+        <FreeAiCards t={t} />
+      </details>
       <button
         type="button"
         className="set-adv-toggle"

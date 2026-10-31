@@ -1,3 +1,7 @@
+// Cheil fork: approved wiki excerpts use a main-process-only, one-use grant.
+import type { CheilExcerptConsent } from '../../../../packages/ai-provider/src/cheil-consent'
+import { isLoopbackBaseUrl } from '../../../../packages/ai-provider/src/cheil-grade'
+import { getProviderAdapter } from '../../../../packages/ai-provider/src/registry'
 import { createHash, randomUUID } from 'node:crypto'
 import { handOffBytes } from './byte-handoff'
 import {
@@ -4065,34 +4069,7 @@ export function registerAiIpc(): void {
     return testMediaProvider(provider, config)
   })
 
-  ipcMain.handle('ai:chat', async (_event, request: AiChatRequest) => {
-    // same schema check and provider choice as ai:stream: one-shot requests would
-    // otherwise act on the renderer's settings copy verbatim
-    const target = resolveAiRun(request.settings, sharedSubscriptionStatuses(), AI_RUN_TEXTS)
-    if (!target.ok) return { ok: false, ...target.refusal }
-    const { system, user } = request
-    try {
-      // Cheil fork: a template fill asks for one JSON object
-      const result = await chatForProvider(
-        target.provider,
-        target.config,
-        system,
-        user,
-        undefined,
-        {
-          json: request.json === true,
-        },
-      )
-      // the one-shot path reports HTTP failures as ok:false with the raw body —
-      // replace capacity/rate-limit dumps with the localized "busy" message
-      if (!result.ok && isAiOverloadedError(result.error)) {
-        return { ok: false, error: tm('errAiBusy') }
-      }
-      return result
-    } catch (err) {
-      return aiChatFailure(err, () => tm('errAiBusy'))
-    }
-  })
+  ipcMain.handle('ai:chat', (_event, request: AiChatRequest) => executeCheilChat(request))
 }
 
 // ── project-store IPC (shared across docs / slides / sheets) ──────────────
@@ -6341,4 +6318,44 @@ export function startDocsStandalone(): void {
   // out still emits (the shell hooks the same two for its own process).
   app.on('will-quit', () => shutdownSubscriptionChildren())
   process.on('exit', () => shutdownSubscriptionChildren())
+}
+
+/** Cheil fork: renderer requests cannot manufacture a wiki consent capability. */
+export async function executeCheilChat(
+  request: Omit<AiChatRequest, 'settings'> & { settings: unknown },
+  consent?: CheilExcerptConsent,
+  expectedProvider?: string,
+) {
+  // same schema check and provider choice as ai:stream: one-shot requests would
+  // otherwise act on the renderer's settings copy verbatim
+  const target = resolveAiRun(request.settings, sharedSubscriptionStatuses(), AI_RUN_TEXTS)
+  if (!target.ok) return { ok: false, ...target.refusal }
+  if (expectedProvider && target.provider !== expectedProvider)
+    return { ok: false, error: 'AI provider changed; prepare the preview again.' }
+  const { system, user } = request
+  try {
+    // Cheil fork: a template fill asks for one JSON object
+    const result = await chatForProvider(target.provider, target.config, system, user, undefined, {
+      json: request.json === true,
+      wikiConsent: consent,
+    })
+    // the one-shot path reports HTTP failures as ok:false with the raw body —
+    // replace capacity/rate-limit dumps with the localized "busy" message
+    if (!result.ok && isAiOverloadedError(result.error)) {
+      return { ok: false, error: tm('errAiBusy') }
+    }
+    return result
+  } catch (err) {
+    return aiChatFailure(err, () => tm('errAiBusy'))
+  }
+}
+export function previewWikiChatTarget(settings: unknown) {
+  const target = resolveAiRun(settings, sharedSubscriptionStatuses(), AI_RUN_TEXTS)
+  if (!target.ok) return { ok: false as const, error: target.refusal.error }
+  const endpoint = getProviderAdapter(target.provider).resolveEndpoint(target.config)
+  return {
+    ok: true as const,
+    provider: target.provider,
+    local: isLoopbackBaseUrl(endpoint.baseUrl),
+  }
 }

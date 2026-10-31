@@ -5,7 +5,7 @@ export interface AiMarkProps {
 
 /**
  * Neutral mark for the AI entry points (ribbon button, panel header, launcher
- * chips): a rounded-square speech bubble holding a ring. It names no AI
+ * chips): document lines with a four-point action mark. It names no AI
  * vendor, so it stays correct whichever provider the user has connected.
  *
  * Drawn inline with `currentColor` so it follows the surrounding text color in
@@ -27,8 +27,9 @@ export function AiMark({ size = 18, className }: AiMarkProps) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <path d="M7 3.5h10a3.5 3.5 0 0 1 3.5 3.5v7a3.5 3.5 0 0 1-3.5 3.5h-6l-4.2 3.4a.6.6 0 0 1-1-.5v-3.1A3.5 3.5 0 0 1 3.5 14V7A3.5 3.5 0 0 1 7 3.5z" />
-      <circle cx="12" cy="10.5" r="2.6" />
+      {/* Cheil fork: document lines and a separate four-point action mark. */}
+      <path d="M5 4h9M5 9h6M5 14h4M5 19h9" />
+      <path d="m17 7 1.6 4.4L23 13l-4.4 1.6L17 19l-1.6-4.4L11 13l4.4-1.6z" />
     </svg>
   )
 }

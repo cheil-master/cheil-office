@@ -205,7 +205,7 @@
 
 앱 안에서 쓰는 스킬이다. 위 "에이전트 스킬"(바깥 에이전트에 설치하는 것)과 다르다. 터미널 명령어 `ieumoffice`와 그 MCP 서버는 사용자 스킬을 쓰지 않는다.
 
-**스킬 폴더 형식.** 공개 표준을 따른다. 폴더 하나에 `SKILL.md`가 있고, 앞머리에 `name`(1~64자)과 `description`이 있어야 한다. 이음오피스는 표준의 `metadata`에 두 값을 쓴다. 다른 프로그램은 이 값을 무시해도 스킬이 동작한다.
+**스킬 폴더 형식.** 공개 표준을 따른다. 폴더 하나에 `SKILL.md`가 있고, 앞머리에 `name`(1~64자)과 `description`이 있어야 한다. CheilOffice는 표준의 `metadata`에 두 값을 쓴다. 다른 프로그램은 이 값을 무시해도 스킬이 동작한다.
 
 ```yaml
 ---
@@ -219,7 +219,7 @@ metadata:
 
 - `ieum-title`: 화면과 `/` 목록의 제목. 없으면 `name`.
 - `ieum-template`: 스킬 폴더 안 `assets/` 아래 양식 문서의 상대 경로.
-- 이음오피스가 새로 만드는 이름은 소문자·숫자·하이픈만 쓰고, 하이픈으로 시작하거나 끝나지 않으며 `--`가 없다.
+- CheilOffice가 새로 만드는 이름은 소문자·숫자·하이픈만 쓰고, 하이픈으로 시작하거나 끝나지 않으며 `--`가 없다.
 
 **깃허브 출처 기록(`〈스킬 폴더〉/.ieum-source.json`).** 깃허브에서 설치한 스킬에만 있다. 내보내기(zip)에는 들어가지 않는다.
 
@@ -249,7 +249,7 @@ metadata:
 
 ## 설정 파일 (`ai-settings.json`)
 
-데이터 폴더(`%APPDATA%\IeumOffice`, 개발 실행은 `IeumOffice-Dev`)에 있다. 사람이 직접 고칠 수 있고, 명령어와 MCP는 읽기만 한다.
+데이터 폴더(`%APPDATA%\CheilOffice`, 개발 실행은 `CheilOffice-Dev`)에 있다. 사람이 직접 고칠 수 있고, 명령어와 MCP는 읽기만 한다.
 
 | 값                                   | 종류                                             | 기본                                                       |
 | ------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------- |
@@ -356,9 +356,9 @@ metadata:
 
 ## 설치본과 업데이트
 
-- 설치 파일 이름은 `IeumOffice-Setup-<버전>.exe`, 설치 식별자는 `io.github.pblsketch.ieumoffice`, 실행 파일은 `IeumOffice.exe`다.
-- 파일 연결의 등록 이름은 `IeumOffice.<종류>` 꼴이다(`IeumOffice.WordDocument` 등).
-- 이음오피스는 Windows 기본 앱 목록에 `RegisteredApplications`의 `IeumOffice`와 `Software\IeumOffice\Capabilities\FileAssociations`로 오른다. 이 등록은 기본 프로그램을 바꾸지 않고, 사용자가 기본 앱에서 이음오피스를 고를 때 앱 실행 파일이 아니라 확장자별 ProgId(문서 아이콘)가 기록되게 한다. `.hwp`·`.hwpx`·`.xmind`·`.odt`는 여기서도 "연결 프로그램" 후보일 뿐이다.
-- `.odt`는 "연결 프로그램" 후보로만 등록한다(`IeumOffice.OpenDocumentText`와 `.odt\OpenWithProgids`의 값 하나, `apps/shell/build/installer.nsh`). 기본 프로그램은 바꾸지 않는다. 지울 때는 그 값과 등록 이름만 지운다.
+- 설치 파일 이름은 `CheilOffice-Setup-<버전>.exe`, 설치 식별자는 `io.github.pblsketch.ieumoffice`, 실행 파일은 `CheilOffice.exe`다.
+- 파일 연결의 등록 이름은 `CheilOffice.<종류>` 꼴이다(`CheilOffice.WordDocument` 등).
+- CheilOffice는 Windows 기본 앱 목록에 `RegisteredApplications`의 `CheilOffice`와 `Software\CheilOffice\Capabilities\FileAssociations`로 오른다. 이 등록은 기본 프로그램을 바꾸지 않고, 사용자가 기본 앱에서 CheilOffice를 고를 때 앱 실행 파일이 아니라 확장자별 ProgId(문서 아이콘)가 기록되게 한다. `.hwp`·`.hwpx`·`.xmind`·`.odt`는 여기서도 "연결 프로그램" 후보일 뿐이다.
+- `.odt`는 "연결 프로그램" 후보로만 등록한다(`CheilOffice.OpenDocumentText`와 `.odt\OpenWithProgids`의 값 하나, `apps/shell/build/installer.nsh`). 기본 프로그램은 바꾸지 않는다. 지울 때는 그 값과 등록 이름만 지운다.
 - Windows 설치본은 `.txt`·`.json`·`.xmind`를 이 앱에 연결해 등록하지 않는다. 설치해도 그 파일들의 기본 프로그램이 바뀌지 않는다. 앱 안에서는 열기 창, 끌어다 놓기, 최근 파일, 폴더 나무로 열고, 실행 인자로 경로를 받으면 연다.
 - 자동 업데이트는 `pblsketch/openoffice`의 GitHub 릴리스에서 `latest.yml`과 설치 파일을 읽는다. 릴리스는 `v<버전>` 태그여야 한다.

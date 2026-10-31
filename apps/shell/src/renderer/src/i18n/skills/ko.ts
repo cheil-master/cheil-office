@@ -1,9 +1,9 @@
 import type { zh } from './zh'
 
 export const ko = {
-  navLabel: '스킬',
+  navLabel: '업무 절차·스킬',
   intro:
-    '스킬은 AI에게 주는 작업 설명서입니다. 켜 둔 스킬은 AI 창에서 / 또는 $로 부르거나, AI가 필요할 때 스스로 씁니다.',
+    '필요한 절차를 켜고 AI 입력창에서 / 또는 $로 선택하세요. 자동 사용으로 설정한 절차는 AI가 상황에 맞게 사용할 수 있습니다.',
   helpLink: '도움말 보기',
   searchLabel: '스킬 찾기',
   searchPlaceholder: '제목, 이름, 설명으로 찾기',
@@ -11,11 +11,11 @@ export const ko = {
   addFolder: '폴더에서',
   addZip: 'zip 파일에서',
   addGitHub: '깃허브 링크로',
-  create: '새로 만들기',
+  create: '업무 절차 만들기',
   loading: '불러오는 중…',
   empty: '아직 스킬이 없습니다. 위의 추가나 새로 만들기로 시작하세요.',
   noMatch: '"{query}"에 맞는 스킬이 없습니다.',
-  sourceBuiltin: '기본',
+  sourceBuiltin: '제공되는 업무 절차',
   sourceApp: '내 스킬',
   sourceAppGitHub: '내 스킬 · 깃허브',
   sourceUser: 'Claude 스킬 폴더',
@@ -27,8 +27,8 @@ export const ko = {
   invokeAuto: '스스로 쓰기',
   invokeManual: '부를 때만',
   badgeTemplate: '양식 포함',
-  badgeScripts: '스크립트 포함 · 에이전트 창에서 완전히 동작',
-  badgeAgentOnly: '에이전트 창 전용',
+  badgeScripts: '실행 코드 포함 · 고급 폴더 자동 실행에서 사용',
+  badgeAgentOnly: '고급 폴더 자동 실행 전용',
   unreadableNoFrontmatter: '앞머리 없음',
   unreadableBadName: '이름이 맞지 않음',
   unreadableTooLarge: '너무 큼',

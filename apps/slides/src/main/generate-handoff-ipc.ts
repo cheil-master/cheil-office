@@ -38,6 +38,10 @@ export function registerGenerateHandoffIpc(): void {
     if (!handoff) return null
     return {
       id: handoff.id,
+      ...(handoff.designStyleKey ? { designStyleKey: handoff.designStyleKey } : {}),
+      ...(handoff.designReference
+        ? { designReference: true, designInstructions: handoff.designInstructions }
+        : {}),
       text: handoff.text,
       materials: handoff.materials.map((m) => ({ path: m.path, name: m.name })),
     }

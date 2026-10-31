@@ -14,7 +14,7 @@ import { cheilDeckOps } from '../../../packages/ui/src/cheil-deck-plan'
 
 const PROPOSAL = resolve(
   __dirname,
-  '../../shell/resources/builtin-skills/cheil-proposal/assets/캠페인 제안서.pptx',
+  '../../shell/resources/builtin-skills/cheil-brief/assets/OT 및 킥오프.pptx',
 )
 
 const textOf = (slide: { elements: unknown[] }) => {
@@ -40,9 +40,9 @@ describe('Cheil fork: a deck from my template’s samples, on the real deck', ()
     const batches = cheilDeckOps(
       [
         { sample: 1, fill: { '[캠페인명]': '오로라7 여름' } },
-        { sample: 3, fill: { '[광고주가 풀려는 사업 문제]': '점유율' } },
-        { sample: 3, fill: { '[광고주가 풀려는 사업 문제]': '첫 구매' } },
-        { sample: 12, fill: { '[팀명]': '비즈니스13팀' } },
+        { sample: 2, fill: { '[캠페인 배경]': '점유율' } },
+        { sample: 2, fill: { '[캠페인 배경]': '첫 구매' } },
+        { sample: 12, fill: { '[다음 담당 1]': '비즈니스13팀' } },
       ],
       samples,
     )
@@ -56,7 +56,7 @@ describe('Cheil fork: a deck from my template’s samples, on the real deck', ()
     expect(made[1]).toContain('점유율')
     expect(made[2]).toContain('첫 구매')
     expect(made[2]).not.toContain('점유율')
-    expect(made[3]).toContain('감사합니다')
+    expect(made[3]).toContain('확인할 사항과 다음 할 일')
     expect(made[3]).toContain('비즈니스13팀')
   })
 })

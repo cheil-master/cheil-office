@@ -99,6 +99,47 @@ function setup(overrides: Partial<TemplateTabsDeps> = {}) {
 
 afterEach(() => resetGenerateHandoffsForTest())
 
+// Cheil fork: a saved work template opens through the same untitled-copy path, without AI.
+describe('opening an imported work template', () => {
+  it.each(['docx', 'pptx', 'xlsx'])(
+    'opens a fresh %s copy without queuing a request',
+    async (ext) => {
+      const s = setup()
+      const path = `/library/report.${ext}`
+      s.files.set(path, TEMPLATE_BYTES)
+      expect(await s.templates.openDocumentTemplate({ path, fileName: `report.${ext}` })).toEqual({
+        ok: true,
+        tabId: 't1',
+      })
+      expect(s.opened[0]).toMatchObject({
+        title: 'report',
+        fileName: `report.${ext}`,
+        bytes: TEMPLATE_BYTES,
+      })
+      expect(s.opened[0]!.path).not.toBe(path)
+      expect(s.files.get(path)).toEqual(TEMPLATE_BYTES)
+      expect(queuedSkillHandoffs()).toEqual([])
+      s.tabs[0]!.destroy()
+      expect(s.removed).toEqual(['/tmp/copy-1'])
+    },
+  )
+
+  it('cleans up a failed copy and reports a missing template', async () => {
+    const s = setup({ openCopy: async () => null })
+    s.files.set('/library/report.docx', TEMPLATE_BYTES)
+    expect(
+      await s.templates.openDocumentTemplate({
+        path: '/library/report.docx',
+        fileName: 'report.docx',
+      }),
+    ).toEqual({ ok: false, reason: 'failed' })
+    expect(s.removed).toEqual(['/tmp/copy-1'])
+    expect(
+      await s.templates.openDocumentTemplate({ path: '/missing.docx', fileName: 'missing.docx' }),
+    ).toEqual({ ok: false, reason: 'no-template' })
+  })
+})
+
 describe('opening a template skill in a new tab', () => {
   it('opens a byte copy of the template in its editor and hands the request over', async () => {
     const { templates, opened, files } = setup()

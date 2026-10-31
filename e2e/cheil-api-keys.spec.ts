@@ -26,6 +26,7 @@ test('Cheil: Settings → AI offers Claude, GPT and Solar keys first, and a save
     await page.setViewportSize({ width: 1280, height: 900 }).catch(() => {})
     await page.getByRole('button', { name: '설정', exact: true }).click()
     await page.locator('.set-nav-item').filter({ hasText: 'AI' }).first().click()
+    await page.locator('.set-dialog .cheil-extra-connections > summary').click()
     const keys = page.getByTestId('cheil-api-keys')
     await expect(keys).toBeVisible()
     await expect(keys.locator('.cheil-api-card .cheil-api-name')).toHaveText([
@@ -67,6 +68,7 @@ test('Cheil: Settings → AI offers Claude, GPT and Solar keys first, and a save
     // removing it goes back to auto, never to another key
     await page.getByRole('button', { name: '설정', exact: true }).click()
     await page.locator('.set-nav-item').filter({ hasText: 'AI' }).first().click()
+    await page.locator('.set-dialog .cheil-extra-connections > summary').click()
     await page.getByTestId('cheil-api-remove-upstage').click()
     await expect(solar.locator('input.cheil-api-input')).toBeVisible()
     const after = JSON.parse(await readFile(join(userDataDir, 'ai-settings.json'), 'utf8'))
@@ -91,7 +93,7 @@ test('Cheil: the first-run guide offers your own API key on its connect page', a
       'GPT',
       'Solar',
     ])
-    await expect(slide.locator('.onb-body-lead')).toContainText('Claude·GPT·Solar API 키')
+    await expect(slide.locator('.onb-body-lead')).toContainText('AI가 필요하면 설정에서 연결하세요')
     // once the slide has moved in, the cards take the page's width and push nothing sideways
     const widths = () =>
       page.evaluate(() => {
@@ -146,7 +148,7 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
         answer[id!] =
           blank === '[광고주]'
             ? '가상전자'
-            : blank === '[총예산]'
+            : blank === '[회의 일시]'
               ? '[확인 필요]'
               : `API 채움 ${id}`
       }
@@ -191,12 +193,12 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
   })
   const { app, page } = launched
   try {
-    await page.getByTestId('cheil-template-cheil-pitch-analysis').click()
+    await page.getByTestId('cheil-template-cheil-meeting-notes').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const composer = docs.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/분석 양식을 채워 줘/, { timeout: 60_000 })
+    await expect(composer).toHaveValue(/컨택리포트를 채워 줘/, { timeout: 60_000 })
     await composer.fill(
-      '아래 RFP 메모로 이 분석 양식을 채워 줘.\n가상전자 에어린 공기청정기 봄 캠페인 RFP 메모',
+      '아래 RFP 메모로 이 컨택리포트를 채워 줘.\n가상전자 에어린 공기청정기 봄 캠페인 RFP 메모',
     )
     await composer.press('Enter')
     await expect(docs.getByText(/양식 칸 \d+개 중 \d+개를 자료로 채웠습니다/)).toBeVisible({
@@ -218,7 +220,7 @@ test('Cheil: a template is filled in one call through an OpenAI-compatible API',
     expect(docText).toContain('API 채움 S')
     expect(docText).not.toMatch(/\[(광고주|작성자|작성일)\]/)
     expect(await docs.evaluate(() => document.body.innerText)).toContain(
-      '[확인 필요]로 둔 칸 1개: [총예산]',
+      '[확인 필요]로 둔 칸 1개: [회의 일시]',
     )
   } finally {
     await closeAndSaveVideo(launched, 'cheil-api-fill')
@@ -235,6 +237,26 @@ test("Cheil: an editor's AI panel with nothing connected leads with adding an AP
   const { app, page } = launched
   try {
     await page.setViewportSize({ width: 1280, height: 900 }).catch(() => {})
+    // Cheil fork: this case requires no connected subscriptions on every host.
+    await app.evaluate(({ ipcMain, webContents }) => {
+      const statuses = {
+        'claude-code': { provider: 'claude-code', state: 'not-installed', meteredAccepted: false },
+        codex: { provider: 'codex', state: 'not-installed', meteredAccepted: false },
+      }
+      const proto = Object.getPrototypeOf(webContents.getAllWebContents()[0])
+      const realSend = proto.send
+      proto.send = function (channel: string, ...args: unknown[]) {
+        if (channel === 'ai:subscription-changed') return
+        return realSend.call(this, channel, ...args)
+      }
+      for (const channel of ['ai:subscription-statuses', 'ai:subscription-recheck']) {
+        ipcMain.removeHandler(channel)
+        ipcMain.handle(channel, () => statuses)
+      }
+      for (const wc of webContents.getAllWebContents()) {
+        if (!wc.isDestroyed()) realSend.call(wc, 'ai:subscription-changed', statuses)
+      }
+    })
     await page.getByTestId('cheil-template-cheil-meeting-notes').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
     const lead = docs.locator('[data-cheil="api-key"]')

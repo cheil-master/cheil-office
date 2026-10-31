@@ -112,12 +112,12 @@ test('Cheil: the campaign timeline records fills and the to-dos confirmed from a
     await page.locator('[data-testid="cheil-campaign-card"]').first().click()
     const set = page.getByTestId('cheil-campaign-set')
     for (const box of await set.locator('input[type="checkbox"]').all()) {
-      const want = (await box.getAttribute('data-skill')) === 'cheil-pitch-analysis'
+      const want = (await box.getAttribute('data-skill')) === 'cheil-meeting-notes'
       if ((await box.isChecked()) !== want) await box.click()
     }
     await page.getByTestId('cheil-campaign-open-set').click()
     const docs = await waitForPageWithUrl(app, '://docs/', 60_000)
-    await expect(docs.getByText(/카드로 공통 칸 5개를 채웠습니다/)).toBeVisible({
+    await expect(docs.getByText(/카드로 공통 칸 6개를 채웠습니다/)).toBeVisible({
       timeout: 60_000,
     })
 
@@ -131,11 +131,11 @@ test('Cheil: the campaign timeline records fills and the to-dos confirmed from a
     // back home: both fills are in the timeline without anyone writing them
     await page.getByText('Cheil 기획 오피스', { exact: true }).first().click()
     const timeline = page.getByTestId('cheil-campaign-timeline')
-    await expect(timeline).toContainText('경쟁 PT 분석: 캠페인 카드로 공통 칸 5개를 채움', {
+    await expect(timeline).toContainText('컨택리포트: 캠페인 카드로 공통 칸 6개를 채움', {
       timeout: 15_000,
     })
     await expect(timeline).toContainText(
-      /경쟁 PT 분석: 빠른 채우기 — 양식 칸 \d+개 중 \d+개를 자료로 채움/,
+      /컨택리포트: 빠른 채우기 — 양식 칸 \d+개 중 \d+개를 자료로 채움/,
       { timeout: 15_000 },
     )
 

@@ -503,6 +503,8 @@ const api: SlidesApi = {
   },
   saveStyleSidecar: (data: { topic: string; styleSkill: string; createdAt: string }) =>
     ipcRenderer.invoke('ai:save-sidecar', data),
+  saveDesignReference: (value: unknown) =>
+    ipcRenderer.invoke('slides:save-design-reference', value),
   saveStyleTemplate: (
     name: string,
     data: { topic: string; styleSkill: string; createdAt: string; layout?: unknown },

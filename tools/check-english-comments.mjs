@@ -7,7 +7,7 @@
 // text, zh-UI matchers), as are the AI prompt guides (runtime resources that
 // legitimately show CJK examples), translated READMEs under an i18n directory,
 // and the language-switcher line that names those translations.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -22,6 +22,8 @@ const root = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf
 
 const violations = []
 for (const file of git.stdout.trim().split('\n')) {
+  // Deleted, unstaged tracked files have no content left to inspect.
+  if (!existsSync(join(root, file))) continue
   const isCode = /\.(ts|tsx|mjs|cjs|js|rs)$/.test(file)
   const isHashCode = /\.(py|sh)$/.test(file)
   const isDoc =

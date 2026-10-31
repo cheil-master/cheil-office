@@ -20,7 +20,7 @@ test('Cheil: home shows the agency templates and a card prefills a new document'
     const row = page.locator('section.cheil-templates')
     await expect(row).toBeVisible()
     await expect(row.locator('.section-label')).toHaveText('광고 문서 양식')
-    await expect(row.locator('.quick-card')).toHaveCount(6)
+    await expect(row.locator('.quick-card')).toHaveCount(4)
     expect(await page.title()).toContain('Cheil 기획 오피스')
     await page.screenshot({ path: screenshotPath('cheil-home') })
 
@@ -28,11 +28,14 @@ test('Cheil: home shows the agency templates and a card prefills a new document'
     await page.getByTestId('cheil-template-cheil-brief').click()
     const slides = await waitForPageWithUrl(app, '://slides/', 60_000)
     const composer = slides.locator('.ai-input-box textarea').first()
-    await expect(composer).toHaveValue(/OT·브리프 자료와 회의 메모로 이 캠페인 OT 를 채워 줘/, {
-      timeout: 60_000,
-    })
+    await expect(composer).toHaveValue(
+      /OT·킥오프 자료와 회의 메모로 이 OT 및 킥오프 양식을 채워 줘/,
+      {
+        timeout: 60_000,
+      },
+    )
     // the skill rides along as a chip and nothing has been sent
-    await expect(slides.getByText('캠페인 OT', { exact: false }).first()).toBeVisible()
+    await expect(slides.getByText('OT 및 킥오프', { exact: false }).first()).toBeVisible()
     await expect(slides.locator('.ai-message.user, .msg-user')).toHaveCount(0)
     await slides.screenshot({ path: screenshotPath('cheil-brief-prefilled') })
   } finally {
@@ -69,7 +72,7 @@ test('Cheil: the media plan card opens its workbook in the sheets editor', async
     // the workbook opened through the xlsx engine: its title cell is on screen
     await expect
       .poll(async () => sheets.evaluate(() => document.body.innerText), { timeout: 60_000 })
-      .toContain('미디어 플랜')
+      .toContain('미디어브리프')
     await sheets.waitForTimeout(3_000)
     await sheets.screenshot({ path: screenshotPath('cheil-media-plan-open') })
   } finally {

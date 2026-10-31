@@ -111,7 +111,7 @@ export async function runCli(argv: readonly string[], opts: RunOptions = {}): Pr
   }
 
   if (flagBool(args, 'version')) {
-    io.stdout(json ? JSON.stringify({ status: 'ok', version: VERSION }) : `ieumoffice ${VERSION}`)
+    io.stdout(json ? JSON.stringify({ status: 'ok', version: VERSION }) : `cheiloffice ${VERSION}`)
     return EXIT.ok
   }
   if (name === null || (name === 'help' && args.positionals.length === 0)) {
@@ -132,7 +132,7 @@ export async function runCli(argv: readonly string[], opts: RunOptions = {}): Pr
               name,
               registry.list().map((d) => d.name),
             ),
-            'run `ieumoffice help` for the command list',
+            'run `cheiloffice help` for the command list',
           ),
         },
       ),
@@ -153,7 +153,7 @@ export async function runCli(argv: readonly string[], opts: RunOptions = {}): Pr
           reason: 'unknown_option',
           suggestion: withGuess(
             didYouMean(unknown[0]!, known),
-            `run \`ieumoffice help ${def.name}\` for its options`,
+            `run \`cheiloffice help ${def.name}\` for its options`,
             '--',
           ),
         },
@@ -238,9 +238,9 @@ function globalHelp(registry: CommandRegistry): string {
   const defs = registry.list()
   const width = Math.max(...defs.map((d) => d.name.length))
   return [
-    `ieumoffice ${VERSION} — ${PRODUCT_NAME} command line`,
+    `cheiloffice ${VERSION} — ${PRODUCT_NAME} command line`,
     '',
-    'Usage: ieumoffice <command> [options]',
+    'Usage: cheiloffice <command> [options]',
     '',
     'Commands:',
     ...defs.map((d) => `  ${d.name.padEnd(width)}  ${branded(d.summary)}`),
@@ -264,7 +264,7 @@ if (isMain) {
   const exit = (code: number) => process.stdout.write('', () => process.exit(code))
   runCli(process.argv.slice(2)).then(exit, (err) => {
     process.stderr.write(
-      `ieumoffice: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+      `cheiloffice: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
     )
     exit(EXIT.conversion)
   })

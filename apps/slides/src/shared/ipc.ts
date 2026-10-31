@@ -1811,6 +1811,8 @@ export interface SlidesApi {
     styleSkill: string
     createdAt: string
   }) => Promise<{ ok: boolean }>
+  /** Cheil fork: save a vision-derived reference as reusable Markdown. */
+  saveDesignReference: (value: unknown) => Promise<{ ok: boolean; key?: string; error?: string }>
   /** Store styleSkill in userData/style-templates/<name>.json */
   saveStyleTemplate: (
     name: string,
@@ -1881,6 +1883,9 @@ export interface SlidesApi {
   /** Take the request left for this tab, once: null when there is none or it was already taken (a reload) */
   takeGenerateHandoff?: () => Promise<{
     id: string
+    designStyleKey?: string
+    designReference?: boolean
+    designInstructions?: string
     /** the request text (the default request when the user wrote none) */
     text: string
     /** the materials to attach, in the order the user listed them */

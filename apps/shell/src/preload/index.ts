@@ -1,4 +1,20 @@
+import { CHEIL_QR_BRIDGE, CHEIL_QR_CHANNEL, type CheilQrApi } from '../shared/cheil-qr-api'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
+// Cheil fork: the home-only journal gateway exposes no browser authentication.
+import { JOURNAL_BRIDGE, JOURNAL_CHANNEL, type JournalApi } from '../shared/cheil-journal-api'
+contextBridge.exposeInMainWorld(JOURNAL_BRIDGE, {
+  request: (request) => ipcRenderer.invoke(JOURNAL_CHANNEL, request),
+} satisfies JournalApi)
+// Cheil fork: local work-template catalog, exposed only through a typed request gateway.
+import {
+  WORK_TEMPLATE_BRIDGE,
+  WORK_TEMPLATE_CHANNEL,
+  type WorkTemplateApi,
+} from '../shared/cheil-work-template-api'
+
+contextBridge.exposeInMainWorld(WORK_TEMPLATE_BRIDGE, {
+  request: (input) => ipcRenderer.invoke(WORK_TEMPLATE_CHANNEL, input),
+} satisfies WorkTemplateApi)
 import type { IpcRendererEvent } from 'electron'
 import {
   AI_MEDIA_PROVIDERS,
@@ -44,6 +60,12 @@ import {
   type CheilCampaignApi,
 } from '../shared/cheil-campaign-api'
 import { DRIVE_CHANNELS } from '../shared/drive-api'
+// Cheil fork: typed home-only style and optional-logo gateway.
+import {
+  CHEIL_STYLE_BRIDGE,
+  CHEIL_STYLE_CHANNEL,
+  type CheilStyleApi,
+} from '../shared/cheil-style-api'
 import type { DriveApi, DriveUiState } from '../shared/drive-api'
 import type { ResultStoreApi } from '../shared/result-store-api'
 import type { TabsApi, TabSummary } from '../shared/tabs-api'
@@ -880,6 +902,9 @@ contextBridge.exposeInMainWorld('aiOfficeQuickLookHome', quickLookHomeApi)
 
 // Cheil fork: the home's "내 캠페인" (the main process checks every request again)
 const cheilCampaignApi: CheilCampaignApi = {
+  usage: () => ipcRenderer.invoke('cheil:ai-usage'),
+  folderWork: (request) => ipcRenderer.invoke('cheil:folder-work', request),
+  wiki: (request) => ipcRenderer.invoke('cheil:wiki', request),
   list: () => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.list),
   create: (card) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.create, card),
   get: (id) => ipcRenderer.invoke(CHEIL_CAMPAIGN_CHANNELS.get, id),
@@ -921,6 +946,15 @@ const cheilCampaignApi: CheilCampaignApi = {
   },
 }
 contextBridge.exposeInMainWorld(CHEIL_CAMPAIGN_BRIDGE_KEY, cheilCampaignApi)
+// Cheil fork: no general file or network access is exposed for QR generation.
+contextBridge.exposeInMainWorld(CHEIL_QR_BRIDGE, {
+  request: (req) => ipcRenderer.invoke(CHEIL_QR_CHANNEL, req),
+} satisfies CheilQrApi)
+contextBridge.exposeInMainWorld(CHEIL_STYLE_BRIDGE, {
+  request: (req) => ipcRenderer.invoke(CHEIL_STYLE_CHANNEL, req),
+} satisfies CheilStyleApi)
 
 // open documents dragged from the OS anywhere over Home or the tab strip
 installDropOpenBridge()
+
+// Cheil fork: creator-hosted short links; no owner keys in preload.

@@ -90,7 +90,9 @@ describe('brandText', () => {
     expect(brandText('%APPDATA%\\GenOffice', 'ko')).toBe('%APPDATA%\\CheilOffice')
     expect(brandText('GenOffice.exe를 실행합니다', 'ko')).toBe('CheilOffice.exe를 실행합니다')
     // a sentence-ending period is not a file extension
-    expect(brandText('이것은 GenOffice. 다음 문장', 'ko')).toBe('이것은 Cheil 기획 오피스. 다음 문장')
+    expect(brandText('이것은 GenOffice. 다음 문장', 'ko')).toBe(
+      '이것은 Cheil 기획 오피스. 다음 문장',
+    )
     expect(brandText('GenOffice.', 'ko')).toBe('Cheil 기획 오피스.')
   })
 
@@ -133,7 +135,9 @@ describe('createI18n product name', () => {
     expect(t('en', 'open', { name: 'GenOffice notes.docx' })).toBe(
       'Open GenOffice notes.docx in CheilOffice',
     )
-    expect(t('ko', 'open', { name: 'GenOffice.docx' })).toBe('Cheil 기획 오피스에서 GenOffice.docx 열기')
+    expect(t('ko', 'open', { name: 'GenOffice.docx' })).toBe(
+      'Cheil 기획 오피스에서 GenOffice.docx 열기',
+    )
   })
 
   it('brands the fallback text of a language without its own entry', () => {
@@ -149,8 +153,8 @@ describe('registered names derived from the product name', () => {
   })
 
   it('names the public repository once', () => {
-    expect(PRODUCT_REPO_OWNER).toBe('pblsketch')
-    expect(PRODUCT_REPO_NAME).toBe('openoffice')
-    expect(PRODUCT_REPO_SLUG).toBe('pblsketch/openoffice')
+    expect(PRODUCT_REPO_OWNER).toBe('cheil-master')
+    expect(PRODUCT_REPO_NAME).toBe('cheil-office')
+    expect(PRODUCT_REPO_SLUG).toBe('cheil-master/cheil-office')
   })
 })

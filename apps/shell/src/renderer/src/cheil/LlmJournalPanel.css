@@ -1,0 +1,93 @@
+/* Cheil fork: theme-aware, compact daily conversation journal. */
+.cheil-journal {
+  max-width: 1050px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+.cheil-journal-header {
+  display: flex;
+  gap: 24px;
+  align-items: start;
+  justify-content: space-between;
+}
+.cheil-journal-header p,
+.cheil-journal-note,
+.cheil-journal-status {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.cheil-journal-header button {
+  white-space: nowrap;
+}
+.cheil-journal-note {
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.cheil-journal-status,
+.cheil-journal-providers,
+.cheil-journal-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 16px 0;
+}
+.cheil-journal-providers span {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cheil-journal-connect {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 24px 0;
+  line-height: 1.8;
+}
+.cheil-journal-connect summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.cheil-journal-actions input {
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.cheil-journal-entries {
+  display: grid;
+  gap: 14px;
+}
+.cheil-journal-entries article {
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.cheil-journal-entries header {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.cheil-journal-entries p {
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.cheil-journal-entries small {
+  color: var(--text-secondary);
+}
+.cheil-journal-empty {
+  padding: 36px 18px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+@media (max-width: 600px) {
+  .cheil-journal-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

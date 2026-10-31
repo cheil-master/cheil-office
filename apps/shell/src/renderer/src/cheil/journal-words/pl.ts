@@ -1,0 +1,35 @@
+/** Cheil fork: journal interface strings. */
+import type zh from './zh'
+export default {
+  title: 'Dziennik pracy LLM',
+  intro:
+    'Korzystaj dalej z ChatGPT i Claude w przeglądarce i zapisuj krótkie pytania i odpowiedzi.',
+  local: 'Lokalne fragmenty · bez dodatkowych wywołań AI · tylko nowe pytania · czas Korei',
+  start: 'Rozpocznij zapis',
+  stop: 'Zatrzymaj zapis',
+  since: 'Zapis od',
+  connection: 'Rozszerzenie połączone',
+  received: 'Zebrano',
+  signIn: 'Zaloguj się w Chrome',
+  failed: 'Błąd połączenia lub zapisu',
+  waiting: 'Oczekiwanie',
+  unavailable: 'Nie można uruchomić odbiornika. Sprawdź inne instancje.',
+  setup: 'Połącz rozszerzenie Chrome (jednorazowo)',
+  step1: 'Otwórz folder i wczytaj rozpakowane rozszerzenie w chrome://extensions.',
+  step2:
+    'Kliknij Połącz i zatwierdź w aplikacji z takim samym sześciocyfrowym kodem. Kopiowanie nie jest potrzebne.',
+  step3: 'Połącz i rozpocznij zapis. Zbieranie co 5 minut lub natychmiast.',
+  extension: 'Otwórz folder rozszerzenia',
+  copy: 'Kopiuj połączenie',
+  copied: 'Skopiowano połączenie.',
+  day: 'Data',
+  open: 'Otwórz MD',
+  folder: 'Folder zapisu',
+  empty: 'Brak notatek. Włącz zapis i zadaj nowe pytanie w przeglądarce.',
+  question: 'Pytanie',
+  answer: 'Fragment odpowiedzi',
+  connect: 'Połącz',
+  sync: 'Zbierz teraz',
+  paired: 'Połączono z aplikacją.',
+  paused: 'Zapis wstrzymany',
+} satisfies Record<keyof typeof zh, string>

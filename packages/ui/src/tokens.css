@@ -199,3 +199,117 @@
     color-scheme: dark;
   }
 }
+
+/* Cheil fork: offline application typography and neutral chrome. Document styles stay explicit. */
+@font-face {
+  font-family: 'Pretendard Variable';
+  src: url('./fonts/PretendardVariable.woff2') format('woff2');
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  --gs-font-sans: 'Pretendard Variable', 'Pretendard', -apple-system, 'Segoe UI', sans-serif;
+  --cheil-lime: #baff66;
+  --cheil-on-lime: #17200c;
+  --cheil-logo-light: block;
+  --cheil-logo-dark: none;
+  --surface: #ffffff;
+  --surface-subtle: #f3f4f1;
+  --chrome-bg: #f3f4f1;
+  --canvas: #e9ece5;
+  --border: #dce0d6;
+  --border-subtle: #e9ece5;
+  --text: #161a14;
+  --text-primary: #161a14;
+  --text-secondary: #626a5b;
+  --text-tertiary: #737b6c;
+  --text-muted: #626a5b;
+  --bg-content: #f3f4f1;
+  --bg-hover: #e9ece5;
+  --bg-hover-subtle: #edf0e9;
+  --active-bg: #e9ece5;
+  --color-bg-page: #ffffff;
+  --color-bg-subtle: #f3f4f1;
+  --color-border-default: #dce0d6;
+  --color-text-primary: #161a14;
+  --color-text-secondary: #626a5b;
+  --color-btn-primary: #161a14;
+  --color-btn-primary-hover: #30362c;
+  --color-btn-primary-text: #ffffff;
+  --color-ai-action: #baff66;
+  --color-ai-action-hover: #a6ee50;
+  --color-ai-action-text: #17200c;
+}
+[data-theme='dark'] {
+  --cheil-lime: #baff66;
+  --cheil-on-lime: #17200c;
+  --cheil-logo-light: none;
+  --cheil-logo-dark: block;
+  --surface: #1c1f1b;
+  --surface-subtle: #101210;
+  --chrome-bg: #101210;
+  --canvas: #262a25;
+  --border: #30362c;
+  --border-subtle: #262a25;
+  --text: #f0f2ec;
+  --text-primary: #f0f2ec;
+  --text-secondary: #a4ac9c;
+  --text-tertiary: #a4ac9c;
+  --text-muted: #a4ac9c;
+  --bg-content: #101210;
+  --bg-hover: #262a25;
+  --bg-hover-subtle: #20251e;
+  --active-bg: #262a25;
+  --color-bg-page: #1c1f1b;
+  --color-bg-subtle: #101210;
+  --color-border-default: #30362c;
+  --color-text-primary: #f0f2ec;
+  --color-text-secondary: #a4ac9c;
+  --color-btn-primary: #f0f2ec;
+  --color-btn-primary-hover: #dce0d6;
+  --color-btn-primary-text: #161a14;
+  --color-ai-action: #baff66;
+  --color-ai-action-hover: #a6ee50;
+  --color-ai-action-text: #17200c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --cheil-lime: #baff66;
+    --cheil-on-lime: #17200c;
+    --cheil-logo-light: none;
+    --cheil-logo-dark: block;
+    --surface: #1c1f1b;
+    --surface-subtle: #101210;
+    --chrome-bg: #101210;
+    --canvas: #262a25;
+    --border: #30362c;
+    --border-subtle: #262a25;
+    --text: #f0f2ec;
+    --text-primary: #f0f2ec;
+    --text-secondary: #a4ac9c;
+    --text-tertiary: #a4ac9c;
+    --text-muted: #a4ac9c;
+    --bg-content: #101210;
+    --bg-hover: #262a25;
+    --bg-hover-subtle: #20251e;
+    --active-bg: #262a25;
+    --color-bg-page: #1c1f1b;
+    --color-bg-subtle: #101210;
+    --color-border-default: #30362c;
+    --color-text-primary: #f0f2ec;
+    --color-text-secondary: #a4ac9c;
+    --color-btn-primary: #f0f2ec;
+    --color-btn-primary-hover: #dce0d6;
+    --color-btn-primary-text: #161a14;
+    --color-ai-action: #baff66;
+    --color-ai-action-hover: #a6ee50;
+    --color-ai-action-text: #17200c;
+  }
+}
+@media screen {
+  /* The body owns UI inheritance; explicit document/cell font styles still win. */
+  body {
+    font-family: var(--gs-font-sans) !important;
+  }
+}

@@ -81,6 +81,10 @@ export interface GenerateHandoff {
   text: string
   /** true when `text` is the default request (the box was left empty) */
   defaultText: boolean
+  /** Cheil fork: an existing reference MD selected before sending. */
+  designStyleKey?: string
+  designReference?: boolean
+  designInstructions?: string
   /** when "make" was pressed, ms since epoch */
   createdAt: number
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createI18n, htmlDir, htmlLang, productName, type Lang, type Params } from '@genoffice/i18n'
 import { strings } from './strings'
+import { productCopyOverrides } from './cheil/product-copy'
 
 const translate = createI18n(strings)
 
@@ -77,7 +78,7 @@ export function useI18n(): I18n {
   return {
     lang,
     setLang,
-    t: (key, params) => translate(lang, key, params),
+    t: (key, params) => productCopyOverrides(lang)[key] ?? translate(lang, key, params),
     dateLocale: DATE_LOCALES[lang],
   }
 }

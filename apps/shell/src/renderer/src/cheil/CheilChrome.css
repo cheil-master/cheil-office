@@ -1,0 +1,1561 @@
+/* Cheil fork: approved folder launchers, neutral surfaces and compact navigation. */
+:root {
+  --accent: #4d6b22;
+  --accent-hover: #364d11;
+  --accent-soft: #e5f5d0;
+}
+[data-theme='dark'] {
+  --accent: #baff66;
+  --accent-hover: #a6ee50;
+  --accent-soft: #283a1b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --accent: #baff66;
+    --accent-hover: #a6ee50;
+    --accent-soft: #283a1b;
+  }
+}
+body {
+  background: var(--chrome-bg);
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+.home {
+  background: var(--chrome-bg);
+}
+.sidebar {
+  width: 118px;
+  padding: 24px 10px 14px;
+  border: 0;
+  gap: 16px;
+}
+.sidebar-logo {
+  margin: 0;
+  padding: 0;
+  justify-content: center;
+}
+.sidebar-logo:empty {
+  display: none;
+}
+.sidebar-logo .beta-badge {
+  font-weight: 400;
+  font-size: 10px;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.cheil-primary-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cheil-primary-nav .nav-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 4px;
+  font-size: 12px;
+  border-radius: 16px;
+}
+.cheil-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.cheil-primary-nav .nav-item.active {
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+}
+.cheil-primary-nav .nav-item.active .cheil-nav-icon {
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+}
+.cheil-secondary-nav,
+.cheil-folder-nav {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.cheil-secondary-nav summary,
+.cheil-folder-nav summary {
+  padding: 9px 4px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.cheil-secondary-nav .nav-item {
+  padding: 9px 4px;
+  gap: 5px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.sidebar .account-entry {
+  margin-top: auto;
+}
+.content {
+  padding: 30px 36px 44px 16px;
+  min-width: 0;
+  background: var(--chrome-bg);
+}
+.home > .content {
+  display: flex;
+  flex-direction: column;
+  gap: 27px;
+}
+.content > .quick-start,
+.content > .recents,
+.content > .cheil-home-tools {
+  flex-shrink: 0;
+  margin: 0;
+}
+.home-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 25px;
+}
+.hero-title {
+  margin: 0;
+  font-size: 29px;
+  font-weight: 450;
+  line-height: 1.3;
+  letter-spacing: -1px;
+}
+.section-label {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  text-transform: none;
+}
+.section-head {
+  margin-bottom: 14px;
+}
+.btn {
+  border-radius: 999px;
+  font-weight: 400;
+}
+.btn-primary {
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+  border-color: var(--cheil-lime);
+}
+.btn-primary:hover {
+  background: var(--cheil-lime);
+  filter: brightness(0.96);
+}
+.cheil-app-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cheil-office-apps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 96px));
+  gap: 8px;
+  padding-top: 4px;
+}
+.cheil-office-folder {
+  position: relative;
+  isolation: isolate;
+  height: 86px;
+  border: 0;
+  padding: 28px 4px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.cheil-office-folder::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 44%;
+  height: 23px;
+  border-radius: 8px 8px 0 0;
+  background: var(--canvas);
+  z-index: 0;
+}
+.cheil-office-folder::after {
+  content: '';
+  position: absolute;
+  inset: 21px 0 0;
+  border-radius: 0 11px 11px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+.cheil-office-folder:hover::after {
+  border-color: var(--text-secondary);
+}
+.cheil-folder-paper {
+  position: absolute;
+  left: 13%;
+  right: 10%;
+  top: 13px;
+  height: 30px;
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
+  border-radius: 5px;
+  transform: rotate(-4deg);
+  z-index: 0;
+}
+.cheil-folder-icon,
+.cheil-folder-name {
+  position: relative;
+  z-index: 2;
+}
+.cheil-folder-icon img {
+  filter: grayscale(1);
+}
+.cheil-folder-name {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.cheil-page-home .recents {
+  order: 2;
+}
+.cheil-page-home .cheil-templates {
+  order: 3;
+}
+.cheil-page-home .cheil-my-templates {
+  order: 4;
+}
+.cheil-page-home .cheil-home-tools {
+  order: 5;
+}
+.cheil-page-home .cheil-campaigns {
+  order: 6;
+}
+.cheil-page-files > .content > .quick-start,
+.cheil-page-files > .content > .cheil-home-tools {
+  display: none;
+}
+.cheil-templates .quick-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+/* Cheil fork: imported templates remain readable in long-name and narrow layouts. */
+.cheil-work-template-hint,
+.cheil-work-template-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 14px;
+  overflow-wrap: anywhere;
+}
+.cheil-work-template-status {
+  margin: 12px 0 0;
+}
+.cheil-templates .section-head {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cheil-templates .quick-text {
+  min-width: 0;
+}
+.cheil-work-template-card .quick-title-row {
+  flex-wrap: wrap;
+}
+.cheil-work-template-card .quick-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cheil-work-template-owned {
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 5px;
+  font-size: 10px;
+}
+/* Cheil fork: management buttons are siblings of the document opener, never nested buttons. */
+.cheil-work-template-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.cheil-templates .cheil-work-template-item .quick-card {
+  width: 100%;
+  flex: 1;
+  border-radius: 20px 20px 0 0;
+}
+.cheil-work-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+.cheil-work-template-actions button {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.cheil-work-template-actions button:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.cheil-work-template-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.cheil-work-template-form {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cheil-work-template-form .cheil-mail-input {
+  width: 100%;
+}
+.cheil-work-template-filename,
+.cheil-work-template-form [role='alert'] {
+  overflow-wrap: anywhere;
+}
+.cheil-templates .quick-card:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.cheil-templates .quick-card {
+  border: 0;
+  background: var(--surface);
+  min-height: 106px;
+  border-radius: 20px;
+  padding: 17px;
+  box-shadow: none;
+  align-items: flex-start;
+}
+.cheil-templates .quick-card .ai-chip {
+  display: none;
+}
+.cheil-templates .quick-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.cheil-templates .quick-sub {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.cheil-templates .quick-card > img {
+  width: 23px;
+  height: 23px;
+  filter: grayscale(1);
+}
+.cheil-campaign-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 210px));
+  gap: 14px;
+  padding-top: 6px;
+}
+.cheil-campaign-card {
+  position: relative;
+  isolation: isolate;
+  height: 156px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  min-width: 0;
+}
+.cheil-campaign-card:hover {
+  background: transparent;
+  box-shadow: none;
+}
+.cheil-box-back {
+  position: absolute;
+  inset: 31px 0 0;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  z-index: 0;
+}
+.cheil-box-paper {
+  position: absolute;
+  left: 18px;
+  right: 22px;
+  top: 14px;
+  height: 112px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transform: rotate(-5deg);
+  z-index: 1;
+}
+.cheil-box-paper.back {
+  top: 5px;
+  left: 35px;
+  right: 13px;
+  transform: rotate(5deg);
+  background: var(--canvas);
+}
+.cheil-box-paper i {
+  display: block;
+  height: 2px;
+  background: var(--border);
+  margin: 12px 14px 0;
+}
+.cheil-box-paper i:first-child {
+  width: 42%;
+  height: 4px;
+  margin-top: 16px;
+  background: var(--text-secondary);
+  opacity: 0.5;
+}
+.cheil-campaign-card > .quick-text {
+  position: absolute;
+  inset: 67px 0 0;
+  z-index: 2;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: auto;
+}
+.cheil-campaign-card:hover > .quick-text {
+  border-color: var(--text-secondary);
+}
+.cheil-campaign-card .quick-title {
+  white-space: normal;
+  font-size: 13px;
+  font-weight: 500;
+}
+.cheil-campaign-card .quick-sub,
+.cheil-campaign-last {
+  font-size: 11px;
+}
+.cheil-campaign-empty-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.cheil-campaign-empty-box {
+  height: 125px;
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cheil-campaign-empty-box > span {
+  font-size: 24px;
+}
+.cheil-campaigns-empty {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-size: 12px;
+}
+.cheil-tool-page {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+  padding: 28px 28px 28px 16px;
+}
+.cheil-tool-page > .content {
+  flex: 1;
+  padding: 20px 0 0;
+  overflow: visible;
+}
+.cheil-tools-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.cheil-tools-nav-label {
+  flex-basis: 100%;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+.cheil-tools-nav .nav-item {
+  width: auto;
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 9px 13px;
+  font-size: 12px;
+  gap: 6px;
+}
+.cheil-tools-nav .nav-item.active {
+  background: var(--text);
+  color: var(--surface-subtle);
+}
+.cheil-tools-nav .nav-item > svg {
+  width: 15px;
+  height: 15px;
+}
+.cheil-tool-title {
+  font-size: 25px;
+  font-weight: 450;
+  margin-bottom: 24px;
+}
+.cheil-formula-modes button,
+.filter-pill,
+.group-pill {
+  border-radius: 999px;
+}
+.recent-table {
+  border-radius: 16px;
+  overflow: hidden;
+}
+.modal,
+.settings-modal {
+  border-radius: 24px;
+  box-shadow: var(--shadow-modal-strong);
+}
+.modal input,
+.modal textarea,
+.modal select {
+  border-radius: 12px;
+}
+.cheil-brand {
+  position: relative;
+  align-self: center;
+  display: block;
+  width: 76px;
+  height: 24px;
+  margin: 0 12px 0 4px;
+  flex-shrink: 0;
+}
+.cheil-brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.cheil-brand-light {
+  display: var(--cheil-logo-light);
+}
+.cheil-brand-dark {
+  display: var(--cheil-logo-dark);
+  mix-blend-mode: screen;
+}
+.tab-bar {
+  background: var(--chrome-bg);
+  border-bottom: 0;
+  color: var(--text);
+}
+.tab-strip {
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+.tab-item {
+  margin-top: 0;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+.tab-item.active {
+  background: var(--text);
+  color: var(--surface-subtle);
+}
+.tab-item .tab-plate,
+.tab-item::before,
+.tab-item::after {
+  display: none;
+}
+.tab-item:not(.active):hover {
+  background: var(--bg-hover);
+}
+.tab-item.active .tab-icon {
+  filter: grayscale(1);
+}
+.tab-title {
+  font-weight: 400;
+}
+@media (max-width: 900px) {
+  .sidebar {
+    width: 100px;
+  }
+  .content {
+    padding-right: 22px;
+  }
+  .cheil-templates .quick-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    width: 82px;
+    padding-inline: 7px;
+  }
+  .content {
+    padding: 22px 12px;
+  }
+  .hero-title {
+    font-size: 23px;
+  }
+  .home-hero {
+    flex-wrap: wrap;
+  }
+  .cheil-office-apps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: 408px;
+    gap: 6px;
+  }
+  .cheil-folder-name {
+    font-size: 11px;
+  }
+  .cheil-tool-page {
+    padding: 20px 12px;
+  }
+  .cheil-campaign-empty-row {
+    flex-wrap: wrap;
+  }
+}
+.set-dialog {
+  border-radius: 24px;
+  background: var(--surface);
+}
+.set-nav {
+  background: var(--surface-subtle);
+}
+.set-nav-item {
+  border-radius: 999px;
+  font-weight: 400;
+}
+.set-nav-item.active {
+  background: var(--text);
+  color: var(--surface-subtle);
+}
+.set-btn,
+.set-input {
+  border-radius: 12px;
+}
+.account-btn {
+  border-radius: 16px;
+  padding: 10px 6px;
+}
+.account-btn .account-avatar,
+.account-btn .account-sub,
+.account-chevron {
+  display: none;
+}
+/* Cheil fork: keep the home summary compact; complete filters remain on Files. */
+.home-hero {
+  margin: 0 0 24px;
+}
+.cheil-page-home .recents:has(.proj-empty) {
+  flex: 0 0 auto;
+}
+.cheil-page-home .proj-empty {
+  flex: none;
+  display: block;
+  text-align: start;
+  padding: 16px 0;
+  margin: 0;
+  font-size: 12px;
+}
+.cheil-page-home .proj-empty > svg {
+  display: none;
+}
+.cheil-page-home .recents-toolbar {
+  position: static;
+  padding-top: 0;
+  gap: 12px;
+}
+.cheil-page-home .recents-toolbar .filter-pills {
+  display: none;
+}
+.cheil-primary-nav .nav-item.active .cheil-nav-icon svg {
+  color: var(--cheil-on-lime);
+}
+
+/* Cheil fork: approved home columns, independent knowledge page and right tools drawer. */
+.cheil-page-home > .cheil-home-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.95fr) minmax(340px, 1.05fr);
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 28px 32px;
+  padding-right: 74px;
+}
+.cheil-home-layout > .home-hero {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin: 0;
+}
+.cheil-page-home .cheil-home-layout > .quick-start {
+  grid-column: 1;
+  grid-row: 2;
+}
+.cheil-page-home .cheil-home-layout > .recents {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  max-height: 310px;
+  overflow: auto;
+}
+.cheil-page-home .cheil-home-layout > .cheil-templates {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+.cheil-page-home .cheil-home-layout > .cheil-campaigns {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+.cheil-page-home .cheil-home-layout > .cheil-my-templates {
+  grid-column: 1 / -1;
+  grid-row: 5;
+}
+.cheil-page-home .recents-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+.cheil-page-home .toolbar-filters:has(> .filter-pills:only-child) {
+  display: none;
+}
+.cheil-page-home .file-search-group {
+  width: 100%;
+  margin: 0;
+}
+.cheil-page-home .file-search {
+  width: 100%;
+  flex: 1;
+}
+.cheil-page-home .recents-heading {
+  justify-content: space-between;
+  margin: 0;
+}
+.cheil-page-home .recent-columns {
+  display: none;
+}
+.cheil-page-home .recent-item {
+  grid-template-columns: 18px 22px minmax(0, 1fr) 24px 28px;
+  gap: 8px;
+  padding: 12px 8px;
+}
+.cheil-page-home .recent-item .recent-path,
+.cheil-page-home .recent-item .recent-time,
+.cheil-page-home .recent-item .recent-size {
+  display: none;
+}
+.cheil-page-files > .cheil-home-layout > .home-hero {
+  display: none;
+}
+.cheil-tool-page {
+  padding: 28px 74px 32px 20px;
+}
+.cheil-tool-page > .content {
+  padding: 0;
+  flex: none;
+}
+.cheil-tool-page .cheil-tool-title {
+  margin-top: 0;
+}
+.cheil-tools-edge {
+  position: absolute;
+  right: 0;
+  top: 128px;
+  z-index: 15;
+  border: 0;
+  border-radius: 14px 0 0 14px;
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.cheil-tools-edge span {
+  writing-mode: vertical-rl;
+  letter-spacing: 2px;
+}
+.cheil-tools-drawer {
+  position: fixed;
+  inset: 40px 0 0 auto;
+  margin: 0;
+  width: min(340px, 90vw);
+  height: calc(100% - 40px);
+  max-height: none;
+  max-width: none;
+  padding: 24px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-modal-strong);
+}
+.cheil-tools-drawer[open] {
+  animation: cheil-drawer-in 160ms ease-out;
+}
+.cheil-tools-drawer::backdrop {
+  background: var(--overlay-bg, var(--chrome-bg));
+  opacity: 0.5;
+}
+.cheil-tools-drawer header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.cheil-tools-drawer h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.cheil-tools-drawer .cheil-tools-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cheil-tools-drawer .cheil-tools-nav-label {
+  display: none;
+}
+.cheil-tools-drawer .nav-item {
+  width: 100%;
+  border-radius: 10px;
+  padding: 14px 12px;
+  gap: 12px;
+}
+.cheil-tools-drawer .nav-item.active {
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+}
+.cheil-tools-drawer .nav-item.active svg {
+  color: inherit;
+}
+.cheil-kb-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.cheil-kb-heading .cheil-tool-title {
+  margin: 0;
+}
+.cheil-kb-heading .cheil-kb-vault {
+  display: block;
+  margin: 8px 0 0;
+}
+.cheil-kb-drop[hidden] {
+  display: none;
+}
+.cheil-kb-main {
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 0;
+}
+.cheil-kb-tree {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0 20px 0 0;
+}
+.cheil-kb-search {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.cheil-kb-searchbar input {
+  min-width: 0;
+}
+.cheil-kb-note {
+  width: calc(100% - 14px);
+  overflow-wrap: anywhere;
+}
+.cheil-kb-drop {
+  margin-bottom: 22px;
+}
+@keyframes cheil-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cheil-tools-drawer[open] {
+    animation: none;
+  }
+}
+@media (max-width: 1050px) {
+  .cheil-page-home > .cheil-home-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cheil-page-home .cheil-home-layout > .quick-start {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .cheil-page-home .cheil-home-layout > .recents {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .cheil-page-home .cheil-home-layout > .cheil-templates {
+    grid-row: 4;
+  }
+  .cheil-page-home .cheil-home-layout > .cheil-campaigns {
+    grid-row: 5;
+  }
+  .cheil-page-home .cheil-home-layout > .cheil-my-templates {
+    grid-row: 6;
+  }
+}
+@media (max-width: 700px) {
+  .cheil-page-home > .cheil-home-layout {
+    padding-right: 52px;
+  }
+  .cheil-tool-page {
+    padding-right: 52px;
+  }
+  .cheil-kb-heading {
+    flex-wrap: wrap;
+  }
+  .cheil-kb-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cheil-kb-tree {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+}
+
+[data-theme='dark'] .cheil-office-folder:hover::after,
+[data-theme='dark'] .cheil-office-folder:focus-visible::after,
+[data-theme='dark'] .cheil-campaign-card:hover .quick-text,
+[data-theme='dark'] .cheil-campaign-card:focus-visible .quick-text,
+[data-theme='dark'] .cheil-templates .quick-card:hover,
+[data-theme='dark'] .cheil-templates .quick-card:focus-visible,
+[data-theme='dark'] .recent-row:hover .recent-item,
+[data-theme='dark'] .recent-row:has(.row-check:checked) .recent-item,
+[data-theme='dark'] .cheil-tools-drawer .nav-item:hover,
+[data-theme='dark'] .cheil-kb-note:hover,
+[data-theme='dark'] .cheil-kb-hit:hover {
+  background: var(--cheil-lime);
+  color: var(--cheil-on-lime);
+  border-color: var(--cheil-lime);
+}
+[data-theme='dark'] .cheil-office-folder:hover,
+[data-theme='dark'] .cheil-office-folder:focus-visible,
+[data-theme='dark'] .cheil-campaign-card:hover .quick-text *,
+[data-theme='dark'] .cheil-campaign-card:focus-visible .quick-text *,
+[data-theme='dark'] .cheil-templates .quick-card:hover *,
+[data-theme='dark'] .recent-row:hover .recent-item *,
+[data-theme='dark'] .recent-row:has(.row-check:checked) .recent-item *,
+[data-theme='dark'] .cheil-tools-drawer .nav-item:hover svg,
+[data-theme='dark'] .cheil-kb-hit:hover * {
+  color: var(--cheil-on-lime);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-office-folder:hover::after,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .cheil-office-folder:focus-visible::after,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-campaign-card:hover .quick-text,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .cheil-campaign-card:focus-visible
+    .quick-text,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-templates .quick-card:hover,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .cheil-templates
+    .quick-card:focus-visible,
+  :root:not([data-theme='light']):not([data-theme='dark']) .recent-row:hover .recent-item,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .recent-row:has(.row-check:checked)
+    .recent-item,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-tools-drawer .nav-item:hover,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-kb-note:hover,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-kb-hit:hover {
+    background: var(--cheil-lime);
+    color: var(--cheil-on-lime);
+    border-color: var(--cheil-lime);
+  }
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-office-folder:hover,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-office-folder:focus-visible,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-campaign-card:hover .quick-text *,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .cheil-campaign-card:focus-visible
+    .quick-text
+    *,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-templates .quick-card:hover *,
+  :root:not([data-theme='light']):not([data-theme='dark']) .recent-row:hover .recent-item *,
+  :root:not([data-theme='light']):not([data-theme='dark'])
+    .recent-row:has(.row-check:checked)
+    .recent-item
+    *,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-tools-drawer .nav-item:hover svg,
+  :root:not([data-theme='light']):not([data-theme='dark']) .cheil-kb-hit:hover * {
+    color: var(--cheil-on-lime);
+  }
+}
+
+/* Cheil fork: dates start immediately and use available horizontal space. */
+.cheil-tool[data-testid='cheil-tool-dates'] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.cheil-tool[data-testid='cheil-tool-dates'] > .cheil-tool-title {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+.cheil-tool[data-testid='cheil-tool-dates'] > .cheil-set {
+  margin: 0;
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .cheil-tool[data-testid='cheil-tool-dates'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Cheil fork: secondary connections and developer controls are explicitly expandable. */
+.cheil-extra-connections {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 18px 0;
+}
+.cheil-extra-connections > summary,
+.cheil-developer-settings > summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 0;
+  color: var(--text-secondary);
+}
+.cheil-developer-settings {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.cheil-developer-settings > summary {
+  padding: 10px;
+}
+
+/* Cheil fork: retain complete legal text without crowding the product information. */
+.cheil-legal-details {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+  color: var(--text-secondary);
+}
+.cheil-legal-details summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.cheil-legal-text {
+  display: block;
+  max-width: 70ch;
+  font-size: 12px;
+  line-height: 1.75;
+  padding-top: 10px;
+}
+.cheil-legal-text p {
+  margin: 0 0 12px;
+}
+
+/* Cheil fork: communicate unavailable personal template and style controls. */
+.cheil-my-templates[aria-disabled='true'] {
+  opacity: 0.5;
+}
+.cheil-my-templates[aria-disabled='true'] button:disabled {
+  cursor: not-allowed;
+}
+
+/* Cheil fork: approved product symbol and wordmark in either theme. */
+.cheil-brand-office {
+  display: inline-flex;
+  width: 144px;
+  height: 34px;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  white-space: nowrap;
+  font-size: 15px;
+  letter-spacing: -0.04em;
+}
+.cheil-brand-office img {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+/* Cheil fork: settings and connection status share one persistent footer. */
+.cheil-usage-unavailable {
+  display: block;
+  padding: 0 10px 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.tab-bar > .tab-app-menu-btn {
+  flex-shrink: 0;
+  margin-inline: 8px;
+  align-self: center;
+}
+
+/* Cheil fork: distinguish connection setup from the folder agent workspace. */
+.cheil-ai-guide {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.cheil-ai-guide h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.cheil-ai-guide > p {
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+.cheil-ai-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.cheil-ai-role {
+  text-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--text);
+  background: var(--bg);
+  cursor: pointer;
+  font: inherit;
+}
+.cheil-ai-role[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cheil-ai-role span,
+.cheil-ai-role small {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cheil-ai-role strong {
+  font-size: 14px;
+}
+.cheil-ai-steps {
+  padding-inline-start: 22px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.cheil-ai-steps li {
+  padding: 5px 0;
+}
+.cheil-ai-requirement {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 16px 0;
+}
+@media (max-width: 620px) {
+  .cheil-ai-role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cheil fork: workspace settings dashboard and explicit connection state. */
+.set-dialog {
+  width: min(1100px, 100%);
+  border-radius: 22px;
+}
+.set-header {
+  border-bottom: 1px solid var(--border);
+}
+.set-body .set-nav {
+  background: var(--chrome-bg);
+  padding: 24px 14px;
+}
+.set-nav .set-nav-item {
+  border-radius: 10px;
+  margin-bottom: 8px;
+  padding: 12px;
+}
+.cheil-settings-eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.cheil-settings-context {
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.cheil-settings-context h3 {
+  font-size: 22px;
+  margin: 0 0 10px;
+}
+.cheil-settings-context p {
+  color: var(--text-dim);
+  line-height: 1.6;
+  font-size: 13px;
+}
+.cheil-ai-live {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 18px;
+  background: var(--chrome-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.cheil-ai-live[data-ready='true'] {
+  border-inline-start: 4px solid var(--accent);
+}
+.cheil-ai-live strong {
+  font-size: 20px;
+}
+.cheil-ai-live span {
+  font-size: 12px;
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  border-radius: 20px;
+}
+.cheil-ai-live small {
+  width: 100%;
+  color: var(--text-dim);
+}
+.cheil-ai-capabilities {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.cheil-settings-context + .set-pane-title {
+  font-size: 15px;
+}
+
+/* Cheil fork: common folder drafts alongside provider management. */
+.cheil-common-folder {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 24px;
+}
+.cheil-common-folder p,
+.cheil-ai-help p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.cheil-common-folder textarea {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  margin: 14px 0;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.cheil-common-folder pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--chrome-bg);
+  padding: 14px;
+  font-size: 12px;
+}
+.cheil-common-folder article {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+.cheil-common-folder select {
+  margin-inline-start: 12px;
+  padding: 7px;
+  background: var(--surface);
+  color: var(--text);
+}
+.cheil-ai-help {
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+/* Cheil fork: shared provider inventory and four official setup routes. */
+.cheil-task-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  font-size: 13px;
+}
+.cheil-task-ai select {
+  max-width: 100%;
+  padding: 8px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cheil-task-ai small {
+  width: 100%;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.cheil-connect-routes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cheil-connect-routes button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.cheil-connection-journey {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin: 20px 0;
+}
+.cheil-connection-journey p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.cheil-connection-inventory {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin: 18px 0;
+}
+.cheil-connection-inventory p {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.cheil-connection-inventory > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+/* Cheil fork: internal campaign workspace introduction. */
+.cheil-about-purpose {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin: 16px 0;
+}
+.cheil-about-purpose h4 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+.cheil-about-purpose p,
+.cheil-about-purpose dd {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.cheil-about-purpose dt {
+  font-weight: 600;
+  font-size: 13px;
+  margin-top: 14px;
+}
+.cheil-about-purpose dd {
+  margin: 5px 0 0;
+}
+
+/* Cheil fork: quota dashboard anchored outside the compact sidebar. */
+.cheil-home-usage {
+  font-size: 10px;
+  padding: 8px 4px;
+  color: var(--text);
+}
+.cheil-home-usage summary {
+  cursor: pointer;
+  padding: 7px 0;
+}
+.cheil-usage-mini > div {
+  margin-bottom: 7px;
+}
+.cheil-home-usage progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+  margin-top: 4px;
+}
+.cheil-usage-popover {
+  position: fixed;
+  z-index: 70;
+  bottom: 18px;
+  left: 142px;
+  width: 340px;
+  max-width: calc(100vw - 160px);
+  max-height: 75vh;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-modal-strong);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cheil-usage-popover h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.cheil-usage-popover p {
+  color: var(--text-dim);
+}
+.cheil-usage-popover section {
+  margin: 16px 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.cheil-quota-window {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+}
+.cheil-usage-popover small {
+  color: var(--text-dim);
+}
+.cheil-skill-overview {
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  background: var(--chrome-bg);
+}
+.cheil-skill-overview > span {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+}
+.cheil-skill-overview h4 {
+  font-size: 18px;
+  margin: 12px 0;
+}
+.cheil-skill-overview p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+.cheil-skill-overview [role='group'] {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cheil-skill-overview button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.skl-group {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.skl-row {
+  padding: 4px 8px;
+}
+.cheil-drive-connection {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.cheil-drive-connection > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.set-intg-hero {
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--chrome-bg);
+}
+.set-intg-part {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-top: 18px;
+}
+
+/* Cheil fork: explicit usage panel dismissal; trigger only opens. */
+.cheil-usage-open {
+  border: 0;
+  padding: 7px 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.cheil-usage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.cheil-usage-heading h4 {
+  margin: 0;
+}
+.cheil-usage-heading button {
+  min-width: 32px;
+  min-height: 32px;
+}

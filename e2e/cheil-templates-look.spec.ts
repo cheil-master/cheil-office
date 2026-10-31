@@ -33,8 +33,8 @@ async function slideCount(slides: Page): Promise<number> {
 }
 
 for (const deck of [
-  { skill: 'cheil-brief', name: 'ot', slides: 14, first: '캠페인 OT' },
-  { skill: 'cheil-monthly-report', name: 'result', slides: 12, first: '캠페인 결과 보고' },
+  { skill: 'cheil-brief', name: 'ot', slides: 12, first: 'OT 및 킥오프' },
+  { skill: 'cheil-monthly-report', name: 'result', slides: 11, first: '캠페인 결과보고서' },
 ]) {
   test(`Cheil: the ${deck.name} deck opens with its ${deck.slides} slides`, async () => {
     test.setTimeout(180_000)
@@ -100,7 +100,7 @@ test('Cheil: the contact report opens in the Word editor', async () => {
       )
     await expect.poll(docText, { timeout: 60_000 }).toContain('CONTACT REPORT')
     const text = await docText()
-    for (const part of ['[회의명]', '요약', '상세 피드백', 'AE 의견', 'NEXT', '- END -']) {
+    for (const part of ['[회의명]', '주요 결정', '상세 피드백', 'AE 의견', 'NEXT', '- END -']) {
       expect(text).toContain(part)
     }
     await docs.waitForTimeout(1_000)
@@ -130,18 +130,18 @@ test('Cheil: the media plan opens in the sheets editor', async () => {
     await expect(nameBox).toBeVisible({ timeout: 60_000 })
     await sheets.waitForTimeout(2_000)
     await nameBox.click()
-    await nameBox.fill('A1:O13')
+    await nameBox.fill('A1:H18')
     await nameBox.press('Enter')
     await sheets.waitForTimeout(500)
     await sheets.keyboard.press('Control+C')
     await sheets.waitForTimeout(800)
     const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
     for (const part of [
-      '미디어 플랜',
-      '1. 캠페인 개요',
-      '배경 및 목적',
-      '2. 매체별 집행 계획',
-      'CPV(원)',
+      '미디어브리프',
+      '캠페인 기본 정보',
+      '캠페인 배경',
+      '핵심 타깃',
+      '핵심 메시지',
     ]) {
       expect(copied).toContain(part)
     }

@@ -6,6 +6,7 @@
  * template, never the person's original. The screen names a template by its
  * file name only; every call resolves it under the root again. No Electron.
  */
+import { constants } from 'node:fs'
 import { copyFile, mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { campaignDocumentTitle, freeFileName, isCampaignDocumentName } from './campaign-files'
@@ -64,13 +65,22 @@ export function createMyTemplates(deps: { root(): string }) {
 
     /** copy a document in under its own name (" (2)" when taken); null for one that is not a document */
     async add(source: string): Promise<{ name: string; path: string } | null> {
-      if (!isCampaignDocumentName(basename(source))) return null
+      if (!isMyTemplateName(basename(source))) return null
       await mkdir(deps.root(), { recursive: true })
-      const taken = new Set(await readdir(deps.root()).catch(() => [] as string[]))
-      const name = freeFileName(basename(source), (n) => taken.has(n))
-      const path = join(deps.root(), name)
-      await copyFile(source, path)
-      return { name, path }
+      // Cheil fork: exclusive copies also preserve files during concurrent imports on Windows.
+      const taken = new Set((await readdir(deps.root())).map((name) => name.toLowerCase()))
+      for (;;) {
+        const name = freeFileName(basename(source), (n) => taken.has(n.toLowerCase()))
+        if (!isMyTemplateName(name)) return null
+        const path = join(deps.root(), name)
+        try {
+          await copyFile(source, path, constants.COPYFILE_EXCL)
+          return { name, path }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+          taken.add(name.toLowerCase())
+        }
+      }
     },
 
     /** take a template out (an added one the person cancelled) */

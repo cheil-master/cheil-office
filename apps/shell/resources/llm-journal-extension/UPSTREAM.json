@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/byteowlz/hstry",
+  "commit": "c7ea955878223abb11dbdc91ddcdc2428b280a1b",
+  "license": "MIT",
+  "files": [
+    "providers/chatgpt.js",
+    "providers/claude.js",
+    "lib/common.js"
+  ],
+  "changes": [
+    "forward-only cutoff",
+    "stable message identifiers",
+    "exclude non-visible ChatGPT turns",
+    "request timeout",
+    "one conversation per push",
+    "omit account names from stored cursors"
+  ]
+}

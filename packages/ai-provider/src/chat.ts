@@ -1,4 +1,5 @@
-import { assertCheilEgressAllowed } from './cheil-grade'
+import { recordAiRequest } from './usage-ledger'
+import { assertWikiEgress, type CheilExcerptConsent } from './cheil-consent'
 import { chatAnthropic } from './protocols/anthropic'
 import { chatGemini } from './protocols/gemini'
 import { chatOpenAiCompatible } from './protocols/openai-compatible'
@@ -22,7 +23,7 @@ export async function chatForProvider(
   user: string,
   signal?: AbortSignal,
   /** Cheil fork: request options a provider may honour */
-  options: { json?: boolean | undefined } = {},
+  options: { json?: boolean | undefined; wikiConsent?: CheilExcerptConsent } = {},
 ): Promise<AiChatResponse> {
   // non-streaming: the server generates the full answer before the headers arrive,
   // so the connect phase gets the long budget; the body read then gets the idle budget.
@@ -31,6 +32,7 @@ export async function chatForProvider(
     signal,
     provider === 'ollama' ? AI_WATCHDOG_MAX_TIMEOUT_MS : AI_CHAT_RESPONSE_TIMEOUT_MS,
   )
+  recordAiRequest(provider)
   const result = wd.guard(() => {
     let endpoint: ResolvedEndpoint
     try {
@@ -44,7 +46,7 @@ export async function chatForProvider(
     }
     // Cheil fork: nothing client-confidential or personal leaves this PC
     try {
-      assertCheilEgressAllowed(endpoint.baseUrl, [user])
+      assertWikiEgress(endpoint.baseUrl, system, user, options.wikiConsent)
     } catch (e) {
       return Promise.resolve({ ok: false as const, error: (e as Error).message })
     }

@@ -104,7 +104,7 @@ export async function assertNoRunningJob(store: ResultStore, docHash: string): P
         ...(running.progress ? { progress: running.progress } : {}),
       },
     },
-    { suggestion: 'wait for it to end; `ieumoffice pdf status <file>` shows its progress' },
+    { suggestion: 'wait for it to end; `cheiloffice pdf status <file>` shows its progress' },
   )
 }
 

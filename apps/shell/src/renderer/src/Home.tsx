@@ -1,11 +1,19 @@
+import { HomeAiUsage } from './cheil/HomeAiUsage'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, ReactElement } from 'react'
-import logoLockup from './assets/genoffice-logo.svg'
+// Cheil fork: the approved compact office home and navigation.
+import { designWords } from './cheil/design-words'
+import { journalWords } from './cheil/journal-words'
+import { CheilNavIcon } from './cheil/CheilNavIcon'
 import { KbAskPanel } from './KbAskPanel'
 import { AgencyTemplates } from './cheil/AgencyTemplates'
 import { MyCampaigns } from './cheil/MyCampaigns'
 import { MyTemplates } from './cheil/MyTemplates'
-import { WorkToolView, WorkToolsNav, type WorkToolId } from './cheil/WorkTools'
+import { DocumentStyles } from './cheil/DocumentStyles'
+import { WorkToolView, type WorkToolId } from './cheil/WorkTools'
+import { WorkToolsDrawer } from './cheil/WorkToolsDrawer'
+import { HomeThemeSwitch } from './cheil/HomeThemeSwitch'
+import { SidebarSizer } from './cheil/SidebarSizer'
 import { localEngineView } from './cheil/local-engine'
 import { useAiSettings } from './FreeAiCards'
 import iconDocx from './assets/file-docx.svg'
@@ -37,7 +45,6 @@ import {
   useDismissablePopover,
 } from '@genoffice/ui'
 import type { AiSettings } from '@genoffice/ai-provider/browser'
-import { productName } from '@genoffice/i18n'
 import { RELEASE_IS_BETA } from '../../shared/release-stage'
 import { fileCountLabel, visiblePageCount } from './counts'
 import { useI18n } from './locale'
@@ -60,7 +67,6 @@ import './quick-look/quick-look.css'
 import { QuickLookView } from './quick-look/QuickLookView'
 import { quickLookText } from './i18n/strings-quick-look'
 import type { QuickLookPayload } from '../../shared/quick-look-api'
-import { agentText } from './i18n/strings-agent'
 import { DriveNavIcon, DrivePanel, useDriveState } from './DrivePanel'
 import { driveUiText } from './i18n/strings-drive'
 
@@ -75,16 +81,6 @@ declare global {
 
 /** page size of the home list; scrolling to the bottom auto-loads the next page */
 const PAGE_SIZE = 50
-
-/** greeting sublines on the home page: one is picked at random on entry */
-const GREET_ASK_KEYS = [
-  'greetAsk1',
-  'greetAsk2',
-  'greetAsk3',
-  'greetAsk4',
-  'greetAsk5',
-  'greetAsk6',
-] as const satisfies readonly StringKey[]
 
 const FILE_ICONS: Record<string, string> = {
   docx: iconDocx,
@@ -941,14 +937,35 @@ function AccountEntry({
         <span
           className={`account-avatar${local || summary.state === 'connected' ? ' logged-in' : ''}`}
         >
-          <AiMark size={16} />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
           {skillUpdate && (
             <span className="account-badge" role="img" aria-label={t('intgUpdateDue')} />
           )}
         </span>
         <span className="account-text">
-          <span className="account-name">{label}</span>
-          {stateText && <span className="account-sub">{stateText}</span>}
+          <span className="account-name">
+            {local ? '◐' : summary.state === 'connected' ? '●' : '○'} {label}
+          </span>
+          <span className="account-sub">
+            {local
+              ? lang === 'ko'
+                ? 'AI 설정됨 · 설정 열기'
+                : 'AI configured · settings'
+              : summary.state === 'connected'
+                ? lang === 'ko'
+                  ? 'AI 연결됨 · 설정 열기'
+                  : 'AI connected · settings'
+                : lang === 'ko'
+                  ? 'AI 연결 확인 · 설정 열기'
+                  : 'Check AI connection · settings'}
+          </span>
         </span>
         <svg
           className="account-chevron"
@@ -967,6 +984,7 @@ function AccountEntry({
           />
         </svg>
       </button>
+      <HomeAiUsage />
     </div>
   )
 }
@@ -1070,12 +1088,16 @@ export function Home({
   const [navCounts, setNavCounts] = useState({ recent: 0, starred: 0 })
   const [loadingMore, setLoadingMore] = useState(false)
   const [view, setView] = useState<'recent' | 'starred'>('recent')
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [homePage, setHomePage] = useState<'home' | 'campaigns' | 'files'>('home')
   // the knowledge-base ask panel takes over the content area the same way
   const [askMode, setAskMode] = useState(false)
   // Google Drive (decision 0033) takes over the content area the same way
   const [driveMode, setDriveMode] = useState(false)
   // Cheil fork: a work tool (mail draft, spelling, ...) takes over the content area too
   const [toolMode, setToolMode] = useState<WorkToolId | null>(null)
+  // Cheil fork: appearance uses the content pane, keeping template cards compact.
+  const [styleMode, setStyleMode] = useState(false)
   const driveState = useDriveState()
   const driveOffered = driveState !== null && driveState.state !== 'unavailable'
   const [filter, setFilter] = useState('all')
@@ -1123,9 +1145,6 @@ export function Home({
   const [confirmDelete, setConfirmDelete] = useState<string[] | null>(null)
   // unavailable recent entry (missing flag) the user clicked — offer list removal
   const [confirmMissing, setConfirmMissing] = useState<RecentEntry | null>(null)
-  const [greetAskKey] = useState(
-    () => GREET_ASK_KEYS[Math.floor(Math.random() * GREET_ASK_KEYS.length)]!,
-  )
 
   // ── Folder tree state ──
   // the default save folder first, then the folders the user added; `root` is the default one
@@ -1544,6 +1563,8 @@ export function Home({
   }
 
   const changeView = (next: 'recent' | 'starred') => {
+    setStyleMode(false)
+    setHomePage('files')
     setView(next)
     setSelectedFolder(null)
     setAskMode(false)
@@ -1833,31 +1854,31 @@ export function Home({
   const NEW_ITEMS = [
     {
       ext: 'docx',
-      title: t('newDoc'),
+      title: 'Word',
       sub: '.docx',
       action: () => window.aiOffice.newDoc(newFileOpts),
     },
     {
       ext: 'xlsx',
-      title: t('newSheet'),
+      title: 'Excel',
       sub: '.xlsx',
       action: () => window.aiOffice.newSheet(newFileOpts),
     },
     {
       ext: 'pptx',
-      title: t('newSlide'),
+      title: 'PPT',
       sub: '.pptx',
       action: () => window.aiOffice.newSlide(newFileOpts),
     },
     {
       ext: 'md',
-      title: t('newMarkdown'),
+      title: 'Markdown',
       sub: '.md',
       action: () => window.aiOffice.newMarkdown(newFileOpts),
     },
     {
       ext: 'html',
-      title: t('newHtml'),
+      title: 'HTML',
       sub: '.html',
       action: () => window.aiOffice.newHtml(newFileOpts),
     },
@@ -1869,13 +1890,13 @@ export function Home({
     },
     {
       ext: 'hwp',
-      title: t('newHwp'),
+      title: t('newHwp').replace(/^AI\s+/, ''),
       sub: '.hwp',
       action: () => window.aiOffice.newHwp(newFileOpts),
     },
     {
       ext: 'pdf',
-      title: t('newPdf'),
+      title: 'PDF',
       sub: '.pdf',
       action: () => window.aiOffice.newPdf(newFileOpts),
     },
@@ -1883,45 +1904,28 @@ export function Home({
 
   function renderQuickCards() {
     return (
-      <div className="quick-cards">
-        {NEW_ITEMS.map((item) => (
-          <button key={item.ext} className="quick-card" onClick={() => void item.action()}>
-            <FileBadge ext={item.ext} size={30} />
-            <span className="quick-text">
-              <span className="quick-title-row">
-                <span className="quick-title">{item.title}</span>
-                <span className="ai-chip">AI</span>
+      <>
+        <div className="section-head cheil-app-heading">
+          <h2 className="section-label">{designWords(lang).apps}</h2>
+        </div>
+        <div className="cheil-office-apps" data-testid="cheil-office-apps">
+          {NEW_ITEMS.map((item) => (
+            <button
+              key={item.ext}
+              className="cheil-office-folder"
+              data-app={item.ext}
+              onClick={() => void item.action()}
+              data-tip={item.sub}
+            >
+              <span className="cheil-folder-paper" aria-hidden="true" />
+              <span className="cheil-folder-icon">
+                <FileBadge ext={item.ext} size={21} />
               </span>
-              <span className="quick-sub">{item.sub}</span>
-            </span>
-          </button>
-        ))}
-        <button
-          className="quick-card"
-          onClick={() => void window.aiOffice.browse()}
-          data-tip={OPEN_LOCAL_EXTENSIONS}
-        >
-          <span className="quick-folder">
-            <FolderIcon size={18} />
-          </span>
-          <span className="quick-text">
-            <span className="quick-title-row">
-              <span className="quick-title">{t('openLocal')}</span>
-            </span>
-            <span className="quick-sub">{OPEN_LOCAL_EXTENSIONS}</span>
-          </span>
-        </button>
-        {/* decision 0030: PDF tasks without AI, in their own window */}
-        <button className="quick-card" onClick={() => void window.aiOfficePdfToolsHome.open()}>
-          <FileBadge ext="pdf" size={30} />
-          <span className="quick-text">
-            <span className="quick-title-row">
-              <span className="quick-title">{t('pdfToolsCard')}</span>
-            </span>
-            <span className="quick-sub">{t('pdfToolsCardSub')}</span>
-          </span>
-        </button>
-      </div>
+              <span className="cheil-folder-name">{item.title}</span>
+            </button>
+          ))}
+        </div>
+      </>
     )
   }
 
@@ -2158,7 +2162,9 @@ export function Home({
               }}
             />
           ) : (
-            <span className="tree-name">{entry.name}</span>
+            <span className="tree-name" title={entry.path}>
+              {entry.name}
+            </span>
           )}
           {unavailable && <span className="tree-hint">{t('rootUnavailable')}</span>}
           {renderFolderMenu(entry, rootEntry)}
@@ -2950,7 +2956,14 @@ export function Home({
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
         {/* Cheil fork: the person's own templates (plan item 13) */}
-        <MyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        <MyTemplates
+          badge={(ext) => <FileBadge ext={ext} size={30} />}
+          onOpenStyles={() => {
+            changeView('recent')
+            setHomePage('home')
+            setStyleMode(true)
+          }}
+        />
         {/* Cheil fork: the campaigns, each with its card and timeline */}
         <MyCampaigns />
 
@@ -3055,35 +3068,43 @@ export function Home({
   // ── Plain view ────────────────────────────────────────
 
   function renderGlobalContent() {
-    const now = new Date()
-    const hour = now.getHours()
-    const greetKey =
-      hour < 6
-        ? 'greetEvening'
-        : hour < 12
-          ? 'greetMorning'
-          : hour < 18
-            ? 'greetAfternoon'
-            : 'greetEvening'
-    const cjk = lang === 'zh' || lang === 'zh-TW' || lang === 'ja'
-    const greeting = `${t(greetKey)}${cjk ? '。' : '. '}`
     return (
-      <main className="content">
-        <section className="quick-start" aria-label={t('secQuickStart')}>
-          <div className="home-hero">
-            <h1 className="hero-title">
-              {greeting}
-              <span className="hero-ask">{t(greetAskKey)}</span>
-            </h1>
+      <main className="content cheil-home-layout">
+        <div className="home-hero">
+          <h1 className="hero-title">{designWords(lang).heading}</h1>
+          <div className="cheil-home-actions">
+            <HomeThemeSwitch />
+            <button
+              className="btn btn-primary"
+              onClick={() => void window.aiOffice.browse()}
+              data-tip={OPEN_LOCAL_EXTENSIONS}
+            >
+              {t('openLocal')}
+            </button>
           </div>
+        </div>
+        {homePage === 'home' && (
+          <div className="cheil-home-search">
+            {renderSearchBox()}
+            {renderSearchSettingsButton()}
+          </div>
+        )}
+        <section className="quick-start" aria-label={t('secQuickStart')}>
           {renderQuickCards()}
         </section>
         {/* Cheil fork: the agency templates under the quick start */}
         <AgencyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
         {/* Cheil fork: the person's own templates (plan item 13) */}
-        <MyTemplates badge={(ext) => <FileBadge ext={ext} size={30} />} />
+        <MyTemplates
+          badge={(ext) => <FileBadge ext={ext} size={30} />}
+          onOpenStyles={() => {
+            changeView('recent')
+            setHomePage('home')
+            setStyleMode(true)
+          }}
+        />
         {/* Cheil fork: the campaigns, each with its card and timeline */}
-        <MyCampaigns />
+        <MyCampaigns showOptions={false} />
 
         <section
           className="recents"
@@ -3178,10 +3199,12 @@ export function Home({
                 )}
               </div>
             )}
-            <div className="file-search-group">
-              {renderSearchBox()}
-              {renderSearchSettingsButton()}
-            </div>
+            {homePage !== 'home' && (
+              <div className="file-search-group">
+                {renderSearchBox()}
+                {renderSearchSettingsButton()}
+              </div>
+            )}
             {searchActive ? (
               renderSearchHeading()
             ) : (
@@ -3248,140 +3271,141 @@ export function Home({
     })
 
   return (
-    <div className="home">
+    <div className={`home cheil-page-${homePage}`}>
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img className="logo-lockup" src={logoLockup} alt={productName(lang)} />
           {RELEASE_IS_BETA && (
             <span className="beta-badge" title={t('betaTooltip')}>
               {t('betaBadge')}
             </span>
           )}
         </div>
-        <nav className="sidebar-nav">
+        <nav className="cheil-primary-nav" aria-label={designWords(lang).home}>
+          {(['home', 'campaigns', 'knowledge', 'tools', 'files'] as const).map((page) => (
+            <button
+              key={page}
+              className={`nav-item${(page === 'knowledge' ? toolMode === 'knowledge' : page === 'tools' ? toolMode !== null && toolMode !== 'knowledge' : !toolMode && !askMode && !driveMode && !selectedFolder && homePage === page) ? ' active' : ''}`}
+              data-testid={`cheil-nav-${page}`}
+              onClick={() => {
+                if (page === 'tools') {
+                  setToolsOpen(true)
+                  return
+                }
+                changeView('recent')
+                if (page === 'knowledge') setToolMode('knowledge')
+                else setHomePage(page)
+              }}
+            >
+              <span className="cheil-nav-icon">
+                <CheilNavIcon name={page} />
+              </span>
+              <span className="nav-label">{designWords(lang)[page]}</span>
+            </button>
+          ))}
           <button
-            className={`nav-item${view === 'recent' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
-            onClick={() => changeView('recent')}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.3" />
-              <path
-                d="M8 4.8V8l2.2 1.6"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="nav-label">{t('navRecent')}</span>
-            <span className="nav-count">{navCounts.recent}</span>
-          </button>
-          <button
-            className={`nav-item${view === 'starred' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
-            onClick={() => changeView('starred')}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M8 1.9l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.6l-3.8 2 .72-4.23-3.07-3 4.25-.62z"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="nav-label">{t('navStarred')}</span>
-            <span className="nav-count">{navCounts.starred}</span>
-          </button>
-          <button
-            className={`nav-item${askMode && !selectedFolder ? ' active' : ''}`}
+            className={`nav-item${toolMode === 'journal' ? ' active' : ''}`}
+            data-testid="cheil-nav-journal"
             onClick={() => {
-              setAskMode(true)
-              setDriveMode(false)
-              setToolMode(null)
-              setSelectedFolder(null)
-              setSelected(new Set())
-              setRowMenu(null)
+              changeView('recent')
+              setToolMode('journal')
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M14 10.5c0 .9-.7 1.6-1.6 1.6H5.4L2 14.5V3.6C2 2.7 2.7 2 3.6 2h8.8c.9 0 1.6.7 1.6 1.6z"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M5 6.2h6M5 8.6h4"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="nav-label">{t('navAsk')}</span>
+            <span className="cheil-nav-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M3 2h10v12H3zM5 5h6M5 8h6M5 11h4"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                />
+              </svg>
+            </span>
+            <span className="nav-label">{journalWords(lang).title}</span>
           </button>
-          {/* decision 0032: the agent opens a window of its own, hence the mark on the right */}
-          {window.aiOfficeAgent ? (
+        </nav>
+        <details className="cheil-secondary-nav">
+          <summary>{t('moreActions')}</summary>
+          <nav className="sidebar-nav">
             <button
-              className="nav-item"
-              title={agentText(lang, 'homeCardSub')}
-              onClick={() => void window.aiOfficeAgent?.open()}
+              className={`nav-item${view === 'recent' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
+              onClick={() => changeView('recent')}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.3" />
+                <path
+                  d="M8 4.8V8l2.2 1.6"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="nav-label">{t('navRecent')}</span>
+              <span className="nav-count">{navCounts.recent}</span>
+            </button>
+            <button
+              className={`nav-item${view === 'starred' && !selectedFolder && !toolMode && !askMode && !driveMode ? ' active' : ''}`}
+              onClick={() => changeView('starred')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path
-                  d="M1.9 4.3c0-.7.6-1.3 1.3-1.3h2.9l1.4 1.5h5.3c.7 0 1.3.6 1.3 1.3v6.3c0 .7-.6 1.3-1.3 1.3H3.2c-.7 0-1.3-.6-1.3-1.3z"
+                  d="M8 1.9l1.9 3.85 4.25.62-3.07 3 .72 4.23L8 11.6l-3.8 2 .72-4.23-3.07-3 4.25-.62z"
                   stroke="currentColor"
                   strokeWidth="1.3"
                   strokeLinejoin="round"
                 />
-                <path
-                  d="M8 6.6l.6 1.6 1.6.6-1.6.6L8 11l-.6-1.6-1.6-.6 1.6-.6z"
-                  fill="currentColor"
-                />
               </svg>
-              <span className="nav-label">{agentText(lang, 'windowTitle')}</span>
-              <span className="nav-count nav-external">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <path
-                    d="M4.5 2.5h5v5M9.5 2.5L3 9"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
+              <span className="nav-label">{t('navStarred')}</span>
+              <span className="nav-count">{navCounts.starred}</span>
             </button>
-          ) : null}
-          {driveOffered && (
             <button
-              className={`nav-item${driveMode && !selectedFolder ? ' active' : ''}`}
-              data-testid="home-drive-nav"
+              className={`nav-item${askMode && !selectedFolder ? ' active' : ''}`}
               onClick={() => {
-                setDriveMode(true)
-                setAskMode(false)
+                setAskMode(true)
+                setDriveMode(false)
                 setToolMode(null)
                 setSelectedFolder(null)
                 setSelected(new Set())
                 setRowMenu(null)
               }}
             >
-              <DriveNavIcon />
-              <span className="nav-label">{driveUiText(lang, 'driveNav')}</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="M14 10.5c0 .9-.7 1.6-1.6 1.6H5.4L2 14.5V3.6C2 2.7 2.7 2 3.6 2h8.8c.9 0 1.6.7 1.6 1.6z"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M5 6.2h6M5 8.6h4"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="nav-label">{t('navAsk')}</span>
             </button>
-          )}
-        </nav>
-        {/* Cheil fork: tools office staff otherwise open other websites for */}
-        <WorkToolsNav
-          active={selectedFolder ? null : toolMode}
-          onPick={(tool) => {
-            setToolMode(tool)
-            setAskMode(false)
-            setDriveMode(false)
-            setSelectedFolder(null)
-            setSelected(new Set())
-            setRowMenu(null)
-          }}
-        />
-        <div className="sidebar-divider" />
-        {renderFolderPanel()}
+            {driveOffered && (
+              <button
+                className={`nav-item${driveMode && !selectedFolder ? ' active' : ''}`}
+                data-testid="home-drive-nav"
+                onClick={() => {
+                  setDriveMode(true)
+                  setAskMode(false)
+                  setToolMode(null)
+                  setSelectedFolder(null)
+                  setSelected(new Set())
+                  setRowMenu(null)
+                }}
+              >
+                <DriveNavIcon />
+                <span className="nav-label">{driveUiText(lang, 'driveNav')}</span>
+              </button>
+            )}
+          </nav>
+        </details>
+        <details className="cheil-folder-nav">
+          <summary>{t('folders')}</summary>
+          {renderFolderPanel()}
+        </details>
         <AccountEntry
           connection={connection}
           onOpenChange={handleSettingsOpenChange}
@@ -3389,10 +3413,13 @@ export function Home({
           openRequest={settingsRequest}
         />
       </aside>
+      <SidebarSizer />
       {selectedFolder && rootOf(selectedFolder, roots)?.readable ? (
         renderFolderContent()
       ) : toolMode ? (
-        <WorkToolView tool={toolMode} />
+        <div className="cheil-tool-page">
+          <WorkToolView tool={toolMode} />
+        </div>
       ) : driveMode && driveOffered ? (
         <DrivePanel
           lang={lang}
@@ -3408,8 +3435,39 @@ export function Home({
           onOpenPath={(path) => void window.aiOffice.openPath(path)}
           onGoToRecents={() => changeView('recent')}
         />
+      ) : styleMode ? (
+        <main className="content cheil-style-page">
+          <DocumentStyles onBack={() => setStyleMode(false)} />
+        </main>
+      ) : homePage === 'campaigns' ? (
+        <main className="content cheil-campaign-page">
+          <MyCampaigns />
+        </main>
       ) : (
         renderGlobalContent()
+      )}
+      {/* Cheil fork: a modal right drawer keeps the working page in place. */}
+      <WorkToolsDrawer
+        open={toolsOpen}
+        active={toolMode}
+        onClose={() => setToolsOpen(false)}
+        onPick={(tool) => {
+          changeView('recent')
+          setToolMode(tool)
+          setToolsOpen(false)
+        }}
+      />
+      {toolMode !== 'knowledge' && (
+        <button
+          className="cheil-tools-edge"
+          data-testid="cheil-tools-toggle"
+          aria-expanded={toolsOpen}
+          aria-controls="cheil-tools-drawer"
+          onClick={() => setToolsOpen(true)}
+        >
+          <CheilNavIcon name="tools" />
+          <span>{designWords(lang).tools}</span>
+        </button>
       )}
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>

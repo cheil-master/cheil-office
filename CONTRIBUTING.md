@@ -1,4 +1,4 @@
-# Contributing to IeumOffice
+# Contributing to CheilOffice
 
 Thanks for your interest in contributing. This document covers the local
 setup, the checks a change must pass, and the conventions used in this
@@ -7,12 +7,10 @@ repository.
 ## How changes land here
 
 Development happens in this repository,
-[pblsketch/openoffice](https://github.com/pblsketch/openoffice). Pull requests,
+[cheil-master/cheil-office](https://github.com/cheil-master/cheil-office). Pull requests,
 issues and feature requests are all handled here.
 
-IeumOffice is a modified version of GenOffice (see
-[License and acknowledgement](README.en.md#license-and-acknowledgement)) and
-keeps taking engine fixes from it, which shapes two rules:
+CheilOffice adds advertising-agency workflows, campaign management and reusable knowledge to shared open-source document engines. Original copyright and software provenance remain in [NOTICE](NOTICE). Changes follow two rules:
 
 - **Keep the difference from upstream small.** No reformatting, reordering or
   renaming of code you are not changing, and no drive-by cleanups. Delete what

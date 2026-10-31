@@ -1,0 +1,33 @@
+/** Cheil fork: work-template catalog text. */
+import type { zh } from './zh'
+
+export const zhTW = {
+  label: '工作文件範本',
+  add: '新增文件範本',
+  adding: '正在新增…',
+  hint: '新增 Word、PowerPoint 或 Excel 檔案（最大 50 MB），再點選卡片建立新文件。',
+  own: '我新增的',
+  use: '建立新文件',
+  loading: '正在載入已儲存的範本…',
+  retry: '重試',
+  added: '範本已新增。點選卡片開啟新的文件副本。',
+  failed: '無法載入範本。請檢查檔案和儲存資料夾後重試。',
+  unreadable: '無法讀取檔案。請移除 DRM 或密碼保護，選擇可正常開啟的文件。',
+  tooLarge: '請選擇不超過 50 MB 的檔案。',
+  rename: '重新命名',
+  remove: '刪除',
+  renameTitle: '重新命名文件範本',
+  nameLabel: '範本名稱',
+  nameHint: '只輸入新名稱，檔案副檔名會維持不變。',
+  save: '儲存',
+  cancel: '取消',
+  deleteTitle: '刪除此文件範本？',
+  deleteHint: '將已登錄的範本副本移至資源回收筒。原始檔案和以此建立的文件會保留。',
+  confirmDelete: '移至資源回收筒',
+  renamed: '範本已重新命名。',
+  deleted: '已登錄的範本已移至資源回收筒。',
+  invalidName: '名稱無效。請使用150個字元以內，且不含路徑符號或保留名稱。',
+  exists: '已有同名範本，請輸入其他名稱。',
+  working: '處理中…',
+  changed: '範本已在其他位置變更，請使用重新整理後的卡片重試。',
+} satisfies Record<keyof typeof zh, string>

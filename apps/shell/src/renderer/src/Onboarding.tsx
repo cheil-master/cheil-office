@@ -5,6 +5,7 @@ import appIcon from './assets/app-icon.png'
 import { FirstConnectionDialog } from './FirstConnectionNotice'
 import { FreeAiCards, useAiSettings as useFreeAiSettings } from './FreeAiCards'
 import { ApiKeyCards, apiConnectLead } from './cheil/ApiKeyCards'
+import { productCopy } from './cheil/product-copy'
 import { apiEngineView } from './cheil/api-keys'
 import { FREE_AI_PROVIDER_NAMES } from './free-ai-cards'
 import { useI18n } from './locale'
@@ -127,7 +128,7 @@ export function Onboarding({
 
   // keyboard handling: Escape skips, Enter / ArrowRight advance, ArrowLeft goes
   // back, and Tab is trapped inside the dialog (aria-modal). Enter is ignored
-  // when a button is focused so the native click doesn't double-fire.
+  // when a control is focused so native activation does not advance the guide.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       // the notice above owns the keyboard while it is open
@@ -141,8 +142,13 @@ export function Onboarding({
         if (!card) return
         // inactive slides stay mounted (stacked for the height lock) but are
         // inert — their buttons must not enter the tab cycle
-        const focusables = Array.from(card.querySelectorAll<HTMLElement>('button')).filter(
-          (el) => !el.closest('[inert]') && !el.hasAttribute('disabled'),
+        const focusables = Array.from(
+          card.querySelectorAll<HTMLElement>('button, input, textarea, select, summary, a[href]'),
+        ).filter(
+          (el) =>
+            !el.closest('[inert]') &&
+            !el.hasAttribute('disabled') &&
+            el.getClientRects().length > 0,
         )
         if (focusables.length === 0) return
         const first = focusables[0]
@@ -164,7 +170,8 @@ export function Onboarding({
         return
       }
       const buttonFocused =
-        event.target instanceof HTMLElement && event.target.closest('button') !== null
+        event.target instanceof HTMLElement &&
+        event.target.closest('button, input, textarea, select, summary, a[href]') !== null
       if ((event.key === 'Enter' && !buttonFocused) || event.key === 'ArrowRight') next()
       if (event.key === 'ArrowLeft') setIndex((i) => previousOnboardingStep(i))
     }
@@ -187,7 +194,8 @@ export function Onboarding({
           {/* Cheil fork: the person's own API key first; subscriptions and free below */}
           <p className="onb-body onb-body-lead">{apiConnectLead(lang)}</p>
           <ApiKeyCards lang={lang} compact />
-          <div className="onb-connect">
+          <details className="onb-connect cheil-extra-connections">
+            <summary>{productCopy(lang).additional}</summary>
             <AiConnectGuide
               statuses={connection.statuses}
               lang={lang}
@@ -215,7 +223,7 @@ export function Onboarding({
                 )
               }
             />
-          </div>
+          </details>
           <p className="onb-note">{t('onbConnectSkipNote')}</p>
         </>
       )
@@ -229,7 +237,6 @@ export function Onboarding({
               })
             : t('onbDoneNotConnected')}
         </p>
-        <p className="onb-body onb-body-dim">{t('onbBody3')}</p>
       </>
     )
   }

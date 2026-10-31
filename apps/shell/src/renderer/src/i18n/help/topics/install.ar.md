@@ -1,6 +1,6 @@
 # تثبيت GenOffice
 
-كل إصدار يُنشر على [صفحة الإصدارات](https://github.com/pblsketch/openoffice/releases/latest) الخاصة بالمشروع على GitHub. وهذا الإصدار متاح لنظام Windows.
+كل إصدار يُنشر على [صفحة الإصدارات](https://github.com/cheil-master/cheil-office/releases) الخاصة بالمشروع على GitHub. وهذا الإصدار متاح لنظام Windows.
 
 ## اختر الملف المناسب لجهازك
 

@@ -1,3 +1,4 @@
+import { useI18n } from './locale'
 import { MCP_SERVER_NAME, mcpLaunch, SKILL_NAME, type McpLaunch } from '@genoffice/cli/mcp-launch'
 import { PRODUCT_REPO_SLUG } from '@genoffice/i18n'
 import { useCallback, useEffect, useState } from 'react'
@@ -57,12 +58,33 @@ export function mcpConfigJson(launch: McpLaunch): string {
 const api = () => window.aiOfficeIntegrations
 
 export function IntegrationsPane({
-  t,
+  t: translate,
   onStatus,
 }: {
   t: TFunc
   onStatus?: (s: IntegrationsStatus) => void
 }) {
+  const { lang } = useI18n()
+  const wording: Record<string, string> = {
+    setSecIntegrations: '외부 도구 연결',
+    intgHeroTitle: '외부 AI에서 CheilOffice 문서 작업 연결',
+    intgHeroDesc:
+      '이미 사용하는 AI 어시스턴트에 오피스 문서 도구를 연결하는 영역입니다. 앱 안의 AI 계정 연결이나 My Wiki 카카오톡 전송 설정과는 별개입니다. 외부 AI로 전달되는 내용은 해당 도구와 계정의 정책을 따릅니다.',
+    intgHeroStep1: '외부 AI가 명령을 실행할 수 있으면 작업 스킬 연결을 선택합니다.',
+    intgHeroStep2: '도구 호출만 지원하면 MCP 연결 정보를 등록합니다.',
+    intgHeroStep3: '연결된 외부 AI에서 새 작업을 시작하고 대상 문서를 지정합니다.',
+    intgCliPartTitle: '작업 스킬 연결',
+    intgCliPartDesc:
+      'Claude Code·Codex·Cursor 등 명령 실행을 지원하는 도구에 문서 작업 스킬을 등록합니다. 설치 위치와 기존 스킬 상태를 확인한 뒤 적용하세요.',
+    intgStep1Title: '사용할 외부 AI에만 등록',
+    intgMcpPartTitle: '문서 도구 연결 · MCP',
+    intgMcpPartDesc:
+      '외부 AI에 CheilOffice의 문서 도구를 제공합니다. 도구가 지원하는 방식에 맞춰 실행 명령 또는 로컬 서버 연결을 선택하세요.',
+    intgMcpStdioDesc:
+      '외부 AI가 cheiloffice mcp를 실행해 문서 도구를 호출합니다. CheilOffice 창을 열지 않고도 지원되는 파일 작업을 요청할 수 있습니다.',
+  }
+  const t: TFunc = (key, params) =>
+    lang === 'ko' && wording[key] ? wording[key] : translate(key, params)
   const [status, setStatus] = useState<IntegrationsStatus | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [busy, setBusy] = useState(false)
@@ -197,7 +219,12 @@ export function IntegrationsPane({
     <>
       <h3 className="set-pane-title">{t('setSecIntegrations')}</h3>
 
-      <DriveSettingsCard />
+      <details className="cheil-drive-connection">
+        <summary>
+          {lang === 'ko' ? '클라우드 자료 · Google Drive' : 'Cloud materials · Google Drive'}
+        </summary>
+        <DriveSettingsCard />
+      </details>
 
       <section className="set-intg-hero">
         <div className="set-intg-hero-title">{t('intgHeroTitle')}</div>

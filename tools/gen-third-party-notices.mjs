@@ -720,6 +720,9 @@ const TEMPLATE_FONTS = [
 ]
 
 out += hr('4. Bundled fonts')
+// Cheil fork: the unmodified offline UI font, separate from document template fonts.
+out += sub('Pretendard Variable 1.3.9 (application UI) — SIL OFL 1.1')
+out += readFileSync(join(ROOT, 'packages/ui/src/fonts/Pretendard-OFL.txt'), 'utf8').trim() + '\n'
 for (const [name, spdx, copyright] of FONTS) out += sub(`${name} — ${spdx}`) + copyright + '\n'
 for (const [name, file, copyright] of TEMPLATE_FONTS) {
   out += sub(`${name} (slide design templates, resources/template-fonts) — SIL OFL 1.1`)
@@ -765,6 +768,11 @@ for (const term of ['@embedpdf/pdfium', 'Copyright 2014 PDFium Authors', 'Apache
     throw new Error(`generated third-party notice is missing PDFium term: ${term}`)
   }
 }
+
+// Cheil fork: the browser collector vendors three hstry modules under MIT.
+out += hr('7. hstry browser conversation collectors')
+out += 'Upstream: https://github.com/byteowlz/hstry (c7ea955878223abb11dbdc91ddcdc2428b280a1b)\n'
+out += readFileSync(join(ROOT, 'apps/shell/resources/llm-journal-extension/LICENSE'), 'utf8') + '\n'
 
 const dest = join(ROOT, 'apps/shell/build/THIRD-PARTY-NOTICES.txt')
 mkdirSync(dirname(dest), { recursive: true })

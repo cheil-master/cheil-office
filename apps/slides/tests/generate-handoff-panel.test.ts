@@ -426,6 +426,19 @@ describe('generate hand-off in the PPT editor', () => {
     expect(bridge.report).not.toHaveBeenCalled()
   })
 
+  it('a design reference with a rejected image never starts with only the draft', async () => {
+    const referenceHandoff = { ...HANDOFF, designReference: true }
+    installBridge(statusMap('ready', 'signed-out'), referenceHandoff)
+    bridge.addAttachmentPaths = vi.fn(async () => ({
+      accepted: [BRIEF],
+      rejected: ['reference.png: unreadable'],
+    }))
+    const { container } = mount()
+    await flush()
+    expect(agentHarness.run).not.toHaveBeenCalled()
+    expect(composer(container).value).toBe(REQUEST)
+  })
+
   it('deck generation still refuses until every handed-over text material is read', async () => {
     installBridge(statusMap('ready', 'signed-out'), HANDOFF)
     mount()

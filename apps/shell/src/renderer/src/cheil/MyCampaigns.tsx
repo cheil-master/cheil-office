@@ -11,7 +11,7 @@
  * English for every other UI language, like the agency templates row.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FormEvent, ReactElement } from 'react'
+import type { FormEvent } from 'react'
 import type { Lang } from '@genoffice/i18n'
 import {
   CHEIL_MAIL_AUDIENCES,
@@ -33,6 +33,7 @@ import {
   type CheilMailStrength,
 } from '@genoffice/ui'
 import { useI18n } from '../locale'
+import { OptionsDialog } from './OptionsDialog'
 import { readAiSettings } from '../settings-ai'
 import {
   CHEIL_CAMPAIGN_BRIDGE_KEY,
@@ -49,6 +50,8 @@ import {
   type CheilCampaignCard,
 } from '../../../shared/cheil-campaign-api'
 import { AGENCY_TEMPLATES, DEFAULT_SET } from './templates'
+import { WikiPanel } from './WikiPanel'
+import { wikiWords } from './wiki-words'
 
 const WORDS = {
   ko: {
@@ -401,35 +404,15 @@ function eventText(w: Words, event: CampaignEvent): string {
   return event.text
 }
 
-/** a folder with a page: one campaign */
-function CampaignIcon(): ReactElement {
-  return (
-    <span className="quick-folder cheil-campaign-icon" aria-hidden>
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path
-          d="M1.75 4.25c0-.69.56-1.25 1.25-1.25h3l1.5 1.5H13c.69 0 1.25.56 1.25 1.25v6.5c0 .69-.56 1.25-1.25 1.25H3c-.69 0-1.25-.56-1.25-1.25v-8Z"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M5 8.5h6M5 10.75h4"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
-  )
-}
-
-export function MyCampaigns() {
+// Cheil fork: the home dashboard omits campaign options.
+export function MyCampaigns({ showOptions = true }: { showOptions?: boolean }) {
   const { lang } = useI18n()
   const w = words(lang)
   const api = bridge()
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
   const [form, setForm] = useState<{ mode: 'new' } | { mode: 'edit'; id: string } | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   /** plan item 5: what the last card edit changed in the campaign's open documents */
   const [propagation, setPropagation] = useState<{
     id: string
@@ -452,7 +435,7 @@ export function MyCampaigns() {
     <section className="quick-start cheil-campaigns" aria-label={w.label}>
       <div className="section-head">
         <span className="section-label">{w.label}</span>
-        <ObsidianLink w={w} api={api} />
+
         <button
           className="cheil-campaign-add"
           data-testid="cheil-campaign-add"
@@ -460,9 +443,30 @@ export function MyCampaigns() {
         >
           + {w.add}
         </button>
+        {showOptions && (
+          <button
+            className="btn btn-secondary cheil-campaign-options"
+            onClick={() => setOptionsOpen(true)}
+          >
+            {wikiWords(lang).options}
+          </button>
+        )}
       </div>
+      <OptionsDialog
+        open={optionsOpen}
+        title={wikiWords(lang).options}
+        onClose={() => setOptionsOpen(false)}
+      >
+        <ObsidianLink w={w} api={api} />
+      </OptionsDialog>
       {campaigns && campaigns.length === 0 ? (
-        <p className="cheil-campaigns-empty">{w.empty}</p>
+        <div className="cheil-campaign-empty-row">
+          <button className="cheil-campaign-empty-box" onClick={() => setForm({ mode: 'new' })}>
+            <span aria-hidden="true">+</span>
+            {w.add}
+          </button>
+          <p className="cheil-campaigns-empty">{w.empty}</p>
+        </div>
       ) : (
         <div className="quick-cards cheil-campaign-cards">
           {(campaigns ?? []).map((c) => (
@@ -472,7 +476,14 @@ export function MyCampaigns() {
               data-testid="cheil-campaign-card"
               onClick={() => setOpenId(c.id)}
             >
-              <CampaignIcon />
+              {/* Cheil fork: document-box chrome; campaign data/actions stay unchanged. */}
+              <span className="cheil-box-back" aria-hidden="true" />
+              <span className="cheil-box-paper back" aria-hidden="true" />
+              <span className="cheil-box-paper front" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
               <span className="quick-text">
                 <span className="quick-title-row">
                   <span className="quick-title">{c.card.campaign}</span>
@@ -587,7 +598,7 @@ function useEscape(onEscape: () => void) {
   ref.current = onEscape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
         e.stopPropagation()
         ref.current()
       }
@@ -1427,68 +1438,6 @@ function CampaignView({
           </button>
         </div>
 
-        {card ? (
-          <dl className="cheil-card-grid">
-            {VIEW_ROWS.map((key) => {
-              const value = key === 'period' ? period(card) : card[key]
-              const shown = key === 'period' ? value || w.emptyValue : shownValue(w, key, value)
-              return (
-                <div key={key} className={`cheil-card-item cheil-card-${key}`}>
-                  <dt>{key === 'period' ? w.period : w.fields[key]}</dt>
-                  <dd className={value ? '' : 'is-empty'}>{shown}</dd>
-                </div>
-              )
-            })}
-          </dl>
-        ) : null}
-
-        {propagation ? <PropagationList w={w} result={propagation} /> : null}
-
-        {card ? (
-          <DocumentSet
-            w={w}
-            lang={lang}
-            card={card}
-            mine={mine}
-            onOpen={async (items) => {
-              setError('')
-              const res = await api
-                .openSet(id, items)
-                .catch(() => ({ ok: false as const, reason: 'failed' as const }))
-              if (!res.ok) {
-                setError(w.fail[res.reason])
-                return null
-              }
-              setCampaign(res.campaign)
-              return res.opened
-            }}
-          />
-        ) : null}
-
-        {campaign ? (
-          <MailDraft w={w} api={api} campaign={campaign} onRecorded={setCampaign} />
-        ) : null}
-
-        {card ? (
-          <MailTasks
-            w={w}
-            api={api}
-            card={card}
-            onAdd={async (tasks, mail) => {
-              setError('')
-              const res = await api
-                .addTasks(id, tasks, mail)
-                .catch(() => ({ ok: false as const, reason: 'failed' as const }))
-              if (!res.ok) {
-                setError(w.fail[res.reason])
-                return null
-              }
-              setCampaign(res.campaign)
-              return res.added
-            }}
-          />
-        ) : null}
-
         <div className="cheil-campaign-actions">
           <button className="btn btn-secondary" onClick={onEdit} disabled={!card}>
             {w.editCard}
@@ -1507,6 +1456,80 @@ function CampaignView({
           >
             {w.openHistory}
           </button>
+        </div>
+
+        {card ? (
+          <dl className="cheil-card-grid">
+            {VIEW_ROWS.map((key) => {
+              const value = key === 'period' ? period(card) : card[key]
+              const shown = key === 'period' ? value || w.emptyValue : shownValue(w, key, value)
+              return (
+                <div key={key} className={`cheil-card-item cheil-card-${key}`}>
+                  <dt>{key === 'period' ? w.period : w.fields[key]}</dt>
+                  <dd className={value ? '' : 'is-empty'}>{shown}</dd>
+                </div>
+              )
+            })}
+          </dl>
+        ) : null}
+
+        {card ? (
+          <details className="cheil-campaign-materials">
+            <summary>{wikiWords(lang).materials}</summary>
+            <WikiPanel key={id} lang={lang} api={api} campaignId={id} />
+          </details>
+        ) : null}
+
+        {propagation ? <PropagationList w={w} result={propagation} /> : null}
+
+        <div className="cheil-campaign-workbench">
+          <div className="cheil-campaign-documents">
+            {card ? (
+              <DocumentSet
+                w={w}
+                lang={lang}
+                card={card}
+                mine={mine}
+                onOpen={async (items) => {
+                  setError('')
+                  const res = await api
+                    .openSet(id, items)
+                    .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+                  if (!res.ok) {
+                    setError(w.fail[res.reason])
+                    return null
+                  }
+                  setCampaign(res.campaign)
+                  return res.opened
+                }}
+              />
+            ) : null}
+
+            {card ? (
+              <MailTasks
+                w={w}
+                api={api}
+                card={card}
+                onAdd={async (tasks, mail) => {
+                  setError('')
+                  const res = await api
+                    .addTasks(id, tasks, mail)
+                    .catch(() => ({ ok: false as const, reason: 'failed' as const }))
+                  if (!res.ok) {
+                    setError(w.fail[res.reason])
+                    return null
+                  }
+                  setCampaign(res.campaign)
+                  return res.added
+                }}
+              />
+            ) : null}
+          </div>
+          <div className="cheil-campaign-mail">
+            {campaign ? (
+              <MailDraft w={w} api={api} campaign={campaign} onRecorded={setCampaign} />
+            ) : null}
+          </div>
         </div>
 
         <div className="cheil-note-box">

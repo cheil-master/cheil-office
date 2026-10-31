@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Office LLM Journal (hstry)",
+  "version": "0.1.4",
+  "description": "Sync new ChatGPT and Claude Q/A to your paired office on this computer.",
+  "permissions": [
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Office LLM Journal"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "provider-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
